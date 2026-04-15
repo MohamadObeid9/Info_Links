@@ -1,0 +1,104 @@
+@media (max-width: 768px) {
+    nav {
+        padding: 0 16px;
+        height: 54px;
+    }
+
+    .hamburger {
+        display: flex;
+    }
+
+    .nav-links {
+        display: none;
+        position: fixed;
+        top: 54px;
+        left: 0;
+        right: 0;
+        background: var(--bg2);
+        flex-direction: column;
+        padding: 12px 16px;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 4px 12px var(--shadow);
+        z-index: 99;
+    }
+
+    .nav-links.mobile-open {
+        display: flex;
+    }
+
+    .nav-btn {
+        text-align: left;
+        padding: 12px 14px;
+        font-size: 0.95rem;
+        width: 100%;
+    }
+
+    .view {
+        padding: 16px 12px;
+    }
+
+    .hero {
+        padding: 20px 0 16px;
+    }
+
+    .hero h1 {
+        font-size: 1.5rem;
+    }
+
+    .filter-toggle-btn {
+        display: flex;
+    }
+
+    .filters-collapsible {
+        display: none;
+        margin-bottom: 8px;
+    }
+
+    .filters-collapsible.open {
+        display: block;
+    }
+
+    .prog-tabs {
+        margin: 8px 0;
+        gap: 6px;
+    }
+
+    .prog-tab {
+        padding: 6px 14px;
+        font-size: 0.8rem;
+    }
+
+    .filter-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .filter-btn {
+        padding: 5px 12px;
+        font-size: 0.78rem;
+    }
+
+    .course-card {
+        padding: 14px;
+    }
+
+    .admin-tabs {
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .admin-tab {
+        padding: 5px 8px;
+        font-size: 0.7rem;
+        flex: 1 1 auto;
+        min-width: 70px;
+        text-align: center;
+    }
+    
+    .admin-tab .badge-count {
+        font-size: 0.65rem;
+        padding: 1px 4px;
+    }
+}
