@@ -1,0 +1,97 @@
+/* ===================== SKELETON SCREEN ===================== */
+
+/* Shimmer keyframe */
+@keyframes shimmer {
+    0% {
+        background-position: -600px 0;
+    }
+    100% {
+        background-position: 600px 0;
+    }
+}
+
+/* Base skeleton block */
+.skel {
+    border-radius: 6px;
+    background: linear-gradient(
+        90deg,
+        var(--bg3) 25%,
+        var(--border) 50%,
+        var(--bg3) 75%
+    );
+    background-size: 600px 100%;
+    animation: shimmer 1.4s infinite linear;
+}
+
+/* ── Skeleton for the program tabs row ── */
+.skel-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 24px 0 20px;
+    flex-wrap: wrap;
+}
+.skel-tab {
+    height: 38px;
+    border-radius: 10px;
+}
+
+/* ── Skeleton for the filter row ── */
+.skel-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.skel-filter-pill {
+    height: 30px;
+    border-radius: 20px;
+}
+
+/* ── Skeleton section title (semester label) ── */
+.skel-sem-title {
+    height: 14px;
+    width: 160px;
+    margin-bottom: 14px;
+    border-radius: 4px;
+}
+
+/* ── Skeleton course cards grid ── */
+.skel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+}
+
+.skel-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Card header: title + code badge */
+.skel-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.skel-card-title {
+    height: 16px;
+    width: 60%;
+    border-radius: 4px;
+}
+.skel-card-code {
+    height: 20px;
+    width: 18%;
+    border-radius: 6px;
+}
+
+/* Link rows inside card */
+.skel-link {
+    height: 36px;
+    border-radius: 8px;
+}

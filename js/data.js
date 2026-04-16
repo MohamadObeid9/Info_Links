@@ -49,8 +49,15 @@ function _renderAfterLoad() {
 }
 
 async function loadAll() {
-  document.getElementById("coursesOutput").innerHTML =
-    '<div class="loader"><div class="spinner"></div> Loading courses…</div>';
+  // Show skeleton on first load (when containers are empty),
+  // fall back to a simple spinner on subsequent admin refreshes.
+  const isFirstLoad = !document.getElementById("coursesOutput").dataset.loaded;
+  if (isFirstLoad) {
+    showSkeleton();
+  } else {
+    document.getElementById("coursesOutput").innerHTML =
+      '<div class="loader"><div class="spinner"></div> Loading…</div>';
+  }
   document.getElementById("extraSection").innerHTML = "";
   try {
     // Admins always get fresh data so they see their own changes.
@@ -112,6 +119,7 @@ async function loadAll() {
       extraSections,
       extraLinks,
     );
+    document.getElementById("coursesOutput").dataset.loaded = "1"; // mark loaded
     _renderAfterLoad();
   } catch (e) {
     document.getElementById("coursesOutput").innerHTML =
