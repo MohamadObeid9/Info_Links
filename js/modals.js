@@ -1,12 +1,22 @@
 // ===================== CONFIRM MODAL =====================
-  function confirmAction(msg, fn) {
-    openModal(`<h2>⚠️ Confirm</h2>
+function confirmAction(msg, fn) {
+  openModal(`<h2>⚠️ Confirm</h2>
     <p style="color:var(--muted);margin-top:8px;font-size:.9rem;">${msg}</p>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn" style="background:var(--danger);color:#fff;" onclick="closeModal();(${fn})()">Delete</button>
     </div>`);
-  }
+}
+
+function confirmLink(url) {
+  openModal(`<h2> Open External Link</h2>
+  <p style="color:var(--muted);margin-top:8px;font-size:1rem;">You're leaving Info Links to visit an external link:</p>
+  <p style="word-break: break-all; font-family: monospace; background: var(--bg-secondary); padding: 8px; border-radius: 4px; margin: 8px 0;">${url}</p>
+  <div class="modal-actions">
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="closeModal(); window.open('${url}', '_blank', 'noopener')">Open Link</button>
+  </div>`);
+}
 
 // ===================== MODALS =====================
 function openModal(html) {

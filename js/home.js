@@ -77,7 +77,7 @@ function renderCourses() {
             ? c.links
                 .map(
                   (l) => `
-                                    <a class="link-item" href="${l.url}" target="_blank" rel="noopener">
+                                    <a class="link-item" onclick="confirmLink('${l.url}'); return false;" href="#">
                                         ${getLinkBadge(l.type)}
                                         <span class="link-label">${l.label}</span>
                                         ${l.note ? `<span class="link-note">${l.note}</span>` : ""}
@@ -145,7 +145,7 @@ function renderExtra() {
             ${r.links
               .map(
                 (l) => `
-              <a class="link-item" href="${l.url}" target="_blank" rel="noopener">
+              <a class="link-item" onclick="confirmLink('${l.url}'); return false;" href="#">
                 ${getLinkBadge(l.type)}<span class="link-label">${l.label}</span>${l.note ? `<span class="link-note">${l.note}</span>` : ""}
               </a>`,
               )
