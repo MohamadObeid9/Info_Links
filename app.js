@@ -8,7 +8,7 @@ function loadScript(url) {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = url;
-    script.defer = true;
+    script.async = false; // Ensures scripts execute in the order they are added
     script.onload = resolve;
     script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
     document.body.appendChild(script);
@@ -36,9 +36,7 @@ async function bootstrap() {
     "js/export.js",
   ];
 
-  for (const src of scripts) {
-    await loadScript(src);
-  }
+  await Promise.all(scripts.map(loadScript));
 
   if (typeof initApp === "function") {
     initApp().catch((err) => console.error("App init failed:", err));
