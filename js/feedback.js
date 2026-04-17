@@ -7,14 +7,14 @@ async function submitFeedback() {
         showToast('Please select a category', true);
         return;
     }
-    
+
     if (currentRating === 0) {
         showToast('Please select a rating', true);
         return;
     }
-    
+
     const message = document.getElementById('feedbackMessage').value.trim();
-    
+
     const payload = {
         category: category,
         rating: currentRating,
@@ -22,7 +22,7 @@ async function submitFeedback() {
         created_at: new Date().toISOString(),
         status: 'new'
     };
-    
+
     try {
         await sb('feedback', 'POST', payload);
         showToast('Thank you for your feedback!');
@@ -51,11 +51,11 @@ function updateStarDisplay() {
             star.classList.remove('active');
         }
     }
-    
+
     const displayDiv = document.getElementById('ratingDisplay');
     if (currentRating > 0) {
         displayDiv.textContent = `${currentRating} out of 5 stars`;
-        displayDiv.style.color = 'var(--primary)';
+        displayDiv.style.color = 'var(--accent)';
     } else {
         displayDiv.textContent = 'Select a rating';
         displayDiv.style.color = 'var(--muted)';
@@ -64,16 +64,17 @@ function updateStarDisplay() {
 
 async function renderAdminFeedback() {
     const contentDiv = document.getElementById('adminContent');
-    
+    contentDiv.innerHTML = getAdminTableSkeleton();
+
     try {
         const response = await sb('feedback', 'GET', null, null, '*&order=created_at.desc');
         const feedback = Array.isArray(response) ? response : response.data || [];
-        
+
         if (feedback.length === 0) {
             contentDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted);">No feedback yet</div>';
             return;
         }
-        
+
         let html = `
             <div style="overflow-x: auto;">
                 <table class="admin-table">
@@ -89,17 +90,17 @@ async function renderAdminFeedback() {
                     </thead>
                     <tbody>
         `;
-        
+
         feedback.forEach(item => {
             const date = new Date(item.created_at).toLocaleDateString();
             const filledStars = '★'.repeat(item.rating);
             const emptyStars = '★'.repeat(5 - item.rating);
             const stars = `<span style="color: gold;">${filledStars}</span><span style="color: #999;">${emptyStars}</span>`;
             const ratingText = `${item.rating}/5`;
-            const message = item.message || '(no message)';
+            const message = esc(item.message) || '(no message)';
             const statusClass = item.status === 'new' ? 'tag-blue' : 'tag-gray';
-            const categoryDisplay = item.category ? item.category.charAt(0).toUpperCase() + item.category.slice(1) : 'N/A';
-            
+            const categoryDisplay = item.category ? esc(item.category.charAt(0).toUpperCase() + item.category.slice(1)) : 'N/A';
+
             html += `
                 <tr>
                     <td>${date}</td>
@@ -114,13 +115,13 @@ async function renderAdminFeedback() {
                 </tr>
             `;
         });
-        
+
         html += `
                     </tbody>
                 </table>
             </div>
         `;
-        
+
         contentDiv.innerHTML = html;
     } catch (err) {
         console.error('Feedback render error:', err);

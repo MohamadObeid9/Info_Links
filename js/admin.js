@@ -59,8 +59,7 @@ function _refocusSearch() {
 
 // ===================== ANALYTICS =====================
 async function renderAdminAnalytics() {
-  document.getElementById("adminContent").innerHTML =
-    '<div class="loader"><div class="spinner"></div> Loading analytics…</div>';
+  document.getElementById("adminContent").innerHTML = getAdminAnalyticsSkeleton();
   try {
     const views = await sb("page_views", "GET", null, null, "id,visited_at");
     const now = new Date();
@@ -140,7 +139,7 @@ function renderAdminCourses() {
     dbPrograms
       .map(
         (p) =>
-          `<button class="filter-btn ${adminFilterProg === p.id ? "active" : ""}" onclick="adminFilterProg=${p.id};adminFilterYear='all';adminFilterSem='all';renderAdminCourses()">${p.name}</button>`,
+          `<button class="filter-btn ${adminFilterProg === p.id ? "active" : ""}" onclick="adminFilterProg=${p.id};adminFilterYear='all';adminFilterSem='all';renderAdminCourses()">${esc(p.name)}</button>`,
       )
       .join("");
 
@@ -153,7 +152,7 @@ function renderAdminCourses() {
       activeProg.years
         .map(
           (y) =>
-            `<button class="filter-btn ${adminFilterYear === y.id ? "active" : ""}" onclick="adminFilterYear=${y.id};adminFilterSem='all';renderAdminCourses()">${y.name}</button>`,
+            `<button class="filter-btn ${adminFilterYear === y.id ? "active" : ""}" onclick="adminFilterYear=${y.id};adminFilterSem='all';renderAdminCourses()">${esc(y.name)}</button>`,
         )
         .join("");
   }
@@ -172,7 +171,7 @@ function renderAdminCourses() {
       sems
         .map(
           (s) =>
-            `<button class="filter-btn ${adminFilterSem === s.id ? "active" : ""}" onclick="adminFilterSem=${s.id};renderAdminCourses()">${s.name}</button>`,
+            `<button class="filter-btn ${adminFilterSem === s.id ? "active" : ""}" onclick="adminFilterSem=${s.id};renderAdminCourses()">${esc(s.name)}</button>`,
         )
         .join("");
   }
@@ -183,9 +182,8 @@ function renderAdminCourses() {
                         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">Program</div>
                         <div class="filters" style="flex-wrap:wrap;">${progBtns}</div>
                     </div>
-                    ${
-                      activeProg
-                        ? `
+                    ${activeProg
+      ? `
                     <div style="margin-bottom:6px;">
                         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">Year</div>
                         <div class="filters" style="flex-wrap:wrap;">${yearBtns}</div>
@@ -194,8 +192,8 @@ function renderAdminCourses() {
                         <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px;">Semester</div>
                         <div class="filters" style="flex-wrap:wrap;">${semBtns}</div>
                     </div>`
-                        : `<div style="margin-bottom:16px;"></div>`
-                    }`;
+      : `<div style="margin-bottom:16px;"></div>`
+    }`;
 
   dbPrograms.forEach((prog) => {
     if (adminFilterProg !== "all" && prog.id !== adminFilterProg) return;
@@ -211,13 +209,13 @@ function renderAdminCourses() {
             c.code.toLowerCase().includes(q),
         );
         if (!filtered.length) return;
-        progHtml += `<div style="font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:12px 0 8px;">${year.name} — ${sem.name}</div>`;
+        progHtml += `<div style="font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:12px 0 8px;">${esc(year.name)} — ${esc(sem.name)}</div>`;
         filtered.forEach((c) => {
           progHtml += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <strong>${c.name}</strong>
-                <span style="color:var(--accent);font-size:.78rem;">${c.code}</span>
+                <strong>${esc(c.name)}</strong>
+                <span style="color:var(--accent);font-size:.78rem;">${esc(c.code)}</span>
                 ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
               </div>
               <div class="action-btns">
@@ -228,27 +226,26 @@ function renderAdminCourses() {
               </div>
             </div>
             <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
-              ${
-                c.links.length
-                  ? c.links
-                      .map(
-                        (l) => `
+              ${c.links.length
+              ? c.links
+                .map(
+                  (l) => `
                 <div class="link-chip">
-                  ${getLinkBadge(l.type)}<span>${l.label}</span>${l.note ? `<span style="color:var(--muted)">(${l.note})</span>` : ""}
+                  ${getLinkBadge(l.type)}<span>${esc(l.label)}</span>${l.note ? `<span style="color:var(--muted)">(${esc(l.note)})</span>` : ""}
                   <button class="action-btn" style="padding:2px 7px;font-size:.7rem;" onclick="openEditLinkModal(${l.id},${c.id})">✏️</button>
                   <button class="action-btn del" style="padding:2px 7px;font-size:.7rem;" onclick="confirmDeleteLink(${l.id},${c.id})">✕</button>
                 </div>`,
-                      )
-                      .join("")
-                  : '<span style="font-size:.78rem;color:var(--muted);">No links</span>'
-              }
+                )
+                .join("")
+              : '<span style="font-size:.78rem;color:var(--muted);">No links</span>'
+            }
             </div>
           </div>`;
         });
       });
     });
     if (progHtml)
-      html += `<div style="margin-bottom:28px;"><div style="font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:12px;">${prog.name}</div>${progHtml}</div>`;
+      html += `<div style="margin-bottom:28px;"><div style="font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:12px;">${esc(prog.name)}</div>${progHtml}</div>`;
   });
 
   document.getElementById("adminContent").innerHTML = html;
@@ -264,7 +261,7 @@ function renderAdminExtra() {
     if (q && !r.title.toLowerCase().includes(q)) return;
     html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-        <div style="font-weight:700;">${r.icon} ${r.title}</div>
+        <div style="font-weight:700;">${r.icon} ${esc(r.title)}</div>
         <div class="action-btns">
           <button class="action-btn" onclick="openEditExtraSectionModal(${r.id})">✏️ Edit</button>
           <button class="action-btn" onclick="openAddExtraLinkModal(${r.id})">+ Link</button>
@@ -272,20 +269,19 @@ function renderAdminExtra() {
         </div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        ${
-          r.links.length
-            ? r.links
-                .map(
-                  (l) => `
+        ${r.links.length
+        ? r.links
+          .map(
+            (l) => `
           <div class="link-chip">
-            ${getLinkBadge(l.type)}<span>${l.label}</span>${l.note ? `<span style="color:var(--muted)">(${l.note})</span>` : ""}
+            ${getLinkBadge(l.type)}<span>${esc(l.label)}</span>${l.note ? `<span style="color:var(--muted)">(${esc(l.note)})</span>` : ""}
             <button class="action-btn" style="padding:2px 7px;font-size:.7rem;" onclick="openEditExtraLinkModal(${l.id},${r.id})">✏️</button>
             <button class="action-btn del" style="padding:2px 7px;font-size:.7rem;" onclick="confirmAction('Remove this link?',()=>deleteExtraLink(${l.id},${r.id}))">✕</button>
           </div>`,
-                )
-                .join("")
-            : '<span style="font-size:.78rem;color:var(--muted);">No links</span>'
-        }
+          )
+          .join("")
+        : '<span style="font-size:.78rem;color:var(--muted);">No links</span>'
+      }
       </div>
     </div>`;
   });
@@ -294,8 +290,7 @@ function renderAdminExtra() {
 
 // ===================== ADMIN REPORTS =====================
 async function renderAdminReports() {
-  document.getElementById("adminContent").innerHTML =
-    '<div class="loader"><div class="spinner"></div> Loading…</div>';
+  document.getElementById("adminContent").innerHTML = getAdminTableSkeleton();
   const q = adminSearch.toLowerCase();
   try {
     const reports = await sb(
@@ -336,8 +331,7 @@ async function renderAdminReports() {
 
 // ===================== ADMIN CONTRIBUTIONS =====================
 async function renderAdminContributions() {
-  document.getElementById("adminContent").innerHTML =
-    '<div class="loader"><div class="spinner"></div> Loading…</div>';
+  document.getElementById("adminContent").innerHTML = getAdminTableSkeleton();
   const q = adminSearch.toLowerCase();
   try {
     const contribs = await sb(
@@ -380,7 +374,6 @@ async function renderAdminContributions() {
 async function deleteCourse(id) {
   try {
     await sb(`courses?id=eq.${id}`, "DELETE");
-    await trackVisit();
     loadAll();
     showToast("Course deleted.");
   } catch (e) {
@@ -392,7 +385,6 @@ async function toggleOptional(id, current) {
     await sb(`courses?id=eq.${id}`, "PATCH", {
       is_optional: !current,
     });
-    await trackVisit();
     loadAll();
     renderAdminCourses();
     showToast(current ? "Marked as required." : "Marked as optional.");
@@ -487,7 +479,6 @@ async function applyDeleteLink(deleteAll) {
 async function deleteExtraSection(id) {
   try {
     await sb(`extra_sections?id=eq.${id}`, "DELETE");
-    await trackVisit();
     loadAll();
     renderAdminExtra();
     showToast("Section deleted.");
@@ -498,7 +489,6 @@ async function deleteExtraSection(id) {
 async function deleteExtraLink(id) {
   try {
     await sb(`extra_links?id=eq.${id}`, "DELETE");
-    await trackVisit();
     loadAll();
     renderAdminExtra();
     showToast("Link removed.");

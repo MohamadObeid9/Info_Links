@@ -1,11 +1,20 @@
 // ===================== CONFIRM MODAL =====================
+let _modalCallback = null;
+
 function confirmAction(msg, fn) {
+  _modalCallback = fn;
   openModal(`<h2>⚠️ Confirm</h2>
     <p style="color:var(--muted);margin-top:8px;font-size:.9rem;">${msg}</p>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn" style="background:var(--danger);color:#fff;" onclick="closeModal();(${fn})()">Delete</button>
+      <button class="btn" style="background:var(--danger);color:#fff;" onclick="executeModalAction()">Delete</button>
     </div>`);
+}
+
+function executeModalAction() {
+  if (typeof _modalCallback === "function") _modalCallback();
+  closeModal();
+  _modalCallback = null;
 }
 
 function confirmLink(url) {
@@ -74,7 +83,6 @@ async function addCourse() {
       display_order: 0,
     });
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminCourses();
     showToast("Course added!");
@@ -245,7 +253,6 @@ async function applySaveCourse(updateAll) {
       );
     }
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminCourses();
     showToast(
@@ -351,7 +358,6 @@ async function applyAddLink(addToAll) {
         ),
       );
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminCourses();
     showToast(
@@ -484,7 +490,6 @@ async function applySaveLink(updateAll) {
         ),
       );
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminCourses();
     showToast(
@@ -520,7 +525,6 @@ async function addExtraSection() {
       display_order: 0,
     });
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminExtra();
     showToast("Section added!");
@@ -543,7 +547,6 @@ async function saveExtraSection(id) {
       title: document.getElementById("exTitle").value.trim(),
     });
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminExtra();
     showToast("Section updated!");
@@ -577,7 +580,6 @@ async function addExtraLink(sectionId) {
       display_order: 0,
     });
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminExtra();
     showToast("Link added!");
@@ -616,7 +618,6 @@ async function saveExtraLink(id) {
       note: document.getElementById("elxNote").value.trim(),
     });
     closeModal();
-    await trackVisit();
     loadAll();
     renderAdminExtra();
     showToast("Link updated!");

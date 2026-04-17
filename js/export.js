@@ -65,7 +65,4 @@ async function initApp() {
   trackVisit();
   loadAll();
 }
-
-initApp().catch((e) => {
-  console.error("App init failed:", e);
-});
+// Note: initApp() is called by app.js after all scripts load — do NOT call it here.

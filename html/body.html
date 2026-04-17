@@ -5,7 +5,7 @@
     </button>
     <div class="nav-links" id="navLinks">
         <button class="nav-btn active" onclick="showView('home')">Home</button>
-        <button class="nav-btn" onclick="showView('report-submit')">Report / Submit</button>
+        <button class="nav-btn" onclick="showView('report-submit')">Report / Contribute</button>
         <button class="nav-btn" onclick="showView('feedback')">Feedback</button>
         <button class="nav-btn admin-btn" onclick="showView('admin-gate')">Admin</button>
         <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☀️</button>
@@ -20,6 +20,27 @@
         <div class="search-wrap">
             <span class="si">🔍</span>
             <input type="text" id="searchInput" placeholder="Search by course name or code…" oninput="onSearch()" />
+        </div>
+        <div class="important-note" id="importantNote" onclick="toggleImportantNote()">
+            <div class="note-header">
+                <div style="display:flex;align-items:center;gap:8px;"><span>⚠️</span> <span id="noteTitleText">Important Note</span></div>
+                <div style="display:flex; gap: 4px; align-items:center; margin-left: auto; margin-right: 12px;" onclick="event.stopPropagation()">
+                    <button class="nav-btn" style="padding: 2px 6px; font-size: 0.7rem;" onclick="setNoteLang('en')">EN</button>
+                    <button class="nav-btn" style="padding: 2px 6px; font-size: 0.7rem;" onclick="setNoteLang('fr')">FR</button>
+                    <button class="nav-btn" style="padding: 2px 6px; font-size: 0.7rem;" onclick="setNoteLang('ar')">AR</button>
+                </div>
+                <span class="note-arrow" id="noteArrow">▼</span>
+            </div>
+            <div class="note-content" id="noteContentText">
+                We are improving the site and need your help! We'll add a feature to list the content of each link. If
+                you tried any link before and know its content, click on the <strong>Report / Contribute</strong>
+                button. In the
+                contribute section, list the name of the course and its code, then list the link number in the link
+                section (e.g., link 1 / link 2 / link 3 ...). In the note
+                section, add your info (e.g., whether it contains TD only, Cours only, videos only, sessions, or if
+                there are any missing chapters). Do that for each link u know, and we'll appreciate your contributions.
+                ❤️
+            </div>
         </div>
         <div class="legend">
             <div class="legend-item"><span class="link-badge badge-tg">TG</span> Telegram</div>
@@ -58,17 +79,21 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
         <div class="extra-section">
             <div class="extra-title"><span>🚨</span> Report a broken / inaccessible link</div>
-            <input class="inp" type="text" id="rCourse" placeholder="Course name or code" style="margin-bottom: 12px;" />
-            <input class="inp" type="text" id="rLink" placeholder="Paste the broken link here" style="margin-bottom: 12px;" />
+            <input class="inp" type="text" id="rCourse" placeholder="Course name or code"
+                style="margin-bottom: 12px;" />
+            <input class="inp" type="text" id="rLink" placeholder="Paste the broken link here"
+                style="margin-bottom: 12px;" />
             <textarea class="inp" id="rDesc" placeholder="Describe the issue…" style="margin-bottom: 16px;"></textarea>
             <button class="btn btn-primary" style="width: 100%" onclick="submitReport()">Submit Report</button>
         </div>
         <div class="extra-section">
             <div class="extra-title"><span>➕</span> Contribute a new link</div>
-            <input class="inp" type="text" id="cCourse" placeholder="Course name or code" style="margin-bottom: 12px;" />
+            <input class="inp" type="text" id="cCourse" placeholder="Course name or code"
+                style="margin-bottom: 12px;" />
             <input class="inp" type="text" id="cLink" placeholder="https://…" style="margin-bottom: 12px;" />
             <textarea class="inp" id="cNote" placeholder="Note (optional)" style="margin-bottom: 16px;"></textarea>
-            <button class="btn btn-primary" style="width: 100%" onclick="submitContribution()">Submit Contribution</button>
+            <button class="btn btn-primary" style="width: 100%" onclick="submitContribution()">Submit
+                Contribution</button>
         </div>
     </div>
 </div>
@@ -89,7 +114,9 @@
                 <button class="star-btn" onclick="setRating(4)" id="star-4">★</button>
                 <button class="star-btn" onclick="setRating(5)" id="star-5">★</button>
             </div>
-            <div id="ratingDisplay" style="text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; margin-bottom: 24px;">Select a rating</div>
+            <div id="ratingDisplay"
+                style="text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; margin-bottom: 24px;">
+                Select a rating</div>
             <div class="extra-title"><span>📋</span> What would you like to rate?</div>
             <select class="inp" id="feedbackCategory" style="margin-bottom: 24px;">
                 <option value="">Select a category...</option>
@@ -100,8 +127,10 @@
                 <option value="accessibility">Accessibility</option>
                 <option value="other">Other</option>
             </select>
-            <textarea class="inp" id="feedbackMessage" placeholder="Your feedback (optional)…" style="margin-top: 16px; min-height: 100px;"></textarea>
-            <button class="btn btn-primary" style="width: 100%; margin-top: 24px;" onclick="submitFeedback()">Submit Feedback</button>
+            <textarea class="inp" id="feedbackMessage" placeholder="Your feedback (optional)…"
+                style="margin-top: 16px; min-height: 100px;"></textarea>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 24px;" onclick="submitFeedback()">Submit
+                Feedback</button>
         </div>
     </div>
 </div>
@@ -112,7 +141,8 @@
         <h2>Admin Login</h2>
         <p>Enter your credentials to access the dashboard.</p>
         <input type="email" id="adminEmail" placeholder="Email" />
-        <input type="password" id="adminPass" placeholder="Password" onkeydown="if (event.key === 'Enter') checkLogin();" />
+        <input type="password" id="adminPass" placeholder="Password"
+            onkeydown="if (event.key === 'Enter') checkLogin();" />
         <button class="btn btn-primary" style="width: 100%" onclick="checkLogin()">Login</button>
         <div class="err" id="loginErr"></div>
     </div>
@@ -131,9 +161,12 @@
     <div class="admin-tabs">
         <button class="admin-tab active" onclick="adminTab('courses')">Courses & Links</button>
         <button class="admin-tab" onclick="adminTab('extra')">Extra Resources</button>
-        <button class="admin-tab" onclick="adminTab('feedback')">Feedback <span id="feedbackBadge" class="badge-count" style="display: none"></span></button>
-        <button class="admin-tab" onclick="adminTab('reports')">Reports <span id="reportBadge" class="badge-count" style="display: none"></span></button>
-        <button class="admin-tab" onclick="adminTab('contributions')">Contributions <span id="contribBadge" class="badge-count" style="display: none"></span></button>
+        <button class="admin-tab" onclick="adminTab('feedback')">Feedback <span id="feedbackBadge" class="badge-count"
+                style="display: none"></span></button>
+        <button class="admin-tab" onclick="adminTab('reports')">Reports <span id="reportBadge" class="badge-count"
+                style="display: none"></span></button>
+        <button class="admin-tab" onclick="adminTab('contributions')">Contributions <span id="contribBadge"
+                class="badge-count" style="display: none"></span></button>
         <button class="admin-tab" onclick="adminTab('analytics')">📊 Analytics</button>
     </div>
     <div id="adminContent"></div>

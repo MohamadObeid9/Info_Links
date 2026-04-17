@@ -5,7 +5,7 @@ function renderProgTabs() {
     dbPrograms
       .map(
         (p) =>
-          `<button class="prog-tab ${p.id === currentProg ? "active" : ""}" onclick="selectProg(${p.id})">${p.name}</button>`,
+          `<button class="prog-tab ${p.id === currentProg ? "active" : ""}" onclick="selectProg(${p.id})">${esc(p.name)}</button>`,
       )
       .join("") +
     `<button class="prog-tab ${currentProg === "extra" ? "active" : ""}" onclick="selectProg('extra')">📦 Extra Resources</button>`;
@@ -19,7 +19,7 @@ function renderYearFilters() {
     prog.years
       .map(
         (y) =>
-          `<button class="filter-btn ${currentYear === y.id ? "active" : ""}" onclick="setYear(${y.id})">${y.name}</button>`,
+          `<button class="filter-btn ${currentYear === y.id ? "active" : ""}" onclick="setYear(${y.id})">${esc(y.name)}</button>`,
       )
       .join("");
 }
@@ -39,7 +39,7 @@ function renderSemFilters() {
     sems
       .map(
         (s) =>
-          `<button class="filter-btn ${currentSem === s.id ? "active" : ""}" onclick="setSem(${s.id})">${s.name}</button>`,
+          `<button class="filter-btn ${currentSem === s.id ? "active" : ""}" onclick="setSem(${s.id})">${esc(s.name)}</button>`,
       )
       .join("");
 }
@@ -75,24 +75,24 @@ function renderCourses() {
         .map((c) => {
           const linksHtml = c.links.length
             ? c.links
-                .map(
-                  (l) => `
+              .map(
+                (l) => `
                                     <a class="link-item" onclick="confirmLink('${l.url}'); return false;" href="#">
                                         ${getLinkBadge(l.type)}
-                                        <span class="link-label">${l.label}</span>
-                                        ${l.note ? `<span class="link-note">${l.note}</span>` : ""}
+                                        <span class="link-label">${esc(l.label)}</span>
+                                        ${l.note ? `<span class="link-note">${esc(l.note)}</span>` : ""}
                                     </a>`,
-                )
-                .join("")
+              )
+              .join("")
             : '<span class="no-links">No links yet — contribute!</span>';
 
           return `
                                 <div class="course-card">
                                     <div class="course-header">
-                                        <div class="course-name">${c.name}</div>
+                                        <div class="course-name">${esc(c.name)}</div>
                                         <div style="display:flex;align-items:center;gap:6px;">
                                             ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
-                                            <div class="course-code">${c.code}</div>
+                                            <div class="course-code">${esc(c.code)}</div>
                                         </div>
                                     </div>
                                     <div class="links-list">${linksHtml}</div>
@@ -126,10 +126,10 @@ function renderExtra() {
 
   const filtered = q
     ? dbExtra.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          r.links.some((l) => l.label.toLowerCase().includes(q)),
-      )
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.links.some((l) => l.label.toLowerCase().includes(q)),
+    )
     : dbExtra;
 
   document.getElementById("extraSection").innerHTML = filtered.length
@@ -137,23 +137,23 @@ function renderExtra() {
     <h3 style="font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:16px;">📦 Extra Resources</h3>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
       ${filtered
-        .map(
-          (r) => `
+      .map(
+        (r) => `
         <div class="extra-section">
           <div class="extra-title"><span>${r.icon}</span>${r.title}</div>
           <div class="links-list">
             ${r.links
-              .map(
-                (l) => `
+            .map(
+              (l) => `
               <a class="link-item" onclick="confirmLink('${l.url}'); return false;" href="#">
                 ${getLinkBadge(l.type)}<span class="link-label">${l.label}</span>${l.note ? `<span class="link-note">${l.note}</span>` : ""}
               </a>`,
-              )
-              .join("")}
+            )
+            .join("")}
           </div>
         </div>`,
-        )
-        .join("")}
+      )
+      .join("")}
     </div>`
     : "";
 }

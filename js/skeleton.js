@@ -78,3 +78,58 @@ function hideSkeleton() {
   // Real render functions replace innerHTML directly,
   // so skeletons are automatically replaced. Nothing extra needed.
 }
+
+function getAdminTableSkeleton() {
+  return `
+    <div style="margin-bottom: 20px;">
+      <div class="skel" style="height: 38px; width: 100%; border-radius: 8px; margin-bottom: 16px;"></div>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th><div class="skel" style="height: 16px; width: 60px; border-radius: 4px;"></div></th>
+            <th><div class="skel" style="height: 16px; width: 80px; border-radius: 4px;"></div></th>
+            <th><div class="skel" style="height: 16px; width: 100px; border-radius: 4px;"></div></th>
+            <th><div class="skel" style="height: 16px; width: 50px; border-radius: 4px;"></div></th>
+            <th><div class="skel" style="height: 16px; width: 60px; border-radius: 4px;"></div></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${Array.from({length: 4}, () => `
+            <tr>
+              <td><div class="skel" style="height: 14px; width: 80px; border-radius: 4px;"></div></td>
+              <td><div class="skel" style="height: 14px; width: 120px; border-radius: 4px;"></div></td>
+              <td><div class="skel" style="height: 14px; width: 150px; border-radius: 4px;"></div></td>
+              <td><div class="skel" style="height: 24px; width: 60px; border-radius: 12px;"></div></td>
+              <td>
+                <div class="skel" style="height: 28px; width: 70px; border-radius: 6px; display: inline-block;"></div>
+                <div class="skel" style="height: 28px; width: 30px; border-radius: 6px; display: inline-block;"></div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function getAdminAnalyticsSkeleton() {
+  return `
+    <div class="stat-grid">
+      ${Array.from({length: 4}, () => `
+        <div class="stat-card">
+          <div class="skel" style="height: 32px; width: 60px; border-radius: 6px; margin-bottom: 8px;"></div>
+          <div class="skel" style="height: 14px; width: 100px; border-radius: 4px;"></div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="chart-wrap" style="margin-top: 20px;">
+      <div class="skel" style="height: 18px; width: 150px; border-radius: 4px; margin-bottom: 24px;"></div>
+      <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+        <div class="skel" style="height: 30px; width: 70px; border-radius: 20px;"></div>
+        <div class="skel" style="height: 30px; width: 70px; border-radius: 20px;"></div>
+        <div class="skel" style="height: 30px; width: 70px; border-radius: 20px;"></div>
+      </div>
+      <div style="height: 200px; width: 100%; border-radius: 8px;" class="skel"></div>
+    </div>
+  `;
+}

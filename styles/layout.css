@@ -139,6 +139,7 @@
     border: 1px solid var(--border);
     border-radius: 14px;
     padding: 18px;
+    transition: border-color 0.2s, transform 0.2s;
 }
 
 .course-card:hover {
@@ -280,4 +281,56 @@
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* Important Note Banner */
+.important-note {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    border-radius: 10px;
+    margin: 16px auto;
+    max-width: 600px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+[data-theme="dark"] .important-note {
+    background: rgba(255, 170, 0, 0.1);
+    color: #ffb84d;
+    border-color: rgba(255, 170, 0, 0.2);
+}
+
+.note-header {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+}
+
+.note-content {
+    max-height: 0;
+    padding: 0 16px;
+    opacity: 0;
+    transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.important-note.open .note-content {
+    max-height: 500px;
+    padding: 0 16px 16px;
+    opacity: 1;
+}
+
+.important-note .note-arrow {
+    transition: transform 0.3s ease;
+    font-size: 0.75rem;
+}
+
+.important-note.open .note-arrow {
+    transform: rotate(180deg);
 }
