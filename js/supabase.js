@@ -40,7 +40,7 @@ const SUPABASE_KEY = "sb_publishable_YziaIyx4gzbIUUm3lSbIXw_eiltdzur";
             Authorization: `Bearer ${sbToken || SUPABASE_KEY}`,
             "Content-Type": "application/json",
             Prefer:
-                method === "POST" ? "return=representation" : "return=representation",
+                method === "POST" ? "return=minimal" : "return=representation",
         };
         if (method === "GET") headers["Accept"] = "application/json";
 
