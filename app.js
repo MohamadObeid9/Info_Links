@@ -36,10 +36,19 @@ async function bootstrap() {
     "js/export.js",
   ];
 
-  await Promise.all(scripts.map(loadScript));
+  for (const src of scripts) {
+    await loadScript(src);
+  }
 
   if (typeof initApp === "function") {
     initApp().catch((err) => console.error("App init failed:", err));
+  }
+
+  // Register Service Worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.error('SW error:', err));
   }
 }
 

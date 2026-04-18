@@ -8,7 +8,7 @@ function _buildTree(
   extraSections,
   extraLinks,
 ) {
-  dbPrograms = programs.map((p) => ({
+  AppState.dbPrograms = programs.map((p) => ({
     ...p,
     years: years
       .filter((y) => y.program_id === p.id)
@@ -22,22 +22,32 @@ function _buildTree(
               .filter((c) => c.semester_id === s.id)
               .map((c) => ({
                 ...c,
-                links: links.filter((l) => l.course_id === c.id),
+                links: links.filter((l) => l.course_id === c.id)
+                  .sort(_naturalLinkSort),
               })),
           })),
       })),
   }));
 
-  dbExtra = extraSections.map((sec) => ({
+  AppState.dbExtra = extraSections.map((sec) => ({
     ...sec,
-    links: extraLinks.filter((l) => l.section_id === sec.id),
+    links: extraLinks.filter((l) => l.section_id === sec.id)
+      .sort(_naturalLinkSort),
   }));
 }
 
+// Natural sort: extract trailing number from label for numeric ordering
+function _naturalLinkSort(a, b) {
+  const numA = parseInt((a.label || "").match(/(\d+)\s*$/)?.[1]) || 0;
+  const numB = parseInt((b.label || "").match(/(\d+)\s*$/)?.[1]) || 0;
+  if (numA !== numB) return numA - numB;
+  return (a.display_order || 0) - (b.display_order || 0);
+}
+
 function _renderAfterLoad() {
-  if (!currentProg) currentProg = "all";
+  if (!AppState.currentProg) AppState.currentProg = "all";
   document.getElementById("extraSection").style.display = "none";
-  if (currentProg === "all") {
+  if (AppState.currentProg === "all") {
     document.querySelector(".filter-row").style.display = "none";
     document.getElementById("extraSection").style.display = "";
   }
@@ -45,12 +55,31 @@ function _renderAfterLoad() {
   renderYearFilters();
   renderSemFilters();
   renderCourses();
-  if (currentProg === "all") renderExtra();
+  if (AppState.currentProg === "all") renderExtra();
+  // Populate the course datalist for Report/Contribute autocomplete
+  _populateCourseDatalist();
+}
+
+function _populateCourseDatalist() {
+  const dl = document.getElementById("courseDatalist");
+  if (!dl) return;
+  const names = new Set();
+  AppState.dbPrograms.forEach((p) =>
+    p.years.forEach((y) =>
+      y.sems.forEach((s) =>
+        s.courses.forEach((c) => {
+          names.add(`${c.name} (${c.code})`);
+        }),
+      ),
+    ),
+  );
+  dl.innerHTML = [...names]
+    .sort()
+    .map((n) => `<option value="${esc(n)}">`)
+    .join("");
 }
 
 async function loadAll() {
-  // Show skeleton on first load (when containers are empty),
-  // fall back to a simple spinner on subsequent admin refreshes.
   const isFirstLoad = !document.getElementById("coursesOutput").dataset.loaded;
   if (isFirstLoad) {
     showSkeleton();
@@ -60,9 +89,8 @@ async function loadAll() {
   }
   document.getElementById("extraSection").innerHTML = "";
   try {
-    // Admins always get fresh data so they see their own changes.
-    // Regular visitors use the cache (1 hour TTL) for instant loads.
-    const cached = adminLoggedIn ? null : _loadCache();
+    // Admins always get fresh data; visitors use the 1-hour cache.
+    const cached = AppState.adminLoggedIn ? null : _loadCache();
 
     if (cached) {
       _buildTree(
@@ -78,7 +106,7 @@ async function loadAll() {
       return;
     }
 
-    // Cache miss — fetch from Supabase
+    // Cache miss — fetch all tables in parallel, including content_type
     const [
       programs,
       years,
@@ -97,8 +125,7 @@ async function loadAll() {
       sb("extra_links", "GET", null, null, "*&order=display_order.asc"),
     ]);
 
-    // Save to cache (only for non-admin visitors)
-    if (!adminLoggedIn) {
+    if (!AppState.adminLoggedIn) {
       _saveCache({
         programs,
         years,
@@ -119,7 +146,7 @@ async function loadAll() {
       extraSections,
       extraLinks,
     );
-    document.getElementById("coursesOutput").dataset.loaded = "1"; // mark loaded
+    document.getElementById("coursesOutput").dataset.loaded = "1";
     _renderAfterLoad();
   } catch (e) {
     document.getElementById("coursesOutput").innerHTML =
@@ -150,83 +177,9 @@ async function loadReportsBadges() {
 }
 
 function onSearch() {
-  if (currentProg === "extra") renderExtra();
-  else if (currentProg === "all") {
+  if (AppState.currentProg === "extra") renderExtra();
+  else if (AppState.currentProg === "all") {
     renderCourses();
     renderExtra();
   } else renderCourses();
-}
-
-function renderAllCourses() {
-  const q = document.getElementById("searchInput").value.toLowerCase().trim();
-  let html = "";
-
-  dbPrograms.forEach((prog) => {
-    let progHtml = "";
-    prog.years.forEach((year) => {
-      let yearHtml = "";
-      year.sems.forEach((sem) => {
-        const filtered = sem.courses.filter(
-          (c) =>
-            !q ||
-            c.name.toLowerCase().includes(q) ||
-            c.code.toLowerCase().includes(q),
-        );
-        if (!filtered.length) return;
-
-        const cardsHtml = filtered
-          .map((c) => {
-            const linksHtml = c.links.length
-              ? c.links
-                  .map(
-                    (l) => `
-                                    <a class="link-item" onclick="confirmLink('${l.url}'); return false;" href="#">
-                                        ${getLinkBadge(l.type)}
-                                        <span class="link-label">${l.label}</span>
-                                        ${l.note ? `<span class="link-note">${l.note}</span>` : ""}
-                                    </a>`,
-                  )
-                  .join("")
-              : '<span class="no-links">No links yet — contribute!</span>';
-
-            return `
-                                <div class="course-card">
-                                    <div class="course-header">
-                                        <div class="course-name">${c.name}</div>
-                                        <div style="display:flex;align-items:center;gap:6px;">
-                                            ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
-                                            <div class="course-code">${c.code}</div>
-                                        </div>
-                                    </div>
-                                    <div class="links-list">${linksHtml}</div>
-                                </div>`;
-          })
-          .join("");
-
-        yearHtml += `
-                            <div class="sem-block">
-                                <div class="sem-title">${sem.name}</div>
-                                <div class="courses-grid">${cardsHtml}</div>
-                            </div>`;
-      });
-
-      if (yearHtml) {
-        progHtml += `
-                            <div style="margin-bottom:32px;">
-                                <h3 style="font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:16px;">${year.name}</h3>
-                                ${yearHtml}
-                            </div>`;
-      }
-    });
-
-    if (progHtml) {
-      html += `
-                        <div style="margin-bottom:40px;padding-bottom:20px;border-bottom:1px solid var(--border);">
-                            <h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--accent);">${prog.name}</h2>
-                            ${progHtml}
-                        </div>`;
-    }
-  });
-
-  document.getElementById("coursesOutput").innerHTML = html;
 }

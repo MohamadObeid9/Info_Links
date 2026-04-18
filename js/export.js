@@ -1,6 +1,7 @@
 // ===================== EXPORT =====================
 async function exportData() {
-  showToast("Exporting…");
+  const btn = document.querySelector(".admin-header .btn-ghost");
+  setBtnLoading(btn, true, "Exporting…");
   try {
     const [
       programs,
@@ -10,6 +11,7 @@ async function exportData() {
       links,
       extraSections,
       extraLinks,
+      linkClicks,
     ] = await Promise.all([
       sb("programs", "GET", null, null, "*&order=display_order.asc"),
       sb("years", "GET", null, null, "*&order=display_order.asc"),
@@ -18,6 +20,7 @@ async function exportData() {
       sb("links", "GET", null, null, "*&order=display_order.asc"),
       sb("extra_sections", "GET", null, null, "*&order=display_order.asc"),
       sb("extra_links", "GET", null, null, "*&order=display_order.asc"),
+      sb("link_clicks", "GET", null, null, "*").catch(() => []),
     ]);
 
     const payload = {
@@ -29,6 +32,7 @@ async function exportData() {
       links,
       extra_sections: extraSections,
       extra_links: extraLinks,
+      link_clicks: linkClicks,
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
@@ -44,6 +48,8 @@ async function exportData() {
     showToast("✅ Backup downloaded!");
   } catch (e) {
     showToast("Export failed: " + e.message, true);
+  } finally {
+    setBtnLoading(btn, false);
   }
 }
 
@@ -63,6 +69,12 @@ document.getElementById("modal").addEventListener("click", (e) => {
 
 async function initApp() {
   trackVisit();
-  loadAll();
+  await loadAll();
+  // Restore view from URL hash (enables deep-linking)
+  const hash = window.location.hash.replace("#", "");
+  const validViews = ["home", "report-submit", "feedback", "admin-gate", "admin"];
+  if (hash && validViews.includes(hash)) {
+    showView(hash);
+  }
 }
 // Note: initApp() is called by app.js after all scripts load — do NOT call it here.

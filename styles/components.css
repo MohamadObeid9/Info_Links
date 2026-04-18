@@ -183,6 +183,7 @@ select.inp {
     padding: 5px 10px;
     font-size: 0.78rem;
 }
+
 /* STAR RATING */
 .rating-wrap {
     display: flex;
@@ -207,4 +208,193 @@ select.inp {
 
 .star-btn.active {
     color: gold;
+}
+
+/* ===================== FAVORITE STAR ===================== */
+.fav-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.3rem;
+    line-height: 1;
+    padding: 0 4px;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fav-btn:hover {
+    color: #ffaa00;
+    transform: scale(1.15);
+}
+
+.fav-btn.active {
+    color: #ffaa00;
+    text-shadow: 0 0 10px rgba(255, 170, 0, 0.3);
+}
+
+/* ===================== CONTENT CHIPS ===================== */
+.content-chip {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: var(--bg3);
+    color: var(--muted);
+    border: 1px solid var(--border);
+}
+
+.content-chip.ct-td {
+    background: rgba(108, 99, 255, 0.1);
+    color: var(--accent);
+    border-color: rgba(108, 99, 255, 0.3);
+}
+
+.content-chip.ct-cours {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--success);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.content-chip.ct-videos {
+    background: rgba(255, 101, 132, 0.1);
+    color: var(--accent2);
+    border-color: rgba(255, 101, 132, 0.3);
+}
+
+.content-chip.ct-sessions {
+    background: rgba(244, 180, 0, 0.1);
+    color: var(--classroom);
+    border-color: rgba(244, 180, 0, 0.3);
+}
+
+.content-chip.ct-exams {
+    background: rgba(41, 168, 235, 0.1);
+    color: var(--tg);
+    border-color: rgba(41, 168, 235, 0.3);
+}
+
+.content-chip.ct-other {
+    background: var(--bg3);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+/* Unified chip container — always wraps below the main link row */
+.content-chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-left: 2px;
+}
+
+.content-chips-wrap .content-chip {
+    margin-left: 0;
+}
+
+/* Content type checkbox group in modals */
+.content-type-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.ct-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+    color: var(--text);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    user-select: none;
+}
+
+.ct-checkbox-label:hover {
+    border-color: var(--accent);
+}
+
+.ct-checkbox-label:has(input:checked) {
+    border-color: var(--accent);
+    background: rgba(108, 99, 255, 0.1);
+}
+
+.ct-checkbox-label input[type="checkbox"] {
+    accent-color: var(--accent);
+    margin: 0;
+    width: 14px;
+    height: 14px;
+}
+
+/* ===================== COPY BUTTON ===================== */
+.copy-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    margin-left: auto;
+    /* push to right */
+    padding: 4px 6px;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    border-radius: 4px;
+}
+
+.link-item:hover .copy-btn,
+.link-chip:hover .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    color: var(--accent);
+    background: var(--bg3);
+}
+
+/* ===================== BUTTON LOADING ===================== */
+.btn-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ===================== STAR HOVER PREVIEW ===================== */
+.star-btn {
+    color: var(--muted);
+    font-size: 2rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.star-btn.active,
+.star-btn.hovered {
+    color: gold;
+}
+
+.star-btn.hovered {
+    transform: scale(1.1);
 }

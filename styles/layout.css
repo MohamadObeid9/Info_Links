@@ -29,7 +29,7 @@
 .prog-tabs {
     display: flex;
     gap: 8px;
-    margin: 24px 0 12px;
+    margin: 12px 0 12px;
     flex-wrap: wrap;
 }
 
@@ -177,12 +177,19 @@
 
 .link-item {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-direction: column;
+    gap: 4px;
     text-decoration: none;
     background: var(--bg3);
     border-radius: 8px;
     padding: 8px 12px;
+}
+
+.link-item-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
 }
 
 .link-item:hover {
@@ -289,7 +296,7 @@
     color: #856404;
     border: 1px solid #ffeeba;
     border-radius: 10px;
-    margin: 16px auto;
+    margin: 8px auto;
     max-width: 600px;
     cursor: pointer;
     overflow: hidden;

@@ -2,6 +2,7 @@
 let currentRating = 0;
 
 async function submitFeedback() {
+    const btn = document.querySelector("#view-feedback .btn-primary");
     const category = document.getElementById('feedbackCategory').value;
     if (!category) {
         showToast('Please select a category', true);
@@ -23,6 +24,7 @@ async function submitFeedback() {
         status: 'new'
     };
 
+    setBtnLoading(btn, true, "Submitting…");
     try {
         await sb('feedback', 'POST', payload);
         showToast('Thank you for your feedback!');
@@ -34,12 +36,31 @@ async function submitFeedback() {
     } catch (err) {
         console.error('Feedback submission error:', err);
         showToast('Failed to submit feedback', true);
+    } finally {
+        setBtnLoading(btn, false);
     }
 }
 
 function setRating(rating) {
     currentRating = rating;
     updateStarDisplay();
+}
+
+function handleStarHover(rating) {
+    for (let i = 1; i <= 5; i++) {
+        const star = document.getElementById(`star-${i}`);
+        if (i <= rating) {
+            star.classList.add('hovered');
+        } else {
+            star.classList.remove('hovered');
+        }
+    }
+}
+
+function clearStarHover() {
+    for (let i = 1; i <= 5; i++) {
+        document.getElementById(`star-${i}`).classList.remove('hovered');
+    }
 }
 
 function updateStarDisplay() {
@@ -61,6 +82,8 @@ function updateStarDisplay() {
         displayDiv.style.color = 'var(--muted)';
     }
 }
+
+// Note: star hover events are attached inline in body.html since it loads dynamically.
 
 async function renderAdminFeedback() {
     const contentDiv = document.getElementById('adminContent');

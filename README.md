@@ -26,38 +26,71 @@ A modern, open-source platform designed to help students at Le CNAM Lebanon's Co
 ## ✨ Features
 
 ### For Students
-- 🔍 **Smart Search** — Find courses by name or code instantly
+- 🔍 **Smart Search** — Find courses by name or code instantly with keyboard shortcut (`/` or `Ctrl+K`)
 - 📋 **Organized by Program** — Sorted by year, semester, and specialization  
 - 🏷️ **Easy Navigation** — Filter courses and identify optional vs. mandatory classes
-- 🔗 **Multiple Resource Types** — Google Drive, Google Classroom, Telegram, and more
-- 🌓 **Light/Dark Mode** — Comfortable viewing in any lighting condition
+- 🔗 **Multiple Resource Types** — Google Drive, Google Classroom, Telegram, and more — each with a color-coded badge
+- ⭐ **My Courses (Favorites)** — Star courses to save them locally in your browser for quick access
+- 🏷️ **Content Type Labels** — See what each link contains at a glance: TD, Cours, Videos, Sessions, Exams
+- 🔗 **Multiple Content Types** — Links can have multiple content categories (e.g., TD + Cours + Videos)
+- 🌓 **Light/Dark Mode** — Comfortable viewing in any lighting, with automatic system detection and persistence
 - 📱 **Fully Responsive** — Works seamlessly on desktop, tablet, and mobile
-- 💬 **Submit & Report** — Contribute new resources or report issues
-- ⭐ **Feedback System** — Rate the platform and provide suggestions
+- 💬 **Report & Contribute** — Report broken links with course/link dropdowns, or contribute new resources with link type identification
+- ⭐ **Feedback System** — Rate the platform (1-5 stars) by category and share suggestions
+- 🔍 **Deep Linking** — Hash-based routing for direct view access (e.g., `#report-submit`)
+- 🌐 **Multi-language Notes** — Important announcements available in English, French, and Arabic
+- ⌨️ **Keyboard Shortcuts** — `/` or `Ctrl+K` to search, `Esc` to close modals
+- 📱 **PWA Support** — Installable as a Progressive Web App with service worker
 
 ### For Admins
-- ➕ **Full Course Management** — Add, edit, delete, and organize courses
+- ➕ **Full Course Management** — Add, edit, delete, and organize courses with program/year/semester placement
 - 🏷️ **Advanced Labeling** — Mark courses as optional or mandatory
+- 🔁 **Sibling Course Detection** — Courses shared across programs auto-sync names, codes, and links
+- 🔗 **Multi-Content Link Management** — Assign multiple content types per link (TD, Cours, Videos, Sessions, Exams)
 - 📊 **Analytics Dashboard** — View visitor statistics:
-  - Daily visitor counts
-  - 7-day, 30-day, 90-day, and all-time analytics
+  - Daily visitor counts with interactive bar chart
+  - 7-day, 30-day, 90-day range selection
+  - Top clicked links tracking
   - Export data as JSON for further analysis
-- ✅ **Contribution Review** — Review and approve user-submitted courses
+- ✅ **Smart Contribution Review** — Approve user-submitted links with:
+  - Grouped course selector (by program)
+  - Pre-filled link type from contributor
+  - Automatic sibling course detection for multi-program courses
 - 🚨 **Report Management** — Handle user reports and improve content quality
-- � **Feedback Management** — View and manage user feedback and ratings
-- �🔐 **Secure Admin Panel** — Password-protected access
+- 💬 **Feedback Management** — View and manage user feedback with star ratings by category
+- 🔐 **Secure Admin Panel** — Password-protected access with Supabase authentication
+- 📦 **Extra Resources** — Manage additional resource sections beyond regular courses
+
+### Content Type Legend
+Each link can display one or more content type badges:
+| Badge | Meaning |
+|-------|---------|
+| ✏️ TD | Travaux Dirigés (exercises/tutorials) |
+| 📄 Cours | Course materials/lectures |
+| 🎬 Videos | Video recordings |
+| 🎤 Sessions | Live session recordings |
+| 📝 Exams | Exam papers and solutions |
+| 📦 Other | Other types of content |
+
+### Link Type Legend
+| Badge | Meaning |
+|-------|---------|
+| **TG** | Telegram |
+| **GD** | Google Drive |
+| **GC** | Google Classroom |
+| **OT** | Other / External |
 
 ---
 
 ## 🛠️ Tech Stack
 
 - **Frontend:** HTML5, CSS3, JavaScript (Vanilla)
-- **Styling:** Modern, custom CSS with theme support (light/dark)
-- **3D Graphics:** Three.js for enhanced UI elements
-- **Backend Database:** Supabase (PostgreSQL)
+- **Styling:** Modern, custom CSS with theme support (light/dark) and responsive design
+- **Backend Database:** Supabase (PostgreSQL) with Row Level Security
+- **Authentication:** Supabase Auth (email/password)
 - **Deployment:** GitHub Pages + Supabase
+- **PWA:** Service Worker for offline support
 - **Version Control:** Git & GitHub
-- **Built With:** Claude AI
 
 ---
 
@@ -91,32 +124,36 @@ A modern, open-source platform designed to help students at Le CNAM Lebanon's Co
 
 ### For Students
 1. **Browse Courses** — Start on the home page to see all available courses
-2. **Search** — Use the search bar to find specific courses
-3. **Filter** — Use filters to narrow down by program or course type  
+2. **Search** — Use the search bar (or press `/`) to find specific courses
+3. **Filter** — Use program tabs and year/semester filters to narrow down
 4. **Access Resources** — Click on resource links (Google Drive, Telegram, Classroom, etc.)
-5. **Submit New Resources** — Found a helpful link? Use the "Report/Submit" section
-6. **Toggle Theme** — Switch between light and dark mode using the theme button
-7. **Provide Feedback** — Rate the platform and share suggestions using the feedback form
+5. **Save Favorites** — Click the ★ star on any course to save it to "My Courses"
+6. **Report Issues** — Use the "Report" section to report broken links by selecting course and link from dropdowns
+7. **Contribute** — Submit new links with URL, link type, and notes
+8. **Toggle Theme** — Switch between light and dark mode using the theme button
+9. **Provide Feedback** — Rate the platform by category and share suggestions
 
 ### For Admins
 1. **Log In** — Access the admin panel via the "Admin" button
 2. **Manage Courses** — Add, edit, or remove courses and resources
-3. **Label Courses** — Mark courses as optional or mandatory
-4. **Review Submissions** — Approve user-submitted resources
-5. **View Analytics** — Track visitor data and usage patterns
-6. **Export Data** — Download analytics as JSON for reporting
-7. **Manage Feedback** — Review and respond to user feedback and ratings
+3. **Add Links** — Assign multiple content types to each link
+4. **Sibling Sync** — When editing shared courses, choose to update all occurrences
+5. **Review Contributions** — Approve user-submitted links with smart course matching
+6. **View Analytics** — Track visitor data, top clicked links, and usage patterns
+7. **Export Data** — Download analytics as JSON for reporting
+8. **Manage Feedback** — Review and respond to user feedback and ratings
 
 ---
 
 ## 🎨 Design Highlights
 
 - **Modern Interface** — Clean, sleek design with smooth animations
-- **Accessibility** — Easy navigation and clear typography
-- **Performance** — Lightweight and fast-loading
-- **Responsive Design** — Looks great on all screen sizes
-- **Theme Support** — Automatic theme detection with manual toggle
-- **Interactive Elements** — Smooth hover effects and transitions
+- **Accessibility** — Easy navigation and clear typography (Inter font family)
+- **Performance** — Lightweight with client-side caching (1-hour TTL)
+- **Responsive Design** — Adaptive layout for all screen sizes
+- **Theme Support** — Automatic system detection with manual toggle and persistence
+- **Interactive Elements** — Smooth hover effects, micro-animations, and loading states
+- **Content Security Policy** — XSS protection via CSP headers
 
 ---
 
@@ -124,7 +161,7 @@ A modern, open-source platform designed to help students at Le CNAM Lebanon's Co
 
 We love contributions from the community! Whether it's bug fixes, new features, or additional resources:
 
-1. **For Resources** — Use the "Report/Submit" feature in the app
+1. **For Resources** — Use the "Report / Contribute" feature in the app
 2. **For Code** — Fork the repository and submit a pull request:
    ```bash
    git checkout -b feature/your-feature-name
@@ -168,19 +205,22 @@ This project is **open source** and available under the MIT License. See the [LI
 | **Phase 4** | Serving 300+ students in under a year |
 | **Phase 5** | Launched new website for better UX |
 | **Phase 6** | Open-sourced project for community contributions |
+| **Phase 7** | Added favorites, content types, analytics, and PWA support |
 
 ---
 
 ## 💡 Future Roadmap
 
-- [ ] Advanced filtering and categorization
-- [ ] User authentication and personalized bookmarks
+- [x] Advanced filtering and categorization
+- [x] Personalized bookmarks (My Courses / Favorites)
+- [x] Multi-language support (EN/FR/AR notes)
 - [ ] Mobile app (iOS/Android)
 - [ ] Integration with more platforms
 - [ ] AI-powered course recommendations
-- [ ] Community rating system for resources
-- [ ] Offline mode support
-- [ ] Multi-language support
+- [x] Community rating system for resources (Feedback)
+- [x] Offline mode support (PWA / Service Worker)
+- [ ] Push notifications for new resources
+- [ ] Course schedule integration
 
 ---
 
