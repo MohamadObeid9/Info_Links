@@ -106,45 +106,31 @@ async function loadAll() {
       return;
     }
 
-    // Cache miss — fetch all tables in parallel, including content_type
-    const [
-      programs,
-      years,
-      semesters,
-      courses,
-      links,
-      extraSections,
-      extraLinks,
-    ] = await Promise.all([
-      sb("programs", "GET", null, null, "*&order=display_order.asc"),
-      sb("years", "GET", null, null, "*&order=display_order.asc"),
-      sb("semesters", "GET", null, null, "*&order=display_order.asc"),
-      sb("courses", "GET", null, null, "*&order=display_order.asc"),
-      sb("links", "GET", null, null, "*&order=display_order.asc"),
-      sb("extra_sections", "GET", null, null, "*&order=display_order.asc"),
-      sb("extra_links", "GET", null, null, "*&order=display_order.asc"),
-    ]);
+    // Cache miss — fetch all data from our new Go backend
+    const res = await fetch("/api/content");
+    if (!res.ok) throw new Error("Failed to fetch from backend");
+    const data = await res.json();
 
     if (!AppState.adminLoggedIn) {
       _saveCache({
-        programs,
-        years,
-        semesters,
-        courses,
-        links,
-        extra_sections: extraSections,
-        extra_links: extraLinks,
+        programs: data.programs || [],
+        years: data.years || [],
+        semesters: data.semesters || [],
+        courses: data.courses || [],
+        links: data.links || [],
+        extra_sections: data.extra_sections || [],
+        extra_links: data.extra_links || [],
       });
     }
 
     _buildTree(
-      programs,
-      years,
-      semesters,
-      courses,
-      links,
-      extraSections,
-      extraLinks,
+      data.programs || [],
+      data.years || [],
+      data.semesters || [],
+      data.courses || [],
+      data.links || [],
+      data.extra_sections || [],
+      data.extra_links || [],
     );
     document.getElementById("coursesOutput").dataset.loaded = "1";
     _renderAfterLoad();

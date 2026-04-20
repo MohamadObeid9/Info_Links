@@ -26,7 +26,14 @@ async function submitFeedback() {
 
     setBtnLoading(btn, true, "Submitting…");
     try {
-        await sb('feedback', 'POST', payload);
+        const res = await fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                content: `[${category}] Rating: ${currentRating}/5\n${message}`
+            })
+        });
+        if (!res.ok) throw new Error("Server error");
         showToast('Thank you for your feedback!');
         currentRating = 0;
         document.getElementById('feedbackCategory').value = '';

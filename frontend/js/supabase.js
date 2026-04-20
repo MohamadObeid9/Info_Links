@@ -73,13 +73,10 @@ async function trackVisit() {
   // Deduplicate: only track once per session
   if (sessionStorage.getItem("pv_tracked")) return;
   try {
-    await fetch(`${SUPABASE_URL}/rest/v1/page_views`, {
+    await fetch(`/api/page_views`, {
       method: "POST",
       headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
         "Content-Type": "application/json",
-        Prefer: "return=minimal",
       },
       body: JSON.stringify({ page: "home" }),
     });
@@ -93,13 +90,10 @@ async function trackVisit() {
 // Fire-and-forget: does not await, never blocks the UI.
 function trackLinkClick(linkId) {
   if (!linkId) return;
-  fetch(`${SUPABASE_URL}/rest/v1/link_clicks`, {
+  fetch(`/api/link_clicks`, {
     method: "POST",
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
-      Prefer: "return=minimal",
     },
     body: JSON.stringify({ link_id: linkId }),
   }).catch(() => {});

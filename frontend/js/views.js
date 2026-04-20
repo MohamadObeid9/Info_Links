@@ -96,13 +96,16 @@ async function submitReport() {
   }
   setBtnLoading(btn, true, "Submitting…");
   try {
-    await sb("reports", "POST", {
-      course_name: courseName,
-      link_url: link || "",
-      description: desc,
-      status: "open",
-      reply: "",
+    const res = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        course_name: courseName,
+        link_url: link || "",
+        description: desc,
+      })
     });
+    if (!res.ok) throw new Error("Server error");
     document.getElementById("rCourse").value = "";
     onReportCourseChange(); // reset link dropdown
     document.getElementById("rDesc").value = "";
@@ -127,12 +130,17 @@ async function submitContribution() {
   setBtnLoading(btn, true, "Submitting…");
   try {
     const finalNote = linkType ? `[Type:${linkType}] ${note}` : note;
-    await sb("contributions", "POST", {
-      course_name: course,
-      link_url: link,
-      note: finalNote.trim(),
-      status: "pending",
+    const res = await fetch("/api/contributions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        course_name: course,
+        link_url: link,
+        link_type: linkType,
+        note: finalNote.trim(),
+      })
     });
+    if (!res.ok) throw new Error("Server error");
     document.getElementById("cCourse").value = "";
     document.getElementById("cLink").value = "";
     document.getElementById("cType").value = "";

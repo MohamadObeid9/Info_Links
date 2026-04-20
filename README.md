@@ -85,10 +85,11 @@ Each link can display one or more content type badges:
 ## 🛠️ Tech Stack
 
 - **Frontend:** HTML5, CSS3, JavaScript (Vanilla)
+- **Backend:** Go (Golang) — A high-performance REST API and static file server
 - **Styling:** Modern, custom CSS with theme support (light/dark) and responsive design
 - **Backend Database:** Supabase (PostgreSQL) with Row Level Security
 - **Authentication:** Supabase Auth (email/password)
-- **Deployment:** GitHub Pages + Supabase
+- **Deployment:** Render (Go Web Service) + Supabase
 - **PWA:** Service Worker for offline support
 - **Version Control:** Git & GitHub
 
@@ -99,9 +100,10 @@ Each link can display one or more content type badges:
 ### Prerequisites
 - A modern web browser
 - Git (for cloning the repository)
-- Supabase account (if self-hosting the backend)
+- Go (Golang) installed on your system
+- Supabase account (if self-hosting the database)
 
-### Installation
+### Installation & Running Locally
 
 1. **Clone the repository**
    ```bash
@@ -109,14 +111,23 @@ Each link can display one or more content type badges:
    cd Info_Links
    ```
 
-2. **Open in browser**
-   ```bash
-   # Simply open index.html in your browser
-   # Or use a local server
-   python -m http.server 8000
-   # Then visit http://localhost:8000
-   ```
+2. **Configure Environment**
+   - Copy `backend/.env.example` to `backend/.env`
+   - Set your `DATABASE_URL` to your Supabase Postgres connection string.
 
+3. **Run the Full Stack**
+   ```bash
+   cd backend
+   go run cmd/server/main.go
+   ```
+   - The Go server will start the API and serve the frontend files natively.
+   - Open your browser to `http://localhost:8080`
+
+### Deployment (Render)
+InfoLinks is configured to be deployed as a single Web Service on Render. 
+- **Build Command:** `cd backend && go build -o server cmd/server/main.go`
+- **Start Command:** `cd backend && ./server`
+- Don't forget to set your `DATABASE_URL` environment variable!
 
 ---
 
@@ -206,6 +217,7 @@ This project is **open source** and available under the MIT License. See the [LI
 | **Phase 5** | Launched new website for better UX |
 | **Phase 6** | Open-sourced project for community contributions |
 | **Phase 7** | Added favorites, content types, analytics, and PWA support |
+| **Phase 8** | Fully migrated to a high-performance Go backend with native static serving |
 
 ---
 
