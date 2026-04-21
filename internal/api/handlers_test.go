@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"infolinks-backend/internal/database"
@@ -14,8 +15,17 @@ import (
 func TestMain(m *testing.M) {
 	// Initialize the database for all tests in this package.
 	// This assumes the DATABASE_URL is available in the environment or .env.
-	database.InitDB()
+	if os.Getenv("DATABASE_URL") != "" {
+		database.InitDB()
+	}
 	m.Run()
+}
+
+func requireDB(t *testing.T) {
+	t.Helper()
+	if os.Getenv("DATABASE_URL") == "" {
+		t.Skip("DATABASE_URL not set; skipping DB-dependent test")
+	}
 }
 
 
@@ -70,6 +80,7 @@ func TestHandleApiRoot(t *testing.T) {
 }
 
 func TestHandlePostPageView(t *testing.T) {
+	requireDB(t)
 	// 1. Create a JSON body
 	body := `{"page": "/test-page"}`
 	req, err := http.NewRequest("POST", "/api/page_views", bytes.NewBufferString(body))
@@ -90,6 +101,7 @@ func TestHandlePostPageView(t *testing.T) {
 }
 
 func TestHandleGetContent(t *testing.T) {
+	requireDB(t)
 	req, err := http.NewRequest("GET", "/api/content", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -112,6 +124,7 @@ func TestHandleGetContent(t *testing.T) {
 }
 
 func TestHandlePostLinkClick(t *testing.T) {
+	requireDB(t)
 	body := `{"link_id": 1}`
 	req, err := http.NewRequest("POST", "/api/link_clicks", bytes.NewBufferString(body))
 	if err != nil {
@@ -130,6 +143,7 @@ func TestHandlePostLinkClick(t *testing.T) {
 }
 
 func TestHandlePostReport(t *testing.T) {
+	requireDB(t)
 	body := `{"course_name": "Test Course", "link_url": "http://broken.com", "description": "Broken link"}`
 	req, err := http.NewRequest("POST", "/api/reports", bytes.NewBufferString(body))
 	if err != nil {
@@ -148,6 +162,7 @@ func TestHandlePostReport(t *testing.T) {
 }
 
 func TestHandlePostContribution(t *testing.T) {
+	requireDB(t)
 	body := `{"course_name": "Test Course", "link_url": "http://newlink.com", "link_type": "PDF", "note": "Great resource"}`
 	req, err := http.NewRequest("POST", "/api/contributions", bytes.NewBufferString(body))
 	if err != nil {
@@ -166,6 +181,7 @@ func TestHandlePostContribution(t *testing.T) {
 }
 
 func TestHandlePostFeedback(t *testing.T) {
+	requireDB(t)
 	body := `{"category": "general", "rating": 5, "message": "This site is awesome!"}`
 	req, err := http.NewRequest("POST", "/api/feedback", bytes.NewBufferString(body))
 	if err != nil {

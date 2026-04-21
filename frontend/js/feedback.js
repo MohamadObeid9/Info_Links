@@ -16,22 +16,12 @@ async function submitFeedback() {
 
     const message = document.getElementById('feedbackMessage').value.trim();
 
-    const payload = {
-        category: category,
-        rating: currentRating,
-        message: message || null,
-        created_at: new Date().toISOString(),
-        status: 'new'
-    };
-
     setBtnLoading(btn, true, "Submitting…");
     try {
         const res = await fetch("/api/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                content: `[${category}] Rating: ${currentRating}/5\n${message}`
-            })
+            body: JSON.stringify({ category, rating: currentRating, message })
         });
         if (!res.ok) throw new Error("Server error");
         showToast('Thank you for your feedback!');
@@ -54,31 +44,22 @@ function setRating(rating) {
 }
 
 function handleStarHover(rating) {
-    for (let i = 1; i <= 5; i++) {
-        const star = document.getElementById(`star-${i}`);
-        if (i <= rating) {
-            star.classList.add('hovered');
-        } else {
-            star.classList.remove('hovered');
-        }
-    }
+    const stars = document.querySelectorAll('#starRating .star');
+    stars.forEach((star) => {
+        const value = Number(star.dataset.rating || 0);
+        star.classList.toggle('hovered', value <= rating);
+    });
 }
 
 function clearStarHover() {
-    for (let i = 1; i <= 5; i++) {
-        document.getElementById(`star-${i}`).classList.remove('hovered');
-    }
+    document.querySelectorAll('#starRating .star').forEach((star) => star.classList.remove('hovered'));
 }
 
 function updateStarDisplay() {
-    for (let i = 1; i <= 5; i++) {
-        const star = document.getElementById(`star-${i}`);
-        if (i <= currentRating) {
-            star.classList.add('active');
-        } else {
-            star.classList.remove('active');
-        }
-    }
+    document.querySelectorAll('#starRating .star').forEach((star) => {
+        const value = Number(star.dataset.rating || 0);
+        star.classList.toggle('active', value <= currentRating);
+    });
 
     const displayDiv = document.getElementById('ratingDisplay');
     if (currentRating > 0) {
@@ -183,3 +164,4 @@ async function deleteFeedback(id) {
         showToast('Failed to delete feedback', true);
     }
 }
+window.submitFeedback = submitFeedback; window.setRating = setRating; window.handleStarHover = handleStarHover; window.clearStarHover = clearStarHover;

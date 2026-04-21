@@ -70,11 +70,13 @@ document.getElementById("modal").addEventListener("click", (e) => {
 async function initApp() {
   trackVisit();
   await loadAll();
-  // Restore view from URL hash (enables deep-linking)
-  const hash = window.location.hash.replace("#", "");
-  const validViews = ["home", "report-submit", "feedback", "admin-gate", "admin"];
-  if (hash && validViews.includes(hash)) {
-    showView(hash);
+  
+  // Restore view from URL path (enables deep-linking with Clean URLs)
+  const v = _getPathView();
+  if (v !== "home") {
+    showView(v);
   }
 }
-// Note: initApp() is called by app.js after all scripts load — do NOT call it here.
+window.initApp = initApp;
+window.showToast = showToast;
+window.exportData = exportData;

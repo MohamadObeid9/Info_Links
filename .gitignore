@@ -1,1 +1,16 @@
+# OS files
+.DS_Store
+
+# Build/Environment
 .env
+node_modules/
+dist/
+
+# Go
+cmd/server/server
+bin/
+*.exe
+*.test
+vendor/
+
+.cursor

@@ -133,3 +133,4 @@ function getAdminAnalyticsSkeleton() {
     </div>
   `;
 }
+window.showSkeleton = showSkeleton;

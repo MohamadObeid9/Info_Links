@@ -1,42 +1,53 @@
+
 // ===================== VIEWS =====================
 
-// ── Hash-based routing ─────────────────────────────────────────────────────
+// ── Clean URLs (History API) ────────────────────────────────────────────────
 const VALID_VIEWS = ["home", "report-submit", "feedback", "admin-gate", "admin"];
 
-function _getHashView() {
-  const hash = window.location.hash.replace("#", "");
-  return VALID_VIEWS.includes(hash) ? hash : "home";
+function _getPathView() {
+  const path = window.location.pathname.replace("/", "");
+  return VALID_VIEWS.includes(path) ? path : "home";
 }
 
 function showView(v) {
-  document.querySelectorAll(".view").forEach((el) => el.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
-
-  if (v === "admin-gate" && AppState.adminLoggedIn) v = "admin";
-  if (v === "feedback") updateStarDisplay();
-
-  document.getElementById("view-" + v).classList.add("active");
-
-  // Update hash for deep-linking (avoid pushing duplicate history entries)
-  const newHash = "#" + v;
-  if (window.location.hash !== newHash) {
-    window.location.hash = newHash;
+  // 1. Security Guard: Prevent direct access to #admin if not logged in
+  if (v === "admin" && !AppState.adminLoggedIn) {
+    console.warn("Unauthorized access attempt to admin dashboard.");
+    v = "admin-gate";
   }
 
+  // Handle the logic for admin-gate redirect
+  if (v === "admin-gate" && AppState.adminLoggedIn) v = "admin";
+
+  if (v === "feedback") updateStarDisplay();
+
+  // 2. UI Updates
+  document.querySelectorAll(".view").forEach((el) => el.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach((b) => {
+    b.classList.remove("active");
+    if (b.dataset.view === v) b.classList.add("active");
+  });
+
+  const viewEl = document.getElementById("view-" + v);
+  if (viewEl) viewEl.classList.add("active");
+
+  // 3. Update URL (Clean)
+  const newPath = "/" + (v === "home" ? "" : v);
+  if (window.location.pathname !== newPath) {
+    window.history.pushState({ view: v }, "", newPath);
+  }
+
+  // 4. Trigger logic
   if (v === "admin") {
     renderAdminContent();
     loadReportsBadges();
   }
 }
 
-// Restore view from hash on load / back-button
-window.addEventListener("hashchange", () => {
-  const v = _getHashView();
-  // Only switch if different from current visible view
-  const active = document.querySelector(".view.active");
-  if (active && active.id !== "view-" + v) {
-    showView(v);
-  }
+// Restore view on back-button
+window.addEventListener("popstate", (event) => {
+  const v = event.state?.view || _getPathView();
+  showView(v);
 });
 
 // ===================== REPORT & CONTRIB =====================
@@ -45,7 +56,7 @@ window.addEventListener("hashchange", () => {
 function onReportCourseChange() {
   const courseInput = document.getElementById("rCourse").value.trim().toLowerCase();
   const linkSel = document.getElementById("rLink");
-  
+
   if (!courseInput) {
     if (!linkSel.disabled) {
       linkSel.innerHTML = '<option value="">Select a link…</option>';
@@ -61,7 +72,7 @@ function onReportCourseChange() {
       y.sems.forEach((s) =>
         s.courses.forEach((c) => {
           if (c.name.toLowerCase() === courseInput || c.code.toLowerCase() === courseInput || `${c.name} (${c.code})`.toLowerCase() === courseInput) {
-             course = c;
+            course = c;
           }
         }),
       ),
@@ -152,3 +163,8 @@ async function submitContribution() {
     setBtnLoading(btn, false);
   }
 }
+
+window.showView = showView; 
+window.onReportCourseChange = onReportCourseChange; 
+window.submitReport = submitReport; 
+window.submitContribution = submitContribution;

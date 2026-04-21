@@ -88,7 +88,7 @@ Each link can display one or more content type badges:
 - **Backend:** Go (Golang) — A high-performance REST API and static file server
 - **Styling:** Modern, custom CSS with theme support (light/dark) and responsive design
 - **Backend Database:** Supabase (PostgreSQL) with Row Level Security
-- **Authentication:** Supabase Auth (email/password)
+- **Authentication:** JWT-based admin authentication via backend API
 - **Deployment:** Render (Go Web Service) + Supabase
 - **PWA:** Service Worker for offline support
 - **Version Control:** Git & GitHub
@@ -112,21 +112,20 @@ Each link can display one or more content type badges:
    ```
 
 2. **Configure Environment**
-   - Copy `backend/.env.example` to `backend/.env`
+   - Copy `.env.example` to `.env`
    - Set your `DATABASE_URL` to your Supabase Postgres connection string.
 
 3. **Run the Full Stack**
    ```bash
-   cd backend
    go run cmd/server/main.go
    ```
    - The Go server will start the API and serve the frontend files natively.
    - Open your browser to `http://localhost:8080`
 
 ### Deployment (Render)
-InfoLinks is configured to be deployed as a single Web Service on Render. 
-- **Build Command:** `cd backend && go build -o server cmd/server/main.go`
-- **Start Command:** `cd backend && ./server`
+InfoLinks is configured to be deployed as a single Web Service on Render.
+- **Build Command:** `go build -o server cmd/server/main.go`
+- **Start Command:** `./server`
 - Don't forget to set your `DATABASE_URL` environment variable!
 
 ---

@@ -19,6 +19,8 @@ const AppState = {
   dbPrograms: [],
   analyticsRange: "30",
   dbExtra: [],
+  courseById: new Map(),
+  linkById: new Map(),
   favorites: new Set(), // Set of course IDs (strings from localStorage)
 };
 
@@ -57,7 +59,7 @@ function saveFavorites() {
       "infolinks_favorites",
       JSON.stringify([...AppState.favorites]),
     );
-  } catch (e) {}
+  } catch (e) { }
 }
 
 function toggleFavorite(courseId) {
@@ -73,20 +75,22 @@ function toggleFavorite(courseId) {
 // ── Backward-compat shims so legacy code reading bare vars still works ────────
 // (These will be cleaned up gradually; new code should use AppState.xxx)
 Object.defineProperties(window, {
-  sbToken:         { get: () => AppState.sbToken,         set: v => { AppState.sbToken = v; } },
-  adminLoggedIn:   { get: () => AppState.adminLoggedIn,   set: v => { AppState.adminLoggedIn = v; } },
+  sbToken: { get: () => AppState.sbToken, set: v => { AppState.sbToken = v; } },
+  adminLoggedIn: { get: () => AppState.adminLoggedIn, set: v => { AppState.adminLoggedIn = v; } },
   currentAdminTab: { get: () => AppState.currentAdminTab, set: v => { AppState.currentAdminTab = v; } },
-  adminSearch:     { get: () => AppState.adminSearch,     set: v => { AppState.adminSearch = v; } },
+  adminSearch: { get: () => AppState.adminSearch, set: v => { AppState.adminSearch = v; } },
   adminFilterProg: { get: () => AppState.adminFilterProg, set: v => { AppState.adminFilterProg = v; } },
   adminFilterYear: { get: () => AppState.adminFilterYear, set: v => { AppState.adminFilterYear = v; } },
-  adminFilterSem:  { get: () => AppState.adminFilterSem,  set: v => { AppState.adminFilterSem = v; } },
+  adminFilterSem: { get: () => AppState.adminFilterSem, set: v => { AppState.adminFilterSem = v; } },
   _pendingCourseEdit: { get: () => AppState._pendingCourseEdit, set: v => { AppState._pendingCourseEdit = v; } },
-  _pendingLinkOp:  { get: () => AppState._pendingLinkOp,  set: v => { AppState._pendingLinkOp = v; } },
-  isDark:          { get: () => AppState.isDark,          set: v => { AppState.isDark = v; } },
-  currentProg:     { get: () => AppState.currentProg,     set: v => { AppState.currentProg = v; } },
-  currentYear:     { get: () => AppState.currentYear,     set: v => { AppState.currentYear = v; } },
-  currentSem:      { get: () => AppState.currentSem,      set: v => { AppState.currentSem = v; } },
-  dbPrograms:      { get: () => AppState.dbPrograms,      set: v => { AppState.dbPrograms = v; } },
-  analyticsRange:  { get: () => AppState.analyticsRange,  set: v => { AppState.analyticsRange = v; } },
-  dbExtra:         { get: () => AppState.dbExtra,         set: v => { AppState.dbExtra = v; } },
+  _pendingLinkOp: { get: () => AppState._pendingLinkOp, set: v => { AppState._pendingLinkOp = v; } },
+  isDark: { get: () => AppState.isDark, set: v => { AppState.isDark = v; } },
+  currentProg: { get: () => AppState.currentProg, set: v => { AppState.currentProg = v; } },
+  currentYear: { get: () => AppState.currentYear, set: v => { AppState.currentYear = v; } },
+  currentSem: { get: () => AppState.currentSem, set: v => { AppState.currentSem = v; } },
+  dbPrograms: { get: () => AppState.dbPrograms, set: v => { AppState.dbPrograms = v; } },
+  analyticsRange: { get: () => AppState.analyticsRange, set: v => { AppState.analyticsRange = v; } },
+  dbExtra: { get: () => AppState.dbExtra, set: v => { AppState.dbExtra = v; } },
 });
+
+window.AppState = AppState;

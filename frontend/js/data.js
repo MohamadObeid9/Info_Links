@@ -1,3 +1,4 @@
+
 // ===================== LOAD DATA =====================
 function _buildTree(
   programs,
@@ -34,6 +35,20 @@ function _buildTree(
     links: extraLinks.filter((l) => l.section_id === sec.id)
       .sort(_naturalLinkSort),
   }));
+
+  AppState.courseById = new Map();
+  AppState.linkById = new Map();
+  AppState.dbPrograms.forEach((p) =>
+    p.years.forEach((y) =>
+      y.sems.forEach((s) =>
+        s.courses.forEach((c) => {
+          AppState.courseById.set(c.id, c);
+          c.links.forEach((l) => AppState.linkById.set(l.id, l));
+        }),
+      ),
+    ),
+  );
+  AppState.dbExtra.forEach((sec) => sec.links.forEach((l) => AppState.linkById.set(l.id, l)));
 }
 
 // Natural sort: extract trailing number from label for numeric ordering
@@ -155,17 +170,22 @@ async function loadReportsBadges() {
       fb = document.getElementById("feedbackBadge");
     rb.style.display = openR ? "inline" : "none";
     rb.textContent = openR;
+    rb.classList.toggle("is-alert", openR > 0);
     cb.style.display = pendC ? "inline" : "none";
     cb.textContent = pendC;
+    cb.classList.toggle("is-alert", pendC > 0);
     fb.style.display = newF ? "inline" : "none";
     fb.textContent = newF;
+    fb.classList.toggle("is-alert", newF > 0);
   } catch (e) {}
 }
 
 function onSearch() {
-  if (AppState.currentProg === "extra") renderExtra();
+  if (AppState.currentProg === "extra") window.renderExtra();
   else if (AppState.currentProg === "all") {
-    renderCourses();
-    renderExtra();
-  } else renderCourses();
+    window.renderCourses();
+    window.renderExtra();
+  } else window.renderCourses();
 }
+window.loadAll = loadAll;
+window.onSearch = onSearch;

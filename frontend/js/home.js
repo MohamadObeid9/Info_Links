@@ -1,3 +1,4 @@
+
 // ===================== HOME RENDER =====================
 function renderProgTabs() {
   document.getElementById("progTabs").innerHTML =
@@ -281,3 +282,12 @@ function setSem(s) {
   renderSemFilters();
   renderCourses();
 }
+
+window.renderProgTabs = renderProgTabs;
+window.renderYearFilters = renderYearFilters;
+window.renderSemFilters = renderSemFilters;
+window.renderCourses = renderCourses;
+window.renderExtra = renderExtra;
+window.selectProg = selectProg;
+window.setYear = setYear;
+window.setSem = setSem;

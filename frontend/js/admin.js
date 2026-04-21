@@ -1,3 +1,4 @@
+
 // ===================== ADMIN AUTH =====================
 async function checkLogin() {
   const email = document.getElementById("adminEmail").value.trim();
@@ -30,14 +31,9 @@ function adminTab(t) {
   AppState.adminFilterProg = "all";
   AppState.adminFilterYear = "all";
   AppState.adminFilterSem = "all";
-  document
-    .querySelectorAll(".admin-tab")
-    .forEach((b, i) =>
-      b.classList.toggle(
-        "active",
-        ["courses", "extra", "feedback", "reports", "contributions", "analytics"][i] === t,
-      ),
-    );
+  document.querySelectorAll(".admin-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.adminTab === t);
+  });
   renderAdminContent();
 }
 
@@ -562,4 +558,10 @@ async function deleteContrib(id) {
 // Setup badge auto-refresh
 setInterval(() => {
   if (AppState.adminLoggedIn) loadReportsBadges();
-}, 60000);
+}, 30000);
+
+window.checkLogin = checkLogin;
+window.logout = logout;
+window.adminTab = adminTab;
+window.renderAdminContent = renderAdminContent;
+window.loadReportsBadges = loadReportsBadges;

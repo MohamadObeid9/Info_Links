@@ -1,3 +1,4 @@
+
 // ===================== CONFIRM MODAL =====================
 let _modalCallback = null;
 
@@ -40,6 +41,17 @@ function confirmLink(linkId, rawUrl) {
     }
   }
   if (!url) return;
+  let parsed;
+  try {
+    parsed = new URL(url, window.location.origin);
+  } catch (err) {
+    showToast("Invalid link URL.", true);
+    return;
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    showToast("Blocked unsafe URL scheme.", true);
+    return;
+  }
 
   const box = document.createElement("div");
   box.innerHTML = `<h2>🔗 Open External Link</h2>
@@ -57,7 +69,7 @@ function confirmLink(linkId, rawUrl) {
   // Attach click handler safely — no inline eval
   document.getElementById("openLinkBtn").addEventListener("click", () => {
     closeModal();
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(parsed.href, "_blank", "noopener,noreferrer");
   });
 }
 
@@ -608,3 +620,4 @@ async function saveExtraLink(id) {
     showToast(e.message, true);
   }
 }
+window.closeModal = closeModal;

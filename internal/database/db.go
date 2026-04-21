@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	_ "github.com/jackc/pgx/v5/stdlib" // The postgres driver
@@ -46,6 +47,12 @@ func InitDB() {
 	if err != nil {
 		log.Fatal("Failed to connect to the database. Check your password and URL! Error:", err)
 	}
+
+	// 5. Basic pool tuning for production stability
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(10 * time.Minute)
 
 	log.Println("✅ Successfully connected to Supabase Postgres database!")
 	

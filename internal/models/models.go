@@ -50,7 +50,7 @@ type Link struct {
 type ExtraSection struct {
 	ID           int    `json:"id"`
 	Title        string `json:"title"`
-	Icon         string `icon:"icon"`
+	Icon         string `json:"icon"`
 	DisplayOrder int    `json:"display_order"`
 }
 

@@ -2,8 +2,7 @@ const CACHE_NAME = 'infolinks-v1';
 const ASSETS = [
   '/',
   '/index.html',
-  '/html/body.html',
-  '/app.js',
+  '/main.js',
   '/styles/app.css',
   '/styles/variables.css',
   '/styles/layout.css',
@@ -22,7 +21,10 @@ const ASSETS = [
   '/js/feedback.js',
   '/js/modals.js',
   '/js/export.js',
-  '/js/skeleton.js'
+  '/js/skeleton.js',
+  '/assets/site.webmanifest',
+  '/assets/android-chrome-192x192.png',
+  '/assets/android-chrome-512x512.png'
 ];
 
 self.addEventListener('install', event => {
