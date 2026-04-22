@@ -22,6 +22,75 @@
     border: 1px solid var(--border);
 }
 
+/* ===================== REPORT / CONTRIBUTION VIEW ===================== */
+#view-report-submit .report-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 346px;
+}
+
+#view-report-submit {
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+#view-report-submit .report-box h3 {
+    font-size: 1rem;
+    margin-bottom: 2px;
+}
+
+#view-report-submit .btn {
+    width: 100%;
+    margin-top: 8px;
+    border-radius: 9px;
+    padding: 11px 14px;
+}
+
+#view-feedback .extra-section {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.feedback-stars {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+#view-report-submit input,
+#view-report-submit select,
+#view-report-submit textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    outline: none;
+}
+
+#view-report-submit input:focus,
+#view-report-submit select:focus,
+#view-report-submit textarea:focus {
+    border-color: var(--accent);
+}
+
+#view-report-submit textarea {
+    min-height: 104px;
+    resize: vertical;
+}
+
+#view-report-submit #rDesc {
+    min-height: 152px;
+}
+
 .modal-overlay {
     display: none;
     position: fixed;
@@ -381,7 +450,8 @@ select.inp {
 }
 
 /* ===================== STAR HOVER PREVIEW ===================== */
-.star-btn {
+.star-btn,
+.feedback-stars .star {
     color: var(--muted);
     font-size: 2rem;
     background: none;
@@ -391,10 +461,89 @@ select.inp {
 }
 
 .star-btn.active,
-.star-btn.hovered {
+.star-btn.hovered,
+.feedback-stars .star.active,
+.feedback-stars .star.hovered {
     color: gold;
 }
 
-.star-btn.hovered {
+.star-btn.hovered,
+.feedback-stars .star.hovered {
     transform: scale(1.1);
+}
+
+.note-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.note-langs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 12px;
+}
+
+.note-lang-btn {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+}
+
+.extra-section-offset {
+    margin-top: 10px;
+}
+
+.view-title {
+    margin-bottom: 6px;
+}
+
+.view-subtitle {
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-size: 0.9rem;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.feedback-wrap {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.rating-display {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.feedback-category {
+    margin-bottom: 24px;
+}
+
+.feedback-message {
+    margin-top: 16px;
+    min-height: 100px;
+}
+
+.feedback-submit-btn {
+    width: 100%;
+    margin-top: 24px;
+}
+
+.login-submit-btn {
+    width: 100%;
+}
+
+.admin-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
 }

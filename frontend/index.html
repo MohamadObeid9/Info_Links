@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/styles/app.css">
+    <title>Info Links — CNAM Lebanon CS Resources</title>
+    <meta name="description"
+        content="A curated hub of study resources for Le CNAM Lebanon Computer Science students. Find links to courses, sessions, CISCO, DELF B2, and more." />
+    <meta name="theme-color" content="#6c63ff" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png" />
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link rel="manifest" href="assets/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <nav>
+            <div class="logo">📚 Info Links</div>
+            <button class="hamburger" id="hamburgerBtn" data-action="toggleMobileMenu">
+                <span></span><span></span><span></span>
+            </button>
+            <div class="nav-links" id="navLinks">
+                <button class="nav-btn active" data-view="home">Home</button>
+                <button class="nav-btn" data-view="report-submit">Report / Contribute</button>
+                <button class="nav-btn" data-view="feedback">Feedback</button>
+                <button class="nav-btn admin-btn" data-view="admin-gate">Admin</button>
+                <button class="theme-btn" id="themeBtn" data-action="toggleTheme">☀️</button>
+            </div>
+        </nav>
+
+        <!-- HOME -->
+        <div class="view active" id="view-home">
+            <div class="hero">
+                <h1>Info Links</h1>
+                <p>All courses, materials & links — organized by program, year & semester.</p>
+                <div class="search-wrap">
+                    <span class="si">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search by course name or code…" />
+                </div>
+                <div class="important-note" id="importantNote" data-action="toggleImportantNote">
+                    <div class="note-header">
+                        <div class="note-title-wrap"><span>⚠️</span> <span id="noteTitleText">Important Note</span></div>
+                        <div class="note-langs">
+                            <button class="nav-btn note-lang-btn" data-action="setNoteLang" data-lang="en">EN</button>
+                            <button class="nav-btn note-lang-btn" data-action="setNoteLang" data-lang="fr">FR</button>
+                            <button class="nav-btn note-lang-btn" data-action="setNoteLang" data-lang="ar">AR</button>
+                        </div>
+                        <span class="note-arrow" id="noteArrow">▼</span>
+                    </div>
+                    <div class="note-content" id="noteContentText">
+                        We are improving the site and need your help! We're adding details about what each link contains. If
+                        you've tried any link and know its content, click on the <strong>Report / Contribute</strong>
+                        button. In the <strong>report section</strong>, select the course and the link you want to report.
+                        In the description, tell us what the link contains (e.g., TD only, Cours only, videos, sessions,
+                        or if there are missing chapters). Do that for each link you know, and we'll appreciate your help. ❤️
+                    </div>
+                </div>
+
+            </div>
+            <button class="filter-toggle-btn" id="filterToggleBtn" data-action="toggleFilters">
+                <span>🔎 Filters & Programs</span><span class="filter-toggle-arrow" id="filterArrow">▼</span>
+            </button>
+            <div class="filters-collapsible" id="filtersCollapsible">
+                <div class="prog-tabs" id="progTabs"></div>
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Year</label>
+                        <div class="filters" id="yearFilters"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label>Semester</label>
+                        <div class="filters" id="semFilters"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><span class="link-badge badge-tg">TG</span> Telegram</div>
+                <div class="legend-item"><span class="link-badge badge-drive">GD</span> Google Drive</div>
+                <div class="legend-item"><span class="link-badge badge-classroom">GC</span> Google Classroom</div>
+                <div class="legend-item"><span class="link-badge badge-other">OT</span> Other Type</div>
+                <div class="legend-item"><span class="optional-tag">OPTIONAL</span> Optional course</div>
+            </div>
+            <div id="coursesOutput"></div>
+            <div id="extraSection" class="extra-section-offset"></div>
+        </div>
+
+        <!-- REPORT / SUBMIT -->
+        <div class="view" id="view-report-submit">
+            <h2 class="view-title">Report & Contribute</h2>
+            <p class="view-subtitle">
+                Help keep the hub accurate and growing.
+            </p>
+            <div class="report-grid">
+                <div class="report-box">
+                    <h3>🚨 Report a broken / inaccessible link</h3>
+                    <input type="text" id="rCourse" list="courseDatalist" placeholder="Course name or code" />
+                    <select id="rLink" disabled>
+                        <option value="">Select a link…</option>
+                    </select>
+                    <textarea id="rDesc" placeholder="Describe the issue.."></textarea>
+                    <button class="btn btn-primary" id="submitReportBtn" data-action="submitReport">Submit Report</button>
+                </div>
+
+                <div class="report-box">
+                    <h3>➕ Contribute a new link</h3>
+                    <input type="text" id="cCourse" list="courseDatalist" placeholder="Course name or code" />
+                    <input type="text" id="cLink" placeholder="https://…" />
+                    <select id="cType">
+                        <option value="">Select link type…</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="drive">Google Drive</option>
+                        <option value="classroom">Google Classroom</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <textarea id="cNote" placeholder="Note (optional)"></textarea>
+                    <button class="btn btn-primary" id="submitContribBtn" data-action="submitContribution">Submit Contribution</button>
+                </div>
+            </div>
+            <datalist id="courseDatalist"></datalist>
+        </div>
+
+        <!-- FEEDBACK -->
+        <div class="view" id="view-feedback">
+            <h2 class="view-title">Share Your Feedback</h2>
+            <p class="view-subtitle">
+                Help us improve by sharing your experience and suggestions.
+            </p>
+            <div class="feedback-wrap">
+                <div class="extra-section">
+                    <div class="extra-title"><span>⭐</span> Rate Your Experience</div>
+                    <div class="feedback-stars" id="starRating" role="radiogroup" aria-label="Rating">
+                        <button class="star" type="button" data-rating="1" aria-label="1 star">★</button>
+                        <button class="star" type="button" data-rating="2" aria-label="2 stars">★</button>
+                        <button class="star" type="button" data-rating="3" aria-label="3 stars">★</button>
+                        <button class="star" type="button" data-rating="4" aria-label="4 stars">★</button>
+                        <button class="star" type="button" data-rating="5" aria-label="5 stars">★</button>
+                    </div>
+                    <div id="ratingDisplay" class="rating-display">
+                        Select a rating</div>
+                    <div class="extra-title"><span>📋</span> What would you like to rate?</div>
+                    <select class="inp feedback-category" id="feedbackCategory">
+                        <option value="">Select a category...</option>
+                        <option value="ui/ux">UI/UX Design</option>
+                        <option value="content">Content Quality</option>
+                        <option value="functionality">Functionality</option>
+                        <option value="performance">Performance</option>
+                        <option value="accessibility">Accessibility</option>
+                        <option value="other">Other</option>
+                    </select>
+                    <textarea class="inp feedback-message" id="feedbackMessage" placeholder="Your feedback (optional)…"></textarea>
+                    <button class="btn btn-primary feedback-submit-btn" data-action="submitFeedback">Submit
+                        Feedback</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN GATE -->
+        <div class="view" id="view-admin-gate">
+            <div class="login-wrap">
+                <h2>Admin Login</h2>
+                <p>Enter your credentials to access the dashboard.</p>
+                <input type="email" id="adminEmail" placeholder="Email" />
+                <input type="password" id="adminPass" placeholder="Password" />
+                <button class="btn btn-primary login-submit-btn" data-action="checkLogin">Login</button>
+                <div class="err" id="loginErr"></div>
+            </div>
+        </div>
+
+        <!-- ADMIN DASHBOARD -->
+        <div class="view" id="view-admin">
+            <div class="admin-header">
+                <h2>⚙️ Admin Dashboard</h2>
+                <div class="admin-header-actions">
+                    <button class="btn btn-primary" data-action="openAddCourseModal">+ Add Course</button>
+                    <button class="btn btn-ghost" data-action="exportData">📥 Export</button>
+                    <button class="btn btn-ghost" data-action="logout">Logout</button>
+                </div>
+            </div>
+            <div class="admin-tabs">
+                <button class="admin-tab active" data-admin-tab="courses">Courses &amp; Links</button>
+                <button class="admin-tab" data-admin-tab="extra">Extra Resources</button>
+                <button class="admin-tab" data-admin-tab="feedback">Feedback <span class="badge" id="feedbackBadge"></span></button>
+                <button class="admin-tab" data-admin-tab="reports">Reports <span class="badge" id="reportBadge"></span></button>
+                <button class="admin-tab" data-admin-tab="contributions">Contributions <span class="badge" id="contribBadge"></span></button>
+                <button class="admin-tab" data-admin-tab="analytics">Analytics</button>
+            </div>
+            <div id="adminContent"></div>
+        </div>
+
+        <div class="modal-overlay" id="modal">
+            <div class="modal" id="modalBox"></div>
+        </div>
+        <div class="toast" id="toast"></div>
+    </div>
+    <script src="js/state.js"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/cache.js"></script>
+    <script src="js/skeleton.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/home.js"></script>
+    <script src="js/views.js"></script>
+    <script src="js/admin.js"></script>
+    <script src="js/feedback.js"></script>
+    <script src="js/modals.js"></script>
+    <script src="js/export.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>

@@ -273,3 +273,22 @@
     gap: 8px;
     margin-bottom: 16px;
 }
+
+.badge {
+    display: none;
+    margin-left: 6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    line-height: 18px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
+.badge.is-alert {
+    background: #e5484d;
+    color: #fff;
+}

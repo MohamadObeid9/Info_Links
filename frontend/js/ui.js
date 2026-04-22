@@ -1,3 +1,4 @@
+
 // ===================== HELPERS =====================
 function esc(str) {
   if (!str) return "";
@@ -264,3 +265,12 @@ function setBtnLoading(btn, loading, loadingText = "…") {
     btn.classList.remove("btn-loading");
   }
 }
+
+window.toggleTheme = toggleTheme;
+window.toggleMobileMenu = toggleMobileMenu;
+window.toggleFilters = toggleFilters;
+window.copyLink = copyLink;
+window.setBtnLoading = setBtnLoading;
+window.esc = esc;
+window.toggleImportantNote = toggleImportantNote;
+window.setNoteLang = setNoteLang;
