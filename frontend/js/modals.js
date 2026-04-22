@@ -1,6 +1,7 @@
 
 // ===================== CONFIRM MODAL =====================
 let _modalCallback = null;
+let _lastFocusedElement = null;
 
 function confirmAction(msg, fn) {
   _modalCallback = fn;
@@ -75,11 +76,61 @@ function confirmLink(linkId, rawUrl) {
 
 // ===================== MODALS =====================
 function openModal(html) {
-  document.getElementById("modalBox").innerHTML = html;
-  document.getElementById("modal").classList.add("open");
+  const modalEl = document.getElementById("modal");
+  const modalBox = document.getElementById("modalBox");
+  _lastFocusedElement = document.activeElement;
+  modalBox.innerHTML = html;
+  modalEl.classList.add("open");
+  modalEl.setAttribute("aria-hidden", "false");
+  modalBox.setAttribute("role", "dialog");
+  modalBox.setAttribute("aria-modal", "true");
+  _focusFirstModalElement();
 }
 function closeModal() {
-  document.getElementById("modal").classList.remove("open");
+  const modalEl = document.getElementById("modal");
+  modalEl.classList.remove("open");
+  modalEl.setAttribute("aria-hidden", "true");
+  const modalBox = document.getElementById("modalBox");
+  modalBox.removeAttribute("role");
+  modalBox.removeAttribute("aria-modal");
+  if (_lastFocusedElement && typeof _lastFocusedElement.focus === "function") {
+    _lastFocusedElement.focus();
+  }
+}
+
+function _focusFirstModalElement() {
+  const modalBox = document.getElementById("modalBox");
+  const firstFocusable = modalBox.querySelector(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+  );
+  if (firstFocusable && typeof firstFocusable.focus === "function") {
+    firstFocusable.focus();
+  }
+}
+
+function _trapModalFocus(e) {
+  const modalEl = document.getElementById("modal");
+  if (!modalEl.classList.contains("open")) return;
+  if (e.key === "Escape") {
+    e.preventDefault();
+    closeModal();
+    return;
+  }
+  if (e.key !== "Tab") return;
+  const modalBox = document.getElementById("modalBox");
+  const focusables = modalBox.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+  );
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
 }
 
 // ── Content type checkboxes (multi-select) ─────────────────────────────────
@@ -621,3 +672,5 @@ async function saveExtraLink(id) {
   }
 }
 window.closeModal = closeModal;
+window.openAddCourseModal = openAddCourseModal;
+document.addEventListener("keydown", _trapModalFocus);

@@ -471,3 +471,79 @@ select.inp {
 .feedback-stars .star.hovered {
     transform: scale(1.1);
 }
+
+.note-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.note-langs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 12px;
+}
+
+.note-lang-btn {
+    padding: 2px 6px;
+    font-size: 0.7rem;
+}
+
+.extra-section-offset {
+    margin-top: 10px;
+}
+
+.view-title {
+    margin-bottom: 6px;
+}
+
+.view-subtitle {
+    color: var(--muted);
+    margin-bottom: 28px;
+    font-size: 0.9rem;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+.feedback-wrap {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.rating-display {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.feedback-category {
+    margin-bottom: 24px;
+}
+
+.feedback-message {
+    margin-top: 16px;
+    min-height: 100px;
+}
+
+.feedback-submit-btn {
+    width: 100%;
+    margin-top: 24px;
+}
+
+.login-submit-btn {
+    width: 100%;
+}
+
+.admin-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}

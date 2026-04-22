@@ -22,6 +22,9 @@ document.addEventListener('click', (e) => {
       case 'submitContribution': window.submitContribution(); break;
       case 'submitFeedback': window.submitFeedback(); break;
       case 'logout': window.logout(); break;
+      case 'checkLogin': window.checkLogin(); break;
+      case 'openAddCourseModal': window.openAddCourseModal(); break;
+      case 'exportData': window.exportData(); break;
       case 'setNoteLang': 
         e.stopPropagation(); 
         window.setNoteLang(actionEl?.dataset.lang);
@@ -52,6 +55,14 @@ document.addEventListener('input', (e) => {
   }
   if (e.target.id === 'rCourse') {
     window.onReportCourseChange();
+  }
+});
+
+// --- KEYBOARD ROUTER ---
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.id === 'adminPass') {
+    e.preventDefault();
+    window.checkLogin();
   }
 });
 

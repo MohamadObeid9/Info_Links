@@ -25,12 +25,45 @@ async function logout() {
 }
 
 // ===================== ADMIN TABS =====================
+const ADMIN_PAGE_SIZE = 25;
+const AdminPager = {
+  reports: { page: 0, hasNext: false },
+  contributions: { page: 0, hasNext: false },
+  feedback: { page: 0, hasNext: false },
+};
+
+function _setAdminPage(tab, page) {
+  if (!AdminPager[tab]) return;
+  AdminPager[tab].page = Math.max(0, page);
+}
+
+function _renderAdminPager(tab, rerenderFnName) {
+  const pager = AdminPager[tab];
+  if (!pager) return "";
+  const pageNum = pager.page + 1;
+  return `<div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;">
+    <button class="action-btn" ${pager.page === 0 ? "disabled" : ""} onclick="adminSetPage('${tab}', -1, '${rerenderFnName}')">← Prev</button>
+    <span style="font-size:.85rem;color:var(--muted);">Page ${pageNum}</span>
+    <button class="action-btn" ${pager.hasNext ? "" : "disabled"} onclick="adminSetPage('${tab}', 1, '${rerenderFnName}')">Next →</button>
+  </div>`;
+}
+
+function adminSetPage(tab, delta, rerenderFnName) {
+  if (!AdminPager[tab]) return;
+  _setAdminPage(tab, AdminPager[tab].page + delta);
+  if (typeof window[rerenderFnName] === "function") window[rerenderFnName]();
+}
+
 function adminTab(t) {
   AppState.currentAdminTab = t;
   AppState.adminSearch = "";
   AppState.adminFilterProg = "all";
   AppState.adminFilterYear = "all";
   AppState.adminFilterSem = "all";
+  if (AdminPager[t]) _setAdminPage(t, 0);
+  if (t === "feedback" && typeof window.resetAdminFeedbackPage === "function") {
+    window.resetAdminFeedbackPage();
+  }
   document.querySelectorAll(".admin-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.adminTab === t);
   });
@@ -304,19 +337,24 @@ function renderAdminExtra() {
 // ===================== ADMIN REPORTS =====================
 async function renderAdminReports() {
   document.getElementById("adminContent").innerHTML = getAdminTableSkeleton();
-  const q = AppState.adminSearch.toLowerCase();
+  const q = AppState.adminSearch.trim();
+  const page = AdminPager.reports.page;
+  const offset = page * ADMIN_PAGE_SIZE;
   try {
-    const reports = await sb("reports", "GET", null, null, "*&order=created_at.desc");
-    let html = `<input class="admin-search" placeholder="🔍 Search reports…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;renderAdminReports()"/>`;
-    const filtered = reports.filter(
-      (r) => !q || r.course_name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q),
-    );
-    if (!filtered.length) {
+    const reports = await sb(`reports?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET");
+    if (page > 0 && reports.length === 0) {
+      _setAdminPage("reports", page - 1);
+      renderAdminReports();
+      return;
+    }
+    AdminPager.reports.hasNext = reports.length === ADMIN_PAGE_SIZE;
+    let html = `<input class="admin-search" placeholder="🔍 Search reports…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('reports',0);renderAdminReports()"/>`;
+    if (!reports.length) {
       document.getElementById("adminContent").innerHTML = html + '<div class="empty">No reports yet.</div>';
       return;
     }
     html += `<table class="admin-table"><thead><tr><th>Course</th><th>Link</th><th>Issue</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
-    filtered.forEach((r) => {
+    reports.forEach((r) => {
       html += `<tr><td>${esc(r.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(r.link_url || "—")}</td><td>${esc(r.description)}</td>
         <td><span class="tag ${r.status === "open" ? "tag-open" : "tag-resolved"}">${r.status}</span></td>
         <td class="action-btns">
@@ -325,6 +363,7 @@ async function renderAdminReports() {
         </td></tr>`;
     });
     html += "</tbody></table>";
+    html += _renderAdminPager("reports", "renderAdminReports");
     document.getElementById("adminContent").innerHTML = html;
   } catch (e) {
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ ${e.message}</div>`;
@@ -334,19 +373,24 @@ async function renderAdminReports() {
 // ===================== ADMIN CONTRIBUTIONS =====================
 async function renderAdminContributions() {
   document.getElementById("adminContent").innerHTML = getAdminTableSkeleton();
-  const q = AppState.adminSearch.toLowerCase();
+  const q = AppState.adminSearch.trim();
+  const page = AdminPager.contributions.page;
+  const offset = page * ADMIN_PAGE_SIZE;
   try {
-    const contribs = await sb("contributions", "GET", null, null, "*&order=created_at.desc");
-    let html = `<input class="admin-search" placeholder="🔍 Search contributions…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;renderAdminContributions()"/>`;
-    const filtered = contribs.filter(
-      (c) => !q || c.course_name.toLowerCase().includes(q) || c.link_url.toLowerCase().includes(q),
-    );
-    if (!filtered.length) {
+    const contribs = await sb(`contributions?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET");
+    if (page > 0 && contribs.length === 0) {
+      _setAdminPage("contributions", page - 1);
+      renderAdminContributions();
+      return;
+    }
+    AdminPager.contributions.hasNext = contribs.length === ADMIN_PAGE_SIZE;
+    let html = `<input class="admin-search" placeholder="🔍 Search contributions…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('contributions',0);renderAdminContributions()"/>`;
+    if (!contribs.length) {
       document.getElementById("adminContent").innerHTML = html + '<div class="empty">No contributions yet.</div>';
       return;
     }
     html += `<table class="admin-table"><thead><tr><th>Course</th><th>Link</th><th>Note</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
-    filtered.forEach((c) => {
+    contribs.forEach((c) => {
       html += `<tr><td>${esc(c.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(c.link_url)}</td><td>${esc(c.note || "—")}</td>
         <td><span class="tag ${c.status === "pending" ? "tag-open" : "tag-resolved"}">${c.status}</span></td>
         <td class="action-btns">
@@ -355,6 +399,7 @@ async function renderAdminContributions() {
         </td></tr>`;
     });
     html += "</tbody></table>";
+    html += _renderAdminPager("contributions", "renderAdminContributions");
     document.getElementById("adminContent").innerHTML = html;
   } catch (e) {
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ ${e.message}</div>`;
@@ -565,3 +610,7 @@ window.logout = logout;
 window.adminTab = adminTab;
 window.renderAdminContent = renderAdminContent;
 window.loadReportsBadges = loadReportsBadges;
+window.adminSetPage = adminSetPage;
+window.renderAdminReports = renderAdminReports;
+window.renderAdminContributions = renderAdminContributions;
+window.ADMIN_PAGE_SIZE = ADMIN_PAGE_SIZE;

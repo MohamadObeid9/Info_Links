@@ -1,5 +1,26 @@
 // Feedback management
 let currentRating = 0;
+let feedbackPage = 0;
+let feedbackHasNext = false;
+
+function resetAdminFeedbackPage() {
+    feedbackPage = 0;
+    feedbackHasNext = false;
+}
+
+function _renderFeedbackPager() {
+    const pageNum = feedbackPage + 1;
+    return `<div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;">
+        <button class="action-btn" ${feedbackPage === 0 ? "disabled" : ""} onclick="setAdminFeedbackPage(-1)">← Prev</button>
+        <span style="font-size:.85rem;color:var(--muted);">Page ${pageNum}</span>
+        <button class="action-btn" ${feedbackHasNext ? "" : "disabled"} onclick="setAdminFeedbackPage(1)">Next →</button>
+    </div>`;
+}
+
+function setAdminFeedbackPage(delta) {
+    feedbackPage = Math.max(0, feedbackPage + delta);
+    renderAdminFeedback();
+}
 
 async function submitFeedback() {
     const btn = document.querySelector("#view-feedback .btn-primary");
@@ -18,12 +39,10 @@ async function submitFeedback() {
 
     setBtnLoading(btn, true, "Submitting…");
     try {
-        const res = await fetch("/api/feedback", {
+        await apiRequest("/api/feedback", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ category, rating: currentRating, message })
+            body: { category, rating: currentRating, message }
         });
-        if (!res.ok) throw new Error("Server error");
         showToast('Thank you for your feedback!');
         currentRating = 0;
         document.getElementById('feedbackCategory').value = '';
@@ -76,17 +95,26 @@ function updateStarDisplay() {
 async function renderAdminFeedback() {
     const contentDiv = document.getElementById('adminContent');
     contentDiv.innerHTML = getAdminTableSkeleton();
+    const pageSize = window.ADMIN_PAGE_SIZE || 25;
+    const q = (AppState.adminSearch || "").trim();
+    const offset = feedbackPage * pageSize;
 
     try {
-        const response = await sb('feedback', 'GET', null, null, '*&order=created_at.desc');
+        const response = await sb(`feedback?limit=${pageSize}&offset=${offset}&q=${encodeURIComponent(q)}`, 'GET');
         const feedback = Array.isArray(response) ? response : response.data || [];
-
-        if (feedback.length === 0) {
-            contentDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--muted);">No feedback yet</div>';
+        if (feedbackPage > 0 && feedback.length === 0) {
+            feedbackPage -= 1;
+            renderAdminFeedback();
             return;
         }
+        feedbackHasNext = feedback.length === pageSize;
 
-        let html = `
+        let html = `<input class="admin-search" placeholder="🔍 Search feedback…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;resetAdminFeedbackPage();renderAdminFeedback()"/>`;
+        if (feedback.length === 0) {
+            contentDiv.innerHTML = html + '<div style="padding: 20px; text-align: center; color: var(--muted);">No feedback yet</div>';
+            return;
+        }
+        html += `
             <div style="overflow-x: auto;">
                 <table class="admin-table">
                     <thead>
@@ -132,6 +160,7 @@ async function renderAdminFeedback() {
                 </table>
             </div>
         `;
+        html += _renderFeedbackPager();
 
         contentDiv.innerHTML = html;
     } catch (err) {
@@ -165,3 +194,6 @@ async function deleteFeedback(id) {
     }
 }
 window.submitFeedback = submitFeedback; window.setRating = setRating; window.handleStarHover = handleStarHover; window.clearStarHover = clearStarHover;
+window.renderAdminFeedback = renderAdminFeedback;
+window.setAdminFeedbackPage = setAdminFeedbackPage;
+window.resetAdminFeedbackPage = resetAdminFeedbackPage;

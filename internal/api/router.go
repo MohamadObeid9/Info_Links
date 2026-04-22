@@ -90,6 +90,25 @@ func NewRouter() http.Handler {
 		}
 	}
 
+	connectSrcValues := []string{"'self'"}
+	for _, origin := range allowedOrigins {
+		if origin != "" {
+			connectSrcValues = append(connectSrcValues, origin)
+		}
+	}
+	connectSrc := strings.Join(connectSrcValues, " ")
+	cspValue := strings.Join([]string{
+		"default-src 'self'",
+		"script-src 'self' 'unsafe-inline'",
+		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"img-src 'self' data:",
+		"font-src 'self' https://fonts.gstatic.com",
+		"connect-src " + connectSrc,
+		"object-src 'none'",
+		"base-uri 'self'",
+		"frame-ancestors 'none'",
+	}, "; ")
+
 	// 3. CORS
 	c := cors.New(cors.Options{
 		AllowedOrigins:   allowedOrigins,
@@ -98,8 +117,12 @@ func NewRouter() http.Handler {
 		AllowCredentials: false,
 	})
 	withSecurityHeaders := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// frame-ancestors is ignored in meta CSP, so enforce it from response headers.
-		w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+		// Security headers are applied centrally to both API and static responses.
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		w.Header().Set("Content-Security-Policy", cspValue)
 		mux.ServeHTTP(w, r)
 	})
 

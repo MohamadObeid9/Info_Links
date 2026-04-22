@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -48,6 +49,28 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst interface{}) boo
 		return false
 	}
 	return true
+}
+
+func parsePaginationParams(r *http.Request, defaultLimit int) (limit int, offset int, q string) {
+	limit = defaultLimit
+	if limit <= 0 {
+		limit = 25
+	}
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			if parsed > 100 {
+				parsed = 100
+			}
+			limit = parsed
+		}
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+	q = strings.TrimSpace(r.URL.Query().Get("q"))
+	return
 }
 
 // RequireAdmin middleware verifies the JWT token in the Authorization header.
@@ -270,7 +293,30 @@ func HandlePostFeedback(w http.ResponseWriter, r *http.Request) {
 // ── Admin Protected Handlers ────────────────────────────────────────────────
 
 func HandleAdminGetReports(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, course_name, link_url, description, status, created_at FROM reports ORDER BY created_at DESC")
+	limit, offset, q := parsePaginationParams(r, 25)
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+
+	query := "SELECT id, course_name, link_url, description, status, created_at FROM reports"
+	var args []interface{}
+	argIdx := 1
+	var conditions []string
+	if q != "" {
+		conditions = append(conditions, fmt.Sprintf("(course_name ILIKE $%d OR description ILIKE $%d OR link_url ILIKE $%d)", argIdx, argIdx, argIdx))
+		args = append(args, "%"+q+"%")
+		argIdx++
+	}
+	if status != "" {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := database.DB.Query(query, args...)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
@@ -327,7 +373,30 @@ func HandleAdminDeleteReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleAdminGetFeedback(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, category, rating, message, status, created_at FROM feedback ORDER BY created_at DESC")
+	limit, offset, q := parsePaginationParams(r, 25)
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+
+	query := "SELECT id, category, rating, message, status, created_at FROM feedback"
+	var args []interface{}
+	argIdx := 1
+	var conditions []string
+	if q != "" {
+		conditions = append(conditions, fmt.Sprintf("(category ILIKE $%d OR message ILIKE $%d)", argIdx, argIdx))
+		args = append(args, "%"+q+"%")
+		argIdx++
+	}
+	if status != "" {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := database.DB.Query(query, args...)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
@@ -374,141 +443,195 @@ func HandleAdminDeleteFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleAdminGetContributions(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, course_name, link_url, note, status, created_at FROM contributions ORDER BY created_at DESC")
+	limit, offset, q := parsePaginationParams(r, 25)
+	status := strings.TrimSpace(r.URL.Query().Get("status"))
+
+	query := "SELECT id, course_name, link_url, note, status, created_at FROM contributions"
+	var args []interface{}
+	argIdx := 1
+	var conditions []string
+	if q != "" {
+		conditions = append(conditions, fmt.Sprintf("(course_name ILIKE $%d OR link_url ILIKE $%d OR note ILIKE $%d)", argIdx, argIdx, argIdx))
+		args = append(args, "%"+q+"%")
+		argIdx++
+	}
+	if status != "" {
+		conditions = append(conditions, fmt.Sprintf("status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := database.DB.Query(query, args...)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	defer rows.Close()
 	var contribs []models.Contribution
 	for rows.Next() {
 		var c models.Contribution
-		rows.Scan(&c.ID, &c.CourseName, &c.LinkURL, &c.Note, &c.Status, &c.CreatedAt)
+		if err := rows.Scan(&c.ID, &c.CourseName, &c.LinkURL, &c.Note, &c.Status, &c.CreatedAt); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		contribs = append(contribs, c)
 	}
-	json.NewEncoder(w).Encode(contribs)
+	if err := rows.Err(); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, contribs)
 }
 
 func HandleAdminUpdateContribution(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var body struct{ Status string `json:"status"` }
-	json.NewDecoder(r.Body).Decode(&body)
-	_, err := database.DB.Exec("UPDATE contributions SET status = $1 WHERE id = $2", body.Status, id)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if !decodeJSONBody(w, r, &body) {
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	_, err := database.DB.Exec("UPDATE contributions SET status = $1 WHERE id = $2", body.Status, id)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func HandleAdminDeleteContribution(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	_, err := database.DB.Exec("DELETE FROM contributions WHERE id = $1", id)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func HandleAdminPostCourse(w http.ResponseWriter, r *http.Request) {
 	var c models.Course
-	json.NewDecoder(r.Body).Decode(&c)
+	if !decodeJSONBody(w, r, &c) {
+		return
+	}
 	_, err := database.DB.Exec("INSERT INTO courses (semester_id, name, code, is_optional, display_order) VALUES ($1, $2, $3, $4, $5)",
 		c.SemesterID, c.Name, c.Code, c.IsOptional, c.DisplayOrder)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
 func HandleAdminPatchCourse(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var c models.Course
-	json.NewDecoder(r.Body).Decode(&c)
+	if !decodeJSONBody(w, r, &c) {
+		return
+	}
 	_, err := database.DB.Exec("UPDATE courses SET name = $1, code = $2, semester_id = $3 WHERE id = $4",
 		c.Name, c.Code, c.SemesterID, id)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func HandleAdminDeleteCourse(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	_, err := database.DB.Exec("DELETE FROM courses WHERE id = $1", id)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func HandleAdminPostLink(w http.ResponseWriter, r *http.Request) {
 	var l models.Link
-	json.NewDecoder(r.Body).Decode(&l)
+	if !decodeJSONBody(w, r, &l) {
+		return
+	}
 	_, err := database.DB.Exec("INSERT INTO links (course_id, type, url, label, note, content_type, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)",
 		l.CourseID, l.Type, l.URL, l.Label, l.Note, l.ContentType, l.DisplayOrder)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
 func HandleAdminPatchLink(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var l models.Link
-	json.NewDecoder(r.Body).Decode(&l)
+	if !decodeJSONBody(w, r, &l) {
+		return
+	}
 	_, err := database.DB.Exec("UPDATE links SET type = $1, url = $2, label = $3, note = $4, content_type = $5 WHERE id = $6",
 		l.Type, l.URL, l.Label, l.Note, l.ContentType, id)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func HandleAdminDeleteLink(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	_, err := database.DB.Exec("DELETE FROM links WHERE id = $1", id)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func HandleAdminGetPageViews(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query("SELECT id, page, visited_at FROM page_views ORDER BY visited_at DESC")
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	defer rows.Close()
 	var views []models.PageView
 	for rows.Next() {
 		var v models.PageView
-		rows.Scan(&v.ID, &v.Page, &v.VisitedAt)
+		if err := rows.Scan(&v.ID, &v.Page, &v.VisitedAt); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		views = append(views, v)
 	}
-	json.NewEncoder(w).Encode(views)
+	if err := rows.Err(); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, views)
 }
 
 func HandleAdminGetLinkClicks(w http.ResponseWriter, r *http.Request) {
 	rows, err := database.DB.Query("SELECT id, link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC")
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	defer rows.Close()
 	var clicks []models.LinkClick
 	for rows.Next() {
 		var c models.LinkClick
-		rows.Scan(&c.ID, &c.LinkID, &c.ClickedAt)
+		if err := rows.Scan(&c.ID, &c.LinkID, &c.ClickedAt); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		clicks = append(clicks, c)
 	}
-	json.NewEncoder(w).Encode(clicks)
+	if err := rows.Err(); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	writeJSON(w, http.StatusOK, clicks)
 }

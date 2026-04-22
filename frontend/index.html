@@ -4,8 +4,6 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' http://localhost:8080 http://localhost:5173; object-src 'none'; base-uri 'self'" />
     <link rel="stylesheet" href="/styles/app.css">
     <title>Info Links — CNAM Lebanon CS Resources</title>
     <meta name="description"
@@ -48,11 +46,11 @@
                 </div>
                 <div class="important-note" id="importantNote" data-action="toggleImportantNote">
                     <div class="note-header">
-                        <div style="display:flex;align-items:center;gap:8px;"><span>⚠️</span> <span id="noteTitleText">Important Note</span></div>
-                        <div class="note-langs" style="display:flex; gap: 4px; align-items:center; margin-left: auto; margin-right: 12px;">
-                            <button class="nav-btn" style="padding: 2px 6px; font-size: 0.7rem;" data-action="setNoteLang" data-lang="en">EN</button>
-                            <button class="nav-btn" style="padding: 2px 6px; font-size: 0.7rem;" data-action="setNoteLang" data-lang="fr">FR</button>
-                            <button class="nav-btn" style="padding: 2px 6px; font-size: 0.7rem;" data-action="setNoteLang" data-lang="ar">AR</button>
+                        <div class="note-title-wrap"><span>⚠️</span> <span id="noteTitleText">Important Note</span></div>
+                        <div class="note-langs">
+                            <button class="nav-btn note-lang-btn" data-action="setNoteLang" data-lang="en">EN</button>
+                            <button class="nav-btn note-lang-btn" data-action="setNoteLang" data-lang="fr">FR</button>
+                            <button class="nav-btn note-lang-btn" data-action="setNoteLang" data-lang="ar">AR</button>
                         </div>
                         <span class="note-arrow" id="noteArrow">▼</span>
                     </div>
@@ -66,7 +64,7 @@
                 </div>
 
             </div>
-            <button class="filter-toggle-btn" id="filterToggleBtn" onclick="toggleFilters()">
+            <button class="filter-toggle-btn" id="filterToggleBtn" data-action="toggleFilters">
                 <span>🔎 Filters & Programs</span><span class="filter-toggle-arrow" id="filterArrow">▼</span>
             </button>
             <div class="filters-collapsible" id="filtersCollapsible">
@@ -90,16 +88,16 @@
                 <div class="legend-item"><span class="optional-tag">OPTIONAL</span> Optional course</div>
             </div>
             <div id="coursesOutput"></div>
-            <div id="extraSection" style="margin-top: 10px"></div>
+            <div id="extraSection" class="extra-section-offset"></div>
         </div>
 
         <!-- REPORT / SUBMIT -->
         <div class="view" id="view-report-submit">
-            <h2 style="margin-bottom: 6px">Report & Contribute</h2>
-            <p style="color: var(--muted); margin-bottom: 28px; font-size: 0.9rem;">
+            <h2 class="view-title">Report & Contribute</h2>
+            <p class="view-subtitle">
                 Help keep the hub accurate and growing.
             </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+            <div class="report-grid">
                 <div class="report-box">
                     <h3>🚨 Report a broken / inaccessible link</h3>
                     <input type="text" id="rCourse" list="courseDatalist" placeholder="Course name or code" />
@@ -130,11 +128,11 @@
 
         <!-- FEEDBACK -->
         <div class="view" id="view-feedback">
-            <h2 style="margin-bottom: 6px">Share Your Feedback</h2>
-            <p style="color: var(--muted); margin-bottom: 28px; font-size: 0.9rem;">
+            <h2 class="view-title">Share Your Feedback</h2>
+            <p class="view-subtitle">
                 Help us improve by sharing your experience and suggestions.
             </p>
-            <div style="max-width: 500px; margin: 0 auto;">
+            <div class="feedback-wrap">
                 <div class="extra-section">
                     <div class="extra-title"><span>⭐</span> Rate Your Experience</div>
                     <div class="feedback-stars" id="starRating" role="radiogroup" aria-label="Rating">
@@ -144,10 +142,10 @@
                         <button class="star" type="button" data-rating="4" aria-label="4 stars">★</button>
                         <button class="star" type="button" data-rating="5" aria-label="5 stars">★</button>
                     </div>
-                    <div id="ratingDisplay" style="text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; margin-bottom: 24px;">
+                    <div id="ratingDisplay" class="rating-display">
                         Select a rating</div>
                     <div class="extra-title"><span>📋</span> What would you like to rate?</div>
-                    <select class="inp" id="feedbackCategory" style="margin-bottom: 24px;">
+                    <select class="inp feedback-category" id="feedbackCategory">
                         <option value="">Select a category...</option>
                         <option value="ui/ux">UI/UX Design</option>
                         <option value="content">Content Quality</option>
@@ -156,9 +154,8 @@
                         <option value="accessibility">Accessibility</option>
                         <option value="other">Other</option>
                     </select>
-                    <textarea class="inp" id="feedbackMessage" placeholder="Your feedback (optional)…"
-                        style="margin-top: 16px; min-height: 100px;"></textarea>
-                    <button class="btn btn-primary" style="width: 100%; margin-top: 24px;" data-action="submitFeedback">Submit
+                    <textarea class="inp feedback-message" id="feedbackMessage" placeholder="Your feedback (optional)…"></textarea>
+                    <button class="btn btn-primary feedback-submit-btn" data-action="submitFeedback">Submit
                         Feedback</button>
                 </div>
             </div>
@@ -170,9 +167,8 @@
                 <h2>Admin Login</h2>
                 <p>Enter your credentials to access the dashboard.</p>
                 <input type="email" id="adminEmail" placeholder="Email" />
-                <input type="password" id="adminPass" placeholder="Password"
-                    onkeydown="if (event.key === 'Enter') checkLogin();" />
-                <button class="btn btn-primary" style="width: 100%" onclick="checkLogin()">Login</button>
+                <input type="password" id="adminPass" placeholder="Password" />
+                <button class="btn btn-primary login-submit-btn" data-action="checkLogin">Login</button>
                 <div class="err" id="loginErr"></div>
             </div>
         </div>
@@ -181,10 +177,10 @@
         <div class="view" id="view-admin">
             <div class="admin-header">
                 <h2>⚙️ Admin Dashboard</h2>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                    <button class="btn btn-primary" onclick="openAddCourseModal()">+ Add Course</button>
-                    <button class="btn btn-ghost" onclick="exportData()">📥 Export</button>
-                    <button class="btn btn-ghost" onclick="logout()">Logout</button>
+                <div class="admin-header-actions">
+                    <button class="btn btn-primary" data-action="openAddCourseModal">+ Add Course</button>
+                    <button class="btn btn-ghost" data-action="exportData">📥 Export</button>
+                    <button class="btn btn-ghost" data-action="logout">Logout</button>
                 </div>
             </div>
             <div class="admin-tabs">

@@ -1,5 +1,53 @@
 
 
+// ===================== API CORE =====================
+const API_TIMEOUT_MS = 12000;
+
+function _buildApiError(status, fallbackMessage, payloadText) {
+  if (!payloadText) return new Error(fallbackMessage);
+  try {
+    const parsed = JSON.parse(payloadText);
+    if (parsed && typeof parsed.error === "string" && parsed.error.trim()) {
+      return new Error(parsed.error);
+    }
+  } catch (e) {}
+  return new Error(payloadText || fallbackMessage || `Request failed (${status})`);
+}
+
+async function apiRequest(url, { method = "GET", body = null, headers = {}, timeoutMs = API_TIMEOUT_MS } = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const finalHeaders = { ...headers };
+  if (body !== null && !finalHeaders["Content-Type"]) {
+    finalHeaders["Content-Type"] = "application/json";
+  }
+  if (AppState.sbToken && !finalHeaders.Authorization) {
+    finalHeaders.Authorization = `Bearer ${AppState.sbToken}`;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: finalHeaders,
+      body: body !== null ? JSON.stringify(body) : null,
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw _buildApiError(res.status, `Request failed (${res.status})`, text);
+    }
+    return text ? JSON.parse(text) : [];
+  } catch (err) {
+    if (err && err.name === "AbortError") {
+      throw new Error("Request timed out. Please try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // ===================== API PROXY =====================
 async function sb(table, method = "GET", body = null, matchString = null, select = null) {
   let cleanTable = table;
@@ -16,36 +64,14 @@ async function sb(table, method = "GET", body = null, matchString = null, select
   let url = `/api/admin/${cleanTable}`;
   if (id) url += `/${id}`;
 
-  const headers = {
-    "Content-Type": "application/json",
-  };
-  if (AppState.sbToken) {
-    headers.Authorization = `Bearer ${AppState.sbToken}`;
-  }
-
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : null,
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || "Backend API Error");
-  }
-
-  const text = await res.text();
-  return text ? JSON.parse(text) : [];
+  return apiRequest(url, { method, body });
 }
 
 async function sbAuth(email, password) {
-  const res = await fetch("/api/auth/login", {
+  const data = await apiRequest("/api/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: { email, password },
   });
-  if (!res.ok) throw new Error("Login failed");
-  const data = await res.json();
   return data.token;
 }
 
@@ -57,10 +83,9 @@ async function sbLogout() {
 async function trackVisit() {
   if (sessionStorage.getItem("pv_tracked")) return;
   try {
-    await fetch(`/api/page_views`, {
+    await apiRequest(`/api/page_views`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ page: "home" }),
+      body: { page: "home" },
     });
     sessionStorage.setItem("pv_tracked", "1");
   } catch (e) {}
@@ -68,10 +93,9 @@ async function trackVisit() {
 
 function trackLinkClick(linkId) {
   if (!linkId) return;
-  fetch(`/api/link_clicks`, {
+  apiRequest(`/api/link_clicks`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ link_id: linkId }),
+    body: { link_id: linkId },
   }).catch(() => {});
 }
 
@@ -81,3 +105,4 @@ window.sbAuth = sbAuth;
 window.sbLogout = sbLogout;
 window.trackVisit = trackVisit;
 window.trackLinkClick = trackLinkClick;
+window.apiRequest = apiRequest;
