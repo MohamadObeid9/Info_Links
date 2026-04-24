@@ -8,6 +8,7 @@ async function checkLogin() {
   setBtnLoading(btn, true, "Logging in…");
   try {
     AppState.sbToken = await sbAuth(email, pass);
+    localStorage.setItem("infolinks_token", AppState.sbToken);
     AppState.adminLoggedIn = true;
     document.getElementById("adminPass").value = "";
     showView("admin");
@@ -20,6 +21,8 @@ async function checkLogin() {
 
 async function logout() {
   await sbLogout();
+  localStorage.removeItem("infolinks_token");
+  AppState.sbToken = null;
   AppState.adminLoggedIn = false;
   showView("home");
 }

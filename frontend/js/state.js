@@ -3,8 +3,8 @@
 // Access via AppState.xxx; mutate directly: AppState.xxx = yyy.
 
 const AppState = {
-  sbToken: null,
-  adminLoggedIn: false,
+  sbToken: localStorage.getItem("infolinks_token"),
+  adminLoggedIn: !!localStorage.getItem("infolinks_token"),
   currentAdminTab: "courses",
   adminSearch: "",
   adminFilterProg: "all",
