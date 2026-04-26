@@ -345,7 +345,9 @@ func HandleAdminUpdateReport(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "Invalid report id")
 		return
 	}
-	var body struct{ Status string `json:"status"` }
+	var body struct {
+		Status string `json:"status"`
+	}
 	if !decodeJSONBody(w, r, &body) {
 		return
 	}
@@ -420,7 +422,9 @@ func HandleAdminGetFeedback(w http.ResponseWriter, r *http.Request) {
 
 func HandleAdminPatchFeedback(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	var body struct{ Status string `json:"status"` }
+	var body struct {
+		Status string `json:"status"`
+	}
 	if !decodeJSONBody(w, r, &body) {
 		return
 	}
@@ -490,7 +494,9 @@ func HandleAdminGetContributions(w http.ResponseWriter, r *http.Request) {
 
 func HandleAdminUpdateContribution(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	var body struct{ Status string `json:"status"` }
+	var body struct {
+		Status string `json:"status"`
+	}
 	if !decodeJSONBody(w, r, &body) {
 		return
 	}
@@ -614,7 +620,7 @@ func HandleAdminGetPageViews(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleAdminGetLinkClicks(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC")
+	rows, err := database.DB.Query("SELECT id, link_id, clicked_at FROM link_clicks WHERE link_id IS NOT NULL ORDER BY clicked_at DESC")
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
