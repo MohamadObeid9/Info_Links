@@ -1,6 +1,7 @@
 package api
 
 import (
+	"infolinks-backend/internal/config"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,7 +11,7 @@ import (
 )
 
 // NewRouter sets up the API routes and CORS middleware.
-func NewRouter() http.Handler {
+func NewRouter(cfg config.Config) http.Handler {
 	mux := http.NewServeMux()
 
 	// 1. Public API Routes
@@ -62,32 +63,33 @@ func NewRouter() http.Handler {
 		relPath := strings.TrimPrefix(filepath.Clean(r.URL.Path), "/")
 		path := filepath.Join(staticDir, relPath)
 		info, err := os.Stat(path)
-		if os.IsNotExist(err) || info.IsDir() {
-			// If it doesn't exist or is a directory (and we want index.html), serve index.html
-			// We check if it's a directory to avoid serving directory listings
-			if info != nil && info.IsDir() && r.URL.Path != "/" {
-				// If it's a sub-directory, we still serve index.html for the SPA
-				http.ServeFile(w, r, staticDir+"/index.html")
-				return
-			}
+		if err != nil {
 			if os.IsNotExist(err) {
-				http.ServeFile(w, r, staticDir+"/index.html")
+				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 				return
 			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
-		// Otherwise serve the file
+		if info.IsDir() && r.URL.Path != "/" {
+			http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+			return
+		}
 		fs.ServeHTTP(w, r)
 	})
 
+	var parsedOrigins []string
 	allowedOrigins := []string{"http://localhost:8080", "http://localhost:5173"}
-	if raw := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS")); raw != "" {
-		allowedOrigins = nil
+	if raw := strings.TrimSpace(cfg.CorsAllowedOrigins); raw != "" {
 		for _, item := range strings.Split(raw, ",") {
 			origin := strings.TrimSpace(item)
 			if origin != "" {
-				allowedOrigins = append(allowedOrigins, origin)
+				parsedOrigins = append(parsedOrigins, origin)
 			}
 		}
+	}
+	if len(parsedOrigins) > 0 {
+		allowedOrigins = parsedOrigins
 	}
 
 	connectSrcValues := []string{"'self'"}
@@ -99,7 +101,7 @@ func NewRouter() http.Handler {
 	connectSrc := strings.Join(connectSrcValues, " ")
 	cspValue := strings.Join([]string{
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline'",
+		"script-src 'self' ",
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 		"img-src 'self' data:",
 		"font-src 'self' https://fonts.gstatic.com",
@@ -109,10 +111,10 @@ func NewRouter() http.Handler {
 		"frame-ancestors 'none'",
 	}, "; ")
 
-	// 3. CORS
+	// 4. CORS
 	c := cors.New(cors.Options{
 		AllowedOrigins:   allowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: false,
 	})

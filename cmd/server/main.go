@@ -1,42 +1,61 @@
 package main
 
 import (
-	"log"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
 	"infolinks-backend/internal/api"
+	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/database"
-
-	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("Note: No .env file found, using system environment variables")
+	//Loading Config
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
 	}
+
+	// Initialize Logger
+	logger := newLogger(cfg.AppEnv)
 
 	// Initialize database
-	database.InitDB()
+	if err := database.InitDB(logger.With("component", "database"), cfg.DatabaseURL); err != nil {
+		logger.Error("database initialization failed", "error", err)
+		os.Exit(1)
+	}
 	defer database.DB.Close()
 
-	if err := api.SetJWTSecret(os.Getenv("JWT_SECRET")); err != nil {
-		log.Fatal("failed to configure JWT secret: ", err)
+	//Setup jwt secret
+	if err := api.SetJWTSecret(cfg.JWTSecret); err != nil {
+		logger.Error("failed to configure JWT secret", "error", err)
+		os.Exit(1)
 	}
+
+	api.SetLogger(logger.With("component", "api"))
 
 	// Setup router
-	handler := api.NewRouter()
+	handler := api.NewRouter(cfg)
+	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
 
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	//Setup server
+	addr := ":" + cfg.Port
+	if err = http.ListenAndServe(addr, handler); err != nil {
+		logger.Error("server failed to start", "error", err)
+		os.Exit(1)
 	}
+}
 
-	log.Printf("🚀 Backend server is starting on port %s...", port)
-	err := http.ListenAndServe(":"+port, handler)
-	if err != nil {
-		log.Fatal("Server failed to start:", err)
+func newLogger(env string) *slog.Logger {
+	var logHandler slog.Handler
+	if env == "development" {
+		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	} else {
+		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	}
+	logger := slog.New(logHandler).With("env", env)
+	return logger
 }

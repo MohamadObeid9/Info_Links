@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -17,9 +17,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+var (
+	jwtSecret []byte
+	logger    = slog.Default()
+)
 
 const maxBodyBytes = 1 << 20
+
+func SetLogger(l *slog.Logger) {
+	if l != nil {
+		logger = l
+	}
+}
 
 func SetJWTSecret(secret string) error {
 	secret = strings.TrimSpace(secret)
@@ -185,7 +194,7 @@ func HandleApiRoot(w http.ResponseWriter, r *http.Request) {
 func HandleGetContent(w http.ResponseWriter, r *http.Request) {
 	query := `
 		WITH content AS (
-			SELECT 
+			SELECT
 				(SELECT COALESCE(json_agg(p ORDER BY display_order ASC), '[]') FROM programs p) as programs,
 				(SELECT COALESCE(json_agg(y ORDER BY display_order ASC), '[]') FROM years y) as years,
 				(SELECT COALESCE(json_agg(s ORDER BY display_order ASC), '[]') FROM semesters s) as semesters,
@@ -208,7 +217,7 @@ func HandleGetContent(w http.ResponseWriter, r *http.Request) {
 	var result string
 	err := database.DB.QueryRow(query).Scan(&result)
 	if err != nil {
-		log.Println("Database error in HandleGetContent:", err)
+		logger.Error("database error in HandleGetContent", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -224,7 +233,7 @@ func HandlePostPageView(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err := database.DB.Exec("INSERT INTO page_views (page) VALUES ($1)", pv.Page)
 	if err != nil {
-		log.Println("DB error:", err)
+		logger.Error("db error", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -238,7 +247,7 @@ func HandlePostLinkClick(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err := database.DB.Exec("INSERT INTO link_clicks (link_id) VALUES ($1)", lc.LinkID)
 	if err != nil {
-		log.Println("DB error:", err)
+		logger.Error("db error", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -253,7 +262,7 @@ func HandlePostReport(w http.ResponseWriter, r *http.Request) {
 	_, err := database.DB.Exec("INSERT INTO reports (course_name, link_url, description) VALUES ($1, $2, $3)",
 		rep.CourseName, rep.LinkURL, rep.Description)
 	if err != nil {
-		log.Println("DB error:", err)
+		logger.Error("db error", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -268,7 +277,7 @@ func HandlePostContribution(w http.ResponseWriter, r *http.Request) {
 	_, err := database.DB.Exec("INSERT INTO contributions (course_name, link_url, note) VALUES ($1, $2, $3)",
 		c.CourseName, c.LinkURL, c.Note)
 	if err != nil {
-		log.Println("DB error:", err)
+		logger.Error("db error", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
@@ -283,7 +292,7 @@ func HandlePostFeedback(w http.ResponseWriter, r *http.Request) {
 	_, err := database.DB.Exec("INSERT INTO feedback (category, rating, message) VALUES ($1, $2, $3)",
 		f.Category, f.Rating, f.Message)
 	if err != nil {
-		log.Println("DB error:", err)
+		logger.Error("db error", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}

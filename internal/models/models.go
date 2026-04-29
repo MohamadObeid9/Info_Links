@@ -36,7 +36,7 @@ type Course struct {
 // Link represents a useful resource for a course or extra section
 type Link struct {
 	ID           int     `json:"id"`
-	CourseID     *int    `json:"course_id,omitempty"` // For course links
+	CourseID     *int    `json:"course_id,omitempty"`  // For course links
 	SectionID    *int    `json:"section_id,omitempty"` // For extra links
 	Type         string  `json:"type"`
 	Label        string  `json:"label"`
