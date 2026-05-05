@@ -29,16 +29,14 @@ func main() {
 	}
 	defer database.DB.Close()
 
-	//Setup jwt secret
-	if err := api.SetJWTSecret(cfg.JWTSecret); err != nil {
-		logger.Error("failed to configure JWT secret", "error", err)
-		os.Exit(1)
-	}
-
-	api.SetLogger(logger.With("component", "api"))
+	//Set Hanlder
+	apiHandler := api.NewHandler(api.Dependencies{
+		Logger:    logger.With("component", "api"),
+		JWTSecret: []byte(cfg.JWTSecret),
+	})
 
 	// Setup router
-	handler := api.NewRouter(cfg)
+	handler := api.NewRouter(cfg, apiHandler)
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
 
 	//Setup server
@@ -59,3 +57,12 @@ func newLogger(env string) *slog.Logger {
 	logger := slog.New(logHandler).With("env", env)
 	return logger
 }
+
+// func validateJWTSecret(secret string) error {
+// 	secret = strings.TrimSpace(secret)
+// 	if secret == "" {
+// 		return errors.New("JWT_SECRET is required")
+// 	}
+// 	jwtSecret = []byte(secret)
+// 	return nil
+// }

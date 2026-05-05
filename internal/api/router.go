@@ -1,55 +1,60 @@
 package api
 
 import (
-	"infolinks-backend/internal/config"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"infolinks-backend/internal/config"
+
 	"github.com/rs/cors"
 )
 
 // NewRouter sets up the API routes and CORS middleware.
-func NewRouter(cfg config.Config) http.Handler {
+func NewRouter(cfg config.Config, h *Handler) http.Handler {
 	mux := http.NewServeMux()
 
-	// 1. Public API Routes
-	mux.HandleFunc("GET /api", HandleApiRoot)
-	mux.HandleFunc("GET /api/", HandleApiRoot)
-	mux.HandleFunc("GET /api/content", HandleGetContent)
-	mux.HandleFunc("GET /api/health", HandleHealth)
-	mux.HandleFunc("POST /api/auth/login", HandleLogin)
+	handleAdminFunc := func(pattern string, handler http.HandlerFunc) {
+		mux.HandleFunc(pattern, h.requireAdmin(handler))
+	}
 
-	mux.HandleFunc("POST /api/page_views", HandlePostPageView)
-	mux.HandleFunc("POST /api/link_clicks", HandlePostLinkClick)
-	mux.HandleFunc("POST /api/reports", HandlePostReport)
-	mux.HandleFunc("POST /api/contributions", HandlePostContribution)
-	mux.HandleFunc("POST /api/feedback", HandlePostFeedback)
+	// 1. Public API Routes
+	mux.HandleFunc("GET /api", h.handleApiRoot)
+	mux.HandleFunc("GET /api/", h.handleApiRoot)
+	mux.HandleFunc("GET /api/content", h.handleGetContent)
+	mux.HandleFunc("GET /api/health", h.handleHealth)
+	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
+
+	mux.HandleFunc("POST /api/page_views", h.handlePostPageView)
+	mux.HandleFunc("POST /api/link_clicks", h.handlePostLinkClick)
+	mux.HandleFunc("POST /api/reports", h.handlePostReport)
+	mux.HandleFunc("POST /api/contributions", h.handlePostContribution)
+	mux.HandleFunc("POST /api/feedback", h.handlePostFeedback)
 
 	// 2. Admin Protected API Routes
-	mux.HandleFunc("GET /api/admin/reports", RequireAdmin(HandleAdminGetReports))
-	mux.HandleFunc("PATCH /api/admin/reports/{id}", RequireAdmin(HandleAdminUpdateReport))
-	mux.HandleFunc("DELETE /api/admin/reports/{id}", RequireAdmin(HandleAdminDeleteReport))
+	handleAdminFunc("GET /api/admin/reports", h.handleAdminGetReports)
+	handleAdminFunc("PATCH /api/admin/reports/{id}", h.handleAdminUpdateReport)
+	handleAdminFunc("DELETE /api/admin/reports/{id}", h.handleAdminDeleteReport)
 
-	mux.HandleFunc("GET /api/admin/feedback", RequireAdmin(HandleAdminGetFeedback))
-	mux.HandleFunc("PATCH /api/admin/feedback/{id}", RequireAdmin(HandleAdminPatchFeedback))
-	mux.HandleFunc("DELETE /api/admin/feedback/{id}", RequireAdmin(HandleAdminDeleteFeedback))
+	handleAdminFunc("GET /api/admin/feedback", h.handleAdminGetFeedback)
+	handleAdminFunc("PATCH /api/admin/feedback/{id}", h.handleAdminPatchFeedback)
+	handleAdminFunc("DELETE /api/admin/feedback/{id}", h.handleAdminDeleteFeedback)
 
-	mux.HandleFunc("GET /api/admin/contributions", RequireAdmin(HandleAdminGetContributions))
-	mux.HandleFunc("PATCH /api/admin/contributions/{id}", RequireAdmin(HandleAdminUpdateContribution))
-	mux.HandleFunc("DELETE /api/admin/contributions/{id}", RequireAdmin(HandleAdminDeleteContribution))
+	handleAdminFunc("GET /api/admin/contributions", h.handleAdminGetContributions)
+	handleAdminFunc("PATCH /api/admin/contributions/{id}", h.handleAdminUpdateContribution)
+	handleAdminFunc("DELETE /api/admin/contributions/{id}", h.handleAdminDeleteContribution)
 
-	mux.HandleFunc("POST /api/admin/courses", RequireAdmin(HandleAdminPostCourse))
-	mux.HandleFunc("PATCH /api/admin/courses/{id}", RequireAdmin(HandleAdminPatchCourse))
-	mux.HandleFunc("DELETE /api/admin/courses/{id}", RequireAdmin(HandleAdminDeleteCourse))
+	handleAdminFunc("POST /api/admin/courses", h.handleAdminPostCourse)
+	handleAdminFunc("PATCH /api/admin/courses/{id}", h.handleAdminPatchCourse)
+	handleAdminFunc("DELETE /api/admin/courses/{id}", h.handleAdminDeleteCourse)
 
-	mux.HandleFunc("POST /api/admin/links", RequireAdmin(HandleAdminPostLink))
-	mux.HandleFunc("PATCH /api/admin/links/{id}", RequireAdmin(HandleAdminPatchLink))
-	mux.HandleFunc("DELETE /api/admin/links/{id}", RequireAdmin(HandleAdminDeleteLink))
+	handleAdminFunc("POST /api/admin/links", h.handleAdminPostLink)
+	handleAdminFunc("PATCH /api/admin/links/{id}", h.handleAdminPatchLink)
+	handleAdminFunc("DELETE /api/admin/links/{id}", h.handleAdminDeleteLink)
 
-	mux.HandleFunc("GET /api/admin/page_views", RequireAdmin(HandleAdminGetPageViews))
-	mux.HandleFunc("GET /api/admin/link_clicks", RequireAdmin(HandleAdminGetLinkClicks))
+	handleAdminFunc("GET /api/admin/page_views", h.handleAdminGetPageViews)
+	handleAdminFunc("GET /api/admin/link_clicks", h.handleAdminGetLinkClicks)
 
 	// 3. Static Files & SPA Routing
 	staticDir := "frontend/dist"
