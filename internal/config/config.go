@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -21,9 +22,9 @@ func Load() (Config, error) {
 	cfg := Config{
 		Port:               getenv("PORT", "8080"),
 		AppEnv:             getenv("APP_ENV", "development"),
-		CorsAllowedOrigins: getenv("CORS_ALLOWED_ORIGINS", ""),
-		DatabaseURL:        os.Getenv("DATABASE_URL"),
-		JWTSecret:          os.Getenv("JWT_SECRET"),
+		CorsAllowedOrigins: getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://localhost:5173"),
+		DatabaseURL:        getenv("DATABASE_URL"),
+		JWTSecret:          getenv("JWT_SECRET"),
 	}
 
 	if cfg.DatabaseURL == "" {
@@ -37,10 +38,13 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-func getenv(key, fallback string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		value = fallback
+func getenv(key string, fallback ...string) string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value != "" {
+		return value
 	}
-	return value
+	if len(fallback) > 0 {
+		return strings.TrimSpace(fallback[0])
+	}
+	return ""
 }

@@ -1,40 +1,63 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib" // The postgres driver
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// DB is our global database connection pool.
 var DB *sql.DB
 
-// InitDB reads the connection string and connects to Postgres.
-func InitDB(logger *slog.Logger, dbURL string) error {
+type Client struct {
+	DB *sql.DB
+}
 
-	// Open the connection pool using the pgx driver
-	db, err := sql.Open("pgx", dbURL)
-	if err != nil {
-		return fmt.Errorf("open database: %w", err)
+func New(dbUrl string, logger *slog.Logger) (*Client, error) {
+
+	if logger == nil {
+		return nil, fmt.Errorf("database logger is required")
 	}
 
-	// Ping the database
-	err = db.Ping()
-	if err != nil {
-		return fmt.Errorf("ping database: %w", err)
+	if dbUrl == "" {
+		return nil, fmt.Errorf("database_url is required")
 	}
 
-	// Basic pool tuning for production stability
+	db, err := sql.Open("pgx", dbUrl)
+	if err != nil {
+		return nil, fmt.Errorf("open database: %w", err)
+	}
+
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(30 * time.Minute)
 	db.SetConnMaxIdleTime(10 * time.Minute)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
+	}
+
 	logger.Info("successfully connected to database")
 
-	DB = db
-	return nil
+	return &Client{DB: db}, nil
+}
+
+func (c *Client) Ping(ctx context.Context) error {
+	if c == nil || c.DB == nil {
+		return fmt.Errorf("database client is nil")
+	}
+	return c.DB.PingContext(ctx)
+}
+
+func (c *Client) Close() error {
+	if c == nil || c.DB == nil {
+		return nil
+	}
+	return c.DB.Close()
 }

@@ -9,37 +9,42 @@ import (
 	"infolinks-backend/internal/api"
 	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/database"
+	"infolinks-backend/internal/repository"
+	"infolinks-backend/internal/service"
 )
 
 func main() {
-	//Loading Config
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Initialize Logger
 	logger := newLogger(cfg.AppEnv)
 
-	// Initialize database
-	if err := database.InitDB(logger.With("component", "database"), cfg.DatabaseURL); err != nil {
+	dbClient, err := database.New(cfg.DatabaseURL, logger.With("component", "database"))
+	if err != nil {
 		logger.Error("database initialization failed", "error", err)
 		os.Exit(1)
 	}
-	defer database.DB.Close()
+	defer dbClient.Close()
 
-	//Set Hanlder
-	apiHandler := api.NewHandler(api.Dependencies{
-		Logger:    logger.With("component", "api"),
-		JWTSecret: []byte(cfg.JWTSecret),
+	reportRepo := repository.NewPostgresReportRepository(dbClient.DB)
+	reportService := service.NewReportService(reportRepo)
+
+	apiHandler, err := api.NewHandler(api.Dependencies{
+		Logger:        logger.With("component", "api"),
+		JWTSecret:     []byte(cfg.JWTSecret),
+		ReportService: reportService,
 	})
+	if err != nil {
+		logger.Error("api handler initialization failed", "error", err)
+		os.Exit(1)
+	}
 
-	// Setup router
 	handler := api.NewRouter(cfg, apiHandler)
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
 
-	//Setup server
 	addr := ":" + cfg.Port
 	if err = http.ListenAndServe(addr, handler); err != nil {
 		logger.Error("server failed to start", "error", err)
@@ -57,12 +62,3 @@ func newLogger(env string) *slog.Logger {
 	logger := slog.New(logHandler).With("env", env)
 	return logger
 }
-
-// func validateJWTSecret(secret string) error {
-// 	secret = strings.TrimSpace(secret)
-// 	if secret == "" {
-// 		return errors.New("JWT_SECRET is required")
-// 	}
-// 	jwtSecret = []byte(secret)
-// 	return nil
-// }
