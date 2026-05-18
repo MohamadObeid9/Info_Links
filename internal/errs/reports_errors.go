@@ -3,6 +3,7 @@ package errs
 import "errors"
 
 var (
+	ErrDatabaseDown                    = errors.New("db is down")
 	ErrInvalidReportID                 = errors.New("invalid report id")
 	ErrReportNotFound                  = errors.New("report not found")
 	ErrReportStatusRequired            = errors.New("status is required")

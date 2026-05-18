@@ -40,6 +40,8 @@ func (s *ReportService) List(ctx context.Context, limit int, offset int, q strin
 
 	switch status {
 	case "open", "resolved":
+	case "":
+		return nil, errs.ErrReportStatusRequired
 	default:
 		return nil, errs.ErrInvalidReportStatus
 	}

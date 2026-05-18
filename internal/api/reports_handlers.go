@@ -91,6 +91,8 @@ func mapListReportErr(h *Handler, w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	case errors.Is(err, errs.ErrInvalidReportStatus):
 		writeJSONError(w, http.StatusBadRequest, "Status must be open or resolved")
+	case errors.Is(err, errs.ErrReportStatusRequired):
+		writeJSONError(w, http.StatusBadRequest, "Status is required")
 	default:
 		h.logger.Error("list reports failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
