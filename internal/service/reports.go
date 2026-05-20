@@ -24,7 +24,7 @@ func (s *ReportService) Create(ctx context.Context, report models.Report) error 
 	report.LinkURL = strings.TrimSpace(report.LinkURL)
 	report.Description = strings.TrimSpace(report.Description)
 	if report.CourseName == "" || report.LinkURL == "" {
-		return errs.ErrCourseNameAndLinkUrlAreRequired
+		return errs.ErrCourseNameAndLinkUrlRequired
 	}
 
 	if err := s.repo.Create(ctx, report); err != nil {
@@ -35,13 +35,11 @@ func (s *ReportService) Create(ctx context.Context, report models.Report) error 
 
 func (s *ReportService) List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Report, error) {
 	if limit <= 0 || limit > 100 || offset < 0 {
-		return nil, errs.ErrListReportInvalidParams
+		return nil, errs.ErrInvalidParams
 	}
 
 	switch status {
-	case "open", "resolved":
-	case "":
-		return nil, errs.ErrReportStatusRequired
+	case "open", "resolved", "":
 	default:
 		return nil, errs.ErrInvalidReportStatus
 	}
@@ -78,7 +76,7 @@ func (s *ReportService) Update(ctx context.Context, status string, idStr string)
 	switch status {
 	case "open", "resolved":
 	case "":
-		return errs.ErrReportStatusRequired
+		return errs.ErrStatusRequired
 	default:
 		return errs.ErrInvalidReportStatus
 	}

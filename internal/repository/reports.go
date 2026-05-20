@@ -9,17 +9,6 @@ import (
 	"infolinks-backend/internal/models"
 )
 
-type ReportRepository interface {
-	Delete(ctx context.Context, id int) error
-	Create(ctx context.Context, report models.Report) error
-	Update(ctx context.Context, status string, id int) error
-	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Report, error)
-}
-
-type PostgresReportRepository struct {
-	db *sql.DB
-}
-
 const (
 	insertReportQuery = `INSERT INTO reports (course_name, link_url, description) VALUES ($1, $2, $3)`
 	deleteReportQuery = `DELETE FROM reports WHERE id = $1`
@@ -31,6 +20,17 @@ const (
 	listReportsWithStatusQuery  = listReportsBaseQuery + ` WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 	listReportsWithQStatusQuery = listReportsBaseQuery + ` WHERE (course_name ILIKE $1 OR description ILIKE $1 OR link_url ILIKE $1) AND status = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
 )
+
+type ReportRepository interface {
+	Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, report models.Report) error
+	Update(ctx context.Context, status string, id int) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Report, error)
+}
+
+type PostgresReportRepository struct {
+	db *sql.DB
+}
 
 func NewPostgresReportRepository(db *sql.DB) *PostgresReportRepository {
 	return &PostgresReportRepository{db: db}

@@ -13,18 +13,18 @@ import (
 	"infolinks-backend/internal/models"
 )
 
-// fakeReportService implements reportService for handler tests.
-type fakeReportService struct {
-	createCalls  int
-	createReport models.Report
-	createErr    error
+// fakeContributionService implements ContributionService for handler tests.
+type fakeContributionService struct {
+	createCalls        int
+	createContribution models.Contribution
+	createErr          error
 
 	listCalls  int
 	listLimit  int
 	listOffset int
 	listQ      string
 	listStatus string
-	listResult []models.Report
+	listResult []models.Contribution
 	listErr    error
 
 	deleteCalls int
@@ -37,13 +37,13 @@ type fakeReportService struct {
 	updateErr    error
 }
 
-func (f *fakeReportService) Create(ctx context.Context, report models.Report) error {
+func (f *fakeContributionService) Create(ctx context.Context, contribution models.Contribution) error {
 	f.createCalls++
-	f.createReport = report
+	f.createContribution = contribution
 	return f.createErr
 }
 
-func (f *fakeReportService) List(ctx context.Context, limit, offset int, q, status string) ([]models.Report, error) {
+func (f *fakeContributionService) List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error) {
 	f.listCalls++
 	f.listLimit = limit
 	f.listOffset = offset
@@ -55,36 +55,35 @@ func (f *fakeReportService) List(ctx context.Context, limit, offset int, q, stat
 	return f.listResult, nil
 }
 
-func (f *fakeReportService) Delete(ctx context.Context, id string) error {
+func (f *fakeContributionService) Delete(ctx context.Context, idStr string) error {
 	f.deleteCalls++
-	f.deleteID = id
+	f.deleteID = idStr
 	return f.deleteErr
 }
 
-func (f *fakeReportService) Update(ctx context.Context, status, idStr string) error {
+func (f *fakeContributionService) Update(ctx context.Context, status string, idStr string) error {
 	f.updateCalls++
 	f.updateStatus = status
 	f.updateID = idStr
 	return f.updateErr
 }
-
-func TestHandlePostReport(t *testing.T) {
+func TestHandlePostContribution(t *testing.T) {
 	tests := []struct {
-		name         string
-		body         string
-		createErr    error
-		statusWanted int
-		errMsg       string
-		wantCalls    int
-		reportWanted *models.Report
+		name               string
+		body               string
+		createErr          error
+		statusWanted       int
+		errMsg             string
+		wantCalls          int
+		contributionWanted *models.Contribution
 	}{
 		{
-			name:         "201 when service accepts the report",
-			body:         `{"course_name":"A","link_url":"https://example.com","description":""}`,
-			createErr:    nil,
-			statusWanted: http.StatusCreated,
-			wantCalls:    1,
-			reportWanted: &models.Report{CourseName: "A", LinkURL: "https://example.com", Description: ""},
+			name:               "201 when service accepts the contribution",
+			body:               `{"course_name":"A","link_url":"https://example.com","link_type":"telegram","note":""}`,
+			createErr:          nil,
+			statusWanted:       http.StatusCreated,
+			wantCalls:          1,
+			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", LinkType: "telegram", Note: ""},
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -95,7 +94,7 @@ func TestHandlePostReport(t *testing.T) {
 		},
 		{
 			name:         "400 when service returns validation error",
-			body:         `{"course_name":"x","link_url":"https://x","description":""}`,
+			body:         `{"course_name":"x","link_url":"https://x","note":""}`,
 			createErr:    errs.ErrCourseNameAndLinkUrlRequired,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Course name and link URL are required",
@@ -103,7 +102,7 @@ func TestHandlePostReport(t *testing.T) {
 		},
 		{
 			name:         "500 when service fails",
-			body:         `{"course_name":"A","link_url":"https://example.com","description":""}`,
+			body:         `{"course_name":"A","link_url":"https://example.com","note":""}`,
 			createErr:    errs.ErrDatabaseDown,
 			statusWanted: http.StatusInternalServerError,
 			errMsg:       "Internal server error",
@@ -112,14 +111,14 @@ func TestHandlePostReport(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{createErr: tt.createErr}
-			fakeContributionService := &fakeContributionService{}
+			fakeReportService := &fakeReportService{}
+			fakeContributionService := &fakeContributionService{createErr: tt.createErr}
 			h := testHandler(t, fakeReportService, fakeContributionService)
-			req := httptest.NewRequest(http.MethodPost, "/api/reports", bytes.NewBufferString(tt.body))
+			req := httptest.NewRequest(http.MethodPost, "/api/contributions", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 
-			h.handlePostReport(rr, req)
+			h.handlePostContribution(rr, req)
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
@@ -133,21 +132,21 @@ func TestHandlePostReport(t *testing.T) {
 				if got["error"] != tt.errMsg {
 					t.Fatalf("error: got %q want %q", got["error"], tt.errMsg)
 				}
-				if fakeReportService.createCalls != tt.wantCalls {
-					t.Fatalf("service.Create calls: got %d want %d", fakeReportService.createCalls, tt.wantCalls)
+				if fakeContributionService.createCalls != tt.wantCalls {
+					t.Fatalf("service.Create calls: got %d want %d", fakeContributionService.createCalls, tt.wantCalls)
 				}
 				return
 			}
 
 			// from now on , only success cases pass
-			if fakeReportService.createCalls != tt.wantCalls {
-				t.Fatalf("service.Create calls: got %d want %d", fakeReportService.createCalls, tt.wantCalls)
+			if fakeContributionService.createCalls != tt.wantCalls {
+				t.Fatalf("service.Create calls: got %d want %d", fakeContributionService.createCalls, tt.wantCalls)
 			}
-			if tt.reportWanted == nil {
-				t.Fatal("success case must set reportWanted")
+			if tt.contributionWanted == nil {
+				t.Fatal("success case must set contributionWanted")
 			}
-			if !reflect.DeepEqual(fakeReportService.createReport, *tt.reportWanted) {
-				t.Fatalf("service.Create report: got %+v want %+v", fakeReportService.createReport, *tt.reportWanted)
+			if !reflect.DeepEqual(fakeContributionService.createContribution, *tt.contributionWanted) {
+				t.Fatalf("service.Create contribution: got %+v want %+v", fakeContributionService.createContribution, *tt.contributionWanted)
 			}
 			if rr.Body.Len() != 0 {
 				t.Fatalf("expected empty body, got %q", rr.Body.String())
@@ -156,12 +155,12 @@ func TestHandlePostReport(t *testing.T) {
 	}
 }
 
-func TestHandleAdminGetReports(t *testing.T) {
+func TestHandleAdminGetContributions(t *testing.T) {
 	tests := []struct {
 		name         string
 		target       string
 		listErr      error
-		listResult   []models.Report
+		listResult   []models.Contribution
 		statusWanted int
 		errMsg       string
 		wantLimit    int
@@ -171,71 +170,73 @@ func TestHandleAdminGetReports(t *testing.T) {
 	}{
 		{
 			name:         "accept empty status",
-			target:       "/api/admin/reports?limit=10&offset=10",
+			target:       "/api/admin/contributions?limit=10&offset=10",
 			listErr:      nil,
+			wantStatus:   "",
+			wantQ:        "",
 			wantLimit:    10,
 			wantOffset:   10,
 			statusWanted: http.StatusOK,
 		},
 		{
 			name:         "reject invalid status",
-			target:       "/api/admin/reports?limit=10&offset=10&status=pending",
-			listErr:      errs.ErrInvalidReportStatus,
+			target:       "/api/admin/contributions?limit=10&offset=10&status=open",
+			listErr:      errs.ErrInvalidContributionStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be open or resolved",
+			errMsg:       "Status must be pending or approved",
 		},
 		{
 			name:         "reject list invalid params",
-			target:       "/api/admin/reports?limit=10&offset=10&status=open",
+			target:       "/api/admin/contributions?limit=10&offset=10&status=pending",
 			listErr:      errs.ErrInvalidParams,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Limit should be between 1-100 and Offset >= 0",
 		},
 		{
 			name:         "500 when service fails",
-			target:       "/api/admin/reports?limit=10&offset=10&status=open",
+			target:       "/api/admin/contributions?limit=10&offset=10&status=pending",
 			listErr:      errs.ErrDatabaseDown,
 			statusWanted: http.StatusInternalServerError,
 			errMsg:       "Internal server error",
 		},
 		{
-			name:         "accept open status",
-			target:       "/api/admin/reports?limit=10&offset=10&status=open",
-			listResult:   []models.Report{{ID: 1, CourseName: "Linux", Status: "open"}},
+			name:         "accept pending status",
+			target:       "/api/admin/contributions?limit=10&offset=10&status=pending",
+			listResult:   []models.Contribution{{ID: 1, CourseName: "Linux", Status: "pending"}},
 			statusWanted: http.StatusOK,
 			wantLimit:    10,
 			wantOffset:   10,
-			wantStatus:   "open",
+			wantStatus:   "pending",
 		},
 		{
-			name:         "accept resolved status with search",
-			target:       "/api/admin/reports?limit=50&offset=100&q=Linux&status=resolved",
-			listResult:   []models.Report{{ID: 2, CourseName: "Go", Status: "resolved"}},
+			name:         "accept approved status with search",
+			target:       "/api/admin/contributions?limit=50&offset=100&q=Linux&status=approved",
+			listResult:   []models.Contribution{{ID: 2, CourseName: "Go", Status: "approved"}},
 			statusWanted: http.StatusOK,
 			wantLimit:    50,
 			wantOffset:   100,
 			wantQ:        "Linux",
-			wantStatus:   "resolved",
+			wantStatus:   "approved",
 		},
 		{
 			name:         "default pagination and trimmed status",
-			target:       "/api/admin/reports?status=+open+",
-			listResult:   []models.Report{},
+			target:       "/api/admin/contributions?status=+pending+",
+			listResult:   []models.Contribution{},
 			statusWanted: http.StatusOK,
 			wantLimit:    25,
 			wantOffset:   0,
-			wantStatus:   "open",
+			wantStatus:   "pending",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{listErr: tt.listErr, listResult: tt.listResult}
-			fakeContributionService := &fakeContributionService{}
+			fakeReportService := &fakeReportService{}
+			fakeContributionService := &fakeContributionService{listErr: tt.listErr, listResult: tt.listResult}
 			h := testHandler(t, fakeReportService, fakeContributionService)
 			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
 			rr := httptest.NewRecorder()
 
-			h.handleAdminGetReports(rr, req)
+			h.handleAdminGetContributions(rr, req)
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
@@ -249,21 +250,21 @@ func TestHandleAdminGetReports(t *testing.T) {
 				if got["error"] != tt.errMsg {
 					t.Fatalf("error: got %q want %q", got["error"], tt.errMsg)
 				}
-				if fakeReportService.listCalls != 1 {
-					t.Fatalf("service.List calls: got %d want 1", fakeReportService.listCalls)
+				if fakeContributionService.listCalls != 1 {
+					t.Fatalf("service.List calls: got %d want 1", fakeContributionService.listCalls)
 				}
 				return
 			}
 
-			if fakeReportService.listCalls != 1 {
-				t.Fatalf("service.List calls: got %d want 1", fakeReportService.listCalls)
+			if fakeContributionService.listCalls != 1 {
+				t.Fatalf("service.List calls: got %d want 1", fakeContributionService.listCalls)
 			}
-			if fakeReportService.listLimit != tt.wantLimit || fakeReportService.listOffset != tt.wantOffset || fakeReportService.listQ != tt.wantQ || fakeReportService.listStatus != tt.wantStatus {
+			if fakeContributionService.listLimit != tt.wantLimit || fakeContributionService.listOffset != tt.wantOffset || fakeContributionService.listQ != tt.wantQ || fakeContributionService.listStatus != tt.wantStatus {
 				t.Fatalf("service.List args: got limit=%d offset=%d q=%q status=%q want limit=%d offset=%d q=%q status=%q",
-					fakeReportService.listLimit, fakeReportService.listOffset, fakeReportService.listQ, fakeReportService.listStatus,
+					fakeContributionService.listLimit, fakeContributionService.listOffset, fakeContributionService.listQ, fakeContributionService.listStatus,
 					tt.wantLimit, tt.wantOffset, tt.wantQ, tt.wantStatus)
 			}
-			var got []models.Report
+			var got []models.Contribution
 			if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
 				t.Fatalf("json decode: %v", err)
 			}
@@ -274,7 +275,7 @@ func TestHandleAdminGetReports(t *testing.T) {
 	}
 }
 
-func TestHandleAdminUpdateReport(t *testing.T) {
+func TestHandleAdminUpdateContribution(t *testing.T) {
 	tests := []struct {
 		name         string
 		pathID       string
@@ -295,21 +296,21 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 			wantCalls:    0,
 		},
 		{
-			name:         "400 invalid report id",
+			name:         "400 invalid contribution id",
 			pathID:       "abc",
-			body:         `{"status":"open"}`,
-			updateErr:    errs.ErrInvalidReportID,
+			body:         `{"status":"pending"}`,
+			updateErr:    errs.ErrInvalidContributionID,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Invalid report id",
+			errMsg:       "Invalid contribution id",
 			wantCalls:    1,
 		},
 		{
-			name:         "404 report not found",
+			name:         "404 contribution not found",
 			pathID:       "10",
-			body:         `{"status":"open"}`,
-			updateErr:    errs.ErrReportNotFound,
+			body:         `{"status":"pending"}`,
+			updateErr:    errs.ErrContributionNotFound,
 			statusWanted: http.StatusNotFound,
-			errMsg:       "Report not found",
+			errMsg:       "Contribution not found",
 			wantCalls:    1,
 		},
 		{
@@ -324,51 +325,51 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 		{
 			name:         "400 invalid status",
 			pathID:       "10",
-			body:         `{"status":"pending"}`,
-			updateErr:    errs.ErrInvalidReportStatus,
+			body:         `{"status":"open"}`,
+			updateErr:    errs.ErrInvalidContributionStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be open or resolved",
+			errMsg:       "Status must be pending or approved",
 			wantCalls:    1,
 		},
 		{
 			name:         "500 when service fails",
 			pathID:       "10",
-			body:         `{"status":"open"}`,
+			body:         `{"status":"pending"}`,
 			updateErr:    errs.ErrDatabaseDown,
 			statusWanted: http.StatusInternalServerError,
 			errMsg:       "Internal server error",
 			wantCalls:    1,
 		},
 		{
-			name:         "accept valid open status",
+			name:         "accept valid pending status",
 			pathID:       "10",
-			body:         `{"status":"open"}`,
+			body:         `{"status":"pending"}`,
 			statusWanted: http.StatusOK,
 			wantCalls:    1,
 			wantID:       "10",
-			wantStatus:   "open",
+			wantStatus:   "pending",
 		},
 		{
-			name:         "accept valid resolved status",
+			name:         "accept valid approved status",
 			pathID:       "10",
-			body:         `{"status":"resolved"}`,
+			body:         `{"status":"approved"}`,
 			statusWanted: http.StatusOK,
 			wantCalls:    1,
 			wantID:       "10",
-			wantStatus:   "resolved",
+			wantStatus:   "approved",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{updateErr: tt.updateErr}
-			fakeContributionService := &fakeContributionService{}
+			fakeReportService := &fakeReportService{}
+			fakeContributionService := &fakeContributionService{updateErr: tt.updateErr}
 			h := testHandler(t, fakeReportService, fakeContributionService)
-			req := httptest.NewRequest(http.MethodPatch, "/api/admin/reports/"+tt.pathID, bytes.NewBufferString(tt.body))
+			req := httptest.NewRequest(http.MethodPatch, "/api/admin/contributions/"+tt.pathID, bytes.NewBufferString(tt.body))
 			req.SetPathValue("id", tt.pathID)
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
 
-			h.handleAdminUpdateReport(rr, req)
+			h.handleAdminUpdateContribution(rr, req)
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
@@ -382,18 +383,18 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 				if got["error"] != tt.errMsg {
 					t.Fatalf("error: got %q want %q", got["error"], tt.errMsg)
 				}
-				if fakeReportService.updateCalls != tt.wantCalls {
-					t.Fatalf("service.Update calls: got %d want %d", fakeReportService.updateCalls, tt.wantCalls)
+				if fakeContributionService.updateCalls != tt.wantCalls {
+					t.Fatalf("service.Update calls: got %d want %d", fakeContributionService.updateCalls, tt.wantCalls)
 				}
 				return
 			}
 
-			if fakeReportService.updateCalls != tt.wantCalls {
-				t.Fatalf("service.Update calls: got %d want %d", fakeReportService.updateCalls, tt.wantCalls)
+			if fakeContributionService.updateCalls != tt.wantCalls {
+				t.Fatalf("service.Update calls: got %d want %d", fakeContributionService.updateCalls, tt.wantCalls)
 			}
-			if fakeReportService.updateID != tt.wantID || fakeReportService.updateStatus != tt.wantStatus {
+			if fakeContributionService.updateID != tt.wantID || fakeContributionService.updateStatus != tt.wantStatus {
 				t.Fatalf("service.Update args: got id=%q status=%q want id=%q status=%q",
-					fakeReportService.updateID, fakeReportService.updateStatus, tt.wantID, tt.wantStatus)
+					fakeContributionService.updateID, fakeContributionService.updateStatus, tt.wantID, tt.wantStatus)
 			}
 			var got map[string]string
 			if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
@@ -406,7 +407,7 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 	}
 }
 
-func TestHandleAdminDeleteReport(t *testing.T) {
+func TestHandleAdminDeleteContribution(t *testing.T) {
 	tests := []struct {
 		name         string
 		pathID       string
@@ -417,19 +418,19 @@ func TestHandleAdminDeleteReport(t *testing.T) {
 		wantID       string
 	}{
 		{
-			name:         "400 invalid report id",
+			name:         "400 invalid contribution id",
 			pathID:       "abc",
-			deleteErr:    errs.ErrInvalidReportID,
+			deleteErr:    errs.ErrInvalidContributionID,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Invalid report id",
+			errMsg:       "Invalid contribution id",
 			wantCalls:    1,
 		},
 		{
-			name:         "404 report not found",
+			name:         "404 contribution not found",
 			pathID:       "10",
-			deleteErr:    errs.ErrReportNotFound,
+			deleteErr:    errs.ErrContributionNotFound,
 			statusWanted: http.StatusNotFound,
-			errMsg:       "Report not found",
+			errMsg:       "Contribution not found",
 			wantCalls:    1,
 		},
 		{
@@ -457,14 +458,14 @@ func TestHandleAdminDeleteReport(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{deleteErr: tt.deleteErr}
-			fakeContributionService := &fakeContributionService{}
+			fakeReportService := &fakeReportService{}
+			fakeContributionService := &fakeContributionService{deleteErr: tt.deleteErr}
 			h := testHandler(t, fakeReportService, fakeContributionService)
-			req := httptest.NewRequest(http.MethodDelete, "/api/admin/reports/10", nil)
+			req := httptest.NewRequest(http.MethodDelete, "/api/admin/contributions/10", nil)
 			req.SetPathValue("id", tt.pathID)
 			rr := httptest.NewRecorder()
 
-			h.handleAdminDeleteReport(rr, req)
+			h.handleAdminDeleteContribution(rr, req)
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
@@ -478,17 +479,17 @@ func TestHandleAdminDeleteReport(t *testing.T) {
 				if got["error"] != tt.errMsg {
 					t.Fatalf("error: got %q want %q", got["error"], tt.errMsg)
 				}
-				if fakeReportService.deleteCalls != tt.wantCalls {
-					t.Fatalf("service.Delete calls: got %d want %d", fakeReportService.deleteCalls, tt.wantCalls)
+				if fakeContributionService.deleteCalls != tt.wantCalls {
+					t.Fatalf("service.Delete calls: got %d want %d", fakeContributionService.deleteCalls, tt.wantCalls)
 				}
 				return
 			}
 
-			if fakeReportService.deleteCalls != tt.wantCalls {
-				t.Fatalf("service.Delete calls: got %d want %d", fakeReportService.deleteCalls, tt.wantCalls)
+			if fakeContributionService.deleteCalls != tt.wantCalls {
+				t.Fatalf("service.Delete calls: got %d want %d", fakeContributionService.deleteCalls, tt.wantCalls)
 			}
-			if fakeReportService.deleteID != tt.wantID {
-				t.Fatalf("service.Delete id: got %q want %q", fakeReportService.deleteID, tt.wantID)
+			if fakeContributionService.deleteID != tt.wantID {
+				t.Fatalf("service.Delete id: got %q want %q", fakeContributionService.deleteID, tt.wantID)
 			}
 			var got map[string]string
 			if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {

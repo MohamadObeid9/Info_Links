@@ -1,24 +1,21 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"strings"
 
-	"infolinks-backend/internal/database"
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
 
 func (h *Handler) handlePostContribution(w http.ResponseWriter, r *http.Request) {
-	var c models.Contribution
-	if !decodeJSONBody(w, r, &c) {
+	var contribution models.Contribution
+	if !decodeJSONBody(w, r, &contribution) {
 		return
 	}
-	_, err := database.DB.Exec("INSERT INTO contributions (course_name, link_url, note) VALUES ($1, $2, $3)",
-		c.CourseName, c.LinkURL, c.Note)
-	if err != nil {
-		h.logger.Error("db error", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	if err := h.contributionService.Create(r.Context(), contribution); err != nil {
+		mapPostContributionErr(h, w, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -30,46 +27,12 @@ func (h *Handler) handleAdminGetContributions(w http.ResponseWriter, r *http.Req
 	limit, offset, q := parsePaginationParams(r, 25)
 	status := strings.TrimSpace(r.URL.Query().Get("status"))
 
-	query := "SELECT id, course_name, link_url, note, status, created_at FROM contributions"
-	var args []any
-	argIdx := 1
-	var conditions []string
-	if q != "" {
-		conditions = append(conditions, fmt.Sprintf("(course_name ILIKE $%d OR link_url ILIKE $%d OR note ILIKE $%d)", argIdx, argIdx, argIdx))
-		args = append(args, "%"+q+"%")
-		argIdx++
-	}
-	if status != "" {
-		conditions = append(conditions, fmt.Sprintf("status = $%d", argIdx))
-		args = append(args, status)
-		argIdx++
-	}
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
-	query += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
-	args = append(args, limit, offset)
-
-	rows, err := database.DB.Query(query, args...)
+	contributions, err := h.contributionService.List(r.Context(), limit, offset, q, status)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		mapListContributionErr(h, w, err)
 		return
 	}
-	defer rows.Close()
-	var contribs []models.Contribution
-	for rows.Next() {
-		var c models.Contribution
-		if err := rows.Scan(&c.ID, &c.CourseName, &c.LinkURL, &c.Note, &c.Status, &c.CreatedAt); err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
-		contribs = append(contribs, c)
-	}
-	if err := rows.Err(); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	writeJSON(w, http.StatusOK, contribs)
+	writeJSON(w, http.StatusOK, contributions)
 }
 
 func (h *Handler) handleAdminUpdateContribution(w http.ResponseWriter, r *http.Request) {
@@ -80,9 +43,9 @@ func (h *Handler) handleAdminUpdateContribution(w http.ResponseWriter, r *http.R
 	if !decodeJSONBody(w, r, &body) {
 		return
 	}
-	_, err := database.DB.Exec("UPDATE contributions SET status = $1 WHERE id = $2", body.Status, id)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+
+	if err := h.contributionService.Update(r.Context(), body.Status, id); err != nil {
+		mapUpdateContributionErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -90,10 +53,61 @@ func (h *Handler) handleAdminUpdateContribution(w http.ResponseWriter, r *http.R
 
 func (h *Handler) handleAdminDeleteContribution(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	_, err := database.DB.Exec("DELETE FROM contributions WHERE id = $1", id)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	if err := h.contributionService.Delete(r.Context(), id); err != nil {
+		mapDeleteContributionErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Helpers functions
+
+func mapPostContributionErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrCourseNameAndLinkUrlRequired):
+		writeJSONError(w, http.StatusBadRequest, "Course name and link URL are required")
+	default:
+		h.logger.Error("create contribution failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapDeleteContributionErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrInvalidContributionID):
+		writeJSONError(w, http.StatusBadRequest, "Invalid contribution id")
+	case errors.Is(err, errs.ErrContributionNotFound):
+		writeJSONError(w, http.StatusNotFound, "Contribution not found")
+	default:
+		h.logger.Error("delete contribution failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapUpdateContributionErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrContributionNotFound):
+		writeJSONError(w, http.StatusNotFound, "Contribution not found")
+	case errors.Is(err, errs.ErrInvalidContributionID):
+		writeJSONError(w, http.StatusBadRequest, "Invalid contribution id")
+	case errors.Is(err, errs.ErrStatusRequired):
+		writeJSONError(w, http.StatusBadRequest, "Status is required")
+	case errors.Is(err, errs.ErrInvalidContributionStatus):
+		writeJSONError(w, http.StatusBadRequest, "Status must be pending or approved")
+	default:
+		h.logger.Error("update contribution failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapListContributionErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrInvalidParams):
+		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
+	case errors.Is(err, errs.ErrInvalidContributionStatus):
+		writeJSONError(w, http.StatusBadRequest, "Status must be pending or approved")
+	default:
+		h.logger.Error("list contributions failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
 }

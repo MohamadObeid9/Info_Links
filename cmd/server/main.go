@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -29,13 +30,12 @@ func main() {
 	}
 	defer dbClient.Close()
 
-	reportRepo := repository.NewPostgresReportRepository(dbClient.DB)
-	reportService := service.NewReportService(reportRepo)
-
+	services := handleServices(dbClient.DB)
 	apiHandler, err := api.NewHandler(api.Dependencies{
-		Logger:        logger.With("component", "api"),
-		JWTSecret:     []byte(cfg.JWTSecret),
-		ReportService: reportService,
+		Logger:              logger.With("component", "api"),
+		JWTSecret:           []byte(cfg.JWTSecret),
+		ReportService:       services.ReportService,
+		ContributionService: services.ContributionService,
 	})
 	if err != nil {
 		logger.Error("api handler initialization failed", "error", err)
@@ -61,4 +61,19 @@ func newLogger(env string) *slog.Logger {
 	}
 	logger := slog.New(logHandler).With("env", env)
 	return logger
+}
+
+func handleServices(db *sql.DB) *api.Dependencies {
+	reportRepo := repository.NewPostgresReportRepository(db)
+	reportService := service.NewReportService(reportRepo)
+
+	contributionsRepo := repository.NewPostgresContributionRepository(db)
+	contributionsService := service.NewContributionService(contributionsRepo)
+
+	dependencies := &api.Dependencies{
+		ReportService:       reportService,
+		ContributionService: contributionsService,
+	}
+
+	return dependencies
 }
