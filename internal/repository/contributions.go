@@ -14,11 +14,11 @@ const (
 	deleteContributionQuery = `DELETE FROM contributions WHERE id = $1`
 	updateContributionQuery = `UPDATE contributions SET status = $1 WHERE id = $2`
 
-	listContributionsBaseQuery        = `SELECT id, course_name, link_url, note, status, created_at FROM contributions`
+	listContributionsBaseQuery        = `SELECT id, course_name, link_url, link_type, note, status, created_at FROM contributions`
 	listContributionsNoFilterQuery    = listContributionsBaseQuery + ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`
-	listContributionsWithQQuery       = listContributionsBaseQuery + ` WHERE (course_name ILIKE $1 OR link_url ILIKE $1 OR note ILIKE $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`
+	listContributionsWithQQuery       = listContributionsBaseQuery + ` WHERE (course_name ILIKE $1 OR link_url ILIKE $1 OR link_type ILIKE $1 OR note ILIKE $1 ) ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 	listContributionsWithStatusQuery  = listContributionsBaseQuery + ` WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
-	listContributionsWithQStatusQuery = listContributionsBaseQuery + ` WHERE (course_name ILIKE $1 OR link_url ILIKE $1 OR note ILIKE $1) AND status = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
+	listContributionsWithQStatusQuery = listContributionsBaseQuery + ` WHERE (course_name ILIKE $1 OR link_url ILIKE $1 OR link_type ILIKE $1 OR note ILIKE $1) AND status = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
 )
 
 type ContributionRepository interface {
@@ -102,7 +102,7 @@ func (c *PostgresContributionRepository) List(ctx context.Context, limit int, of
 	var contributions []models.Contribution
 	for rows.Next() {
 		var contribution models.Contribution
-		if err := rows.Scan(&contribution.ID, &contribution.CourseName, &contribution.LinkURL, &contribution.Note, &contribution.Status, &contribution.CreatedAt); err != nil {
+		if err := rows.Scan(&contribution.ID, &contribution.CourseName, &contribution.LinkURL, &contribution.LinkType, &contribution.Note, &contribution.Status, &contribution.CreatedAt); err != nil {
 			return nil, fmt.Errorf("list contributions rows scan: %w", err)
 		}
 		contributions = append(contributions, contribution)

@@ -22,6 +22,7 @@ func NewContributionService(repo repository.ContributionRepository) *Contributio
 func (c *ContributionService) Create(ctx context.Context, contribution models.Contribution) error {
 	contribution.CourseName = strings.TrimSpace(contribution.CourseName)
 	contribution.LinkURL = strings.TrimSpace(contribution.LinkURL)
+	contribution.LinkType = strings.TrimSpace(contribution.LinkType)
 	contribution.Note = strings.TrimSpace(contribution.Note)
 	if contribution.CourseName == "" || contribution.LinkURL == "" {
 		return errs.ErrCourseNameAndLinkUrlRequired
