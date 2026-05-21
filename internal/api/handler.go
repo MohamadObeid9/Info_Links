@@ -13,6 +13,7 @@ type Handler struct {
 	logger              *slog.Logger
 	jwtSecret           []byte
 	reportService       reportService
+	contentService      contentService
 	contributionService contributionService
 }
 
@@ -20,7 +21,12 @@ type Dependencies struct {
 	Logger              *slog.Logger
 	JWTSecret           []byte
 	ReportService       reportService
+	ContentService      contentService
 	ContributionService contributionService
+}
+
+type contentService interface {
+	Get(ctx context.Context) ([]byte, error)
 }
 
 type reportService interface {
@@ -55,10 +61,15 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("contribution service is required")
 	}
 
+	if deps.ContentService == nil {
+		return nil, fmt.Errorf("content service is required")
+	}
+
 	newHandler := Handler{
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
 		reportService:       deps.ReportService,
+		contentService:      deps.ContentService,
 		contributionService: deps.ContributionService,
 	}
 

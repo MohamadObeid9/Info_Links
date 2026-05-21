@@ -113,8 +113,7 @@ func TestHandlePostReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeReportService := &fakeReportService{createErr: tt.createErr}
-			fakeContributionService := &fakeContributionService{}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withReport(fakeReportService))
 			req := httptest.NewRequest(http.MethodPost, "/api/reports", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
@@ -230,8 +229,7 @@ func TestHandleAdminGetReports(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeReportService := &fakeReportService{listErr: tt.listErr, listResult: tt.listResult}
-			fakeContributionService := &fakeContributionService{}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withReport(fakeReportService))
 			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
 			rr := httptest.NewRecorder()
 
@@ -361,8 +359,7 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeReportService := &fakeReportService{updateErr: tt.updateErr}
-			fakeContributionService := &fakeContributionService{}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withReport(fakeReportService))
 			req := httptest.NewRequest(http.MethodPatch, "/api/admin/reports/"+tt.pathID, bytes.NewBufferString(tt.body))
 			req.SetPathValue("id", tt.pathID)
 			req.Header.Set("Content-Type", "application/json")
@@ -458,8 +455,7 @@ func TestHandleAdminDeleteReport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeReportService := &fakeReportService{deleteErr: tt.deleteErr}
-			fakeContributionService := &fakeContributionService{}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withReport(fakeReportService))
 			req := httptest.NewRequest(http.MethodDelete, "/api/admin/reports/10", nil)
 			req.SetPathValue("id", tt.pathID)
 			rr := httptest.NewRecorder()

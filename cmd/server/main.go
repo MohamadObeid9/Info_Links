@@ -35,6 +35,7 @@ func main() {
 		Logger:              logger.With("component", "api"),
 		JWTSecret:           []byte(cfg.JWTSecret),
 		ReportService:       services.ReportService,
+		ContentService:      services.ContentService,
 		ContributionService: services.ContributionService,
 	})
 	if err != nil {
@@ -70,8 +71,12 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	contributionsRepo := repository.NewPostgresContributionRepository(db)
 	contributionsService := service.NewContributionService(contributionsRepo)
 
+	contentRepo := repository.NewPostgresContentRepository(db)
+	contentService := service.NewContentService(contentRepo)
+
 	dependencies := &api.Dependencies{
 		ReportService:       reportService,
+		ContentService:      contentService,
 		ContributionService: contributionsService,
 	}
 

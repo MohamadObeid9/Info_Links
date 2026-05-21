@@ -111,9 +111,8 @@ func TestHandlePostContribution(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{}
 			fakeContributionService := &fakeContributionService{createErr: tt.createErr}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withContribution(fakeContributionService))
 			req := httptest.NewRequest(http.MethodPost, "/api/contributions", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
@@ -230,9 +229,8 @@ func TestHandleAdminGetContributions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{}
 			fakeContributionService := &fakeContributionService{listErr: tt.listErr, listResult: tt.listResult}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withContribution(fakeContributionService))
 			req := httptest.NewRequest(http.MethodGet, tt.target, nil)
 			rr := httptest.NewRecorder()
 
@@ -361,9 +359,8 @@ func TestHandleAdminUpdateContribution(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{}
 			fakeContributionService := &fakeContributionService{updateErr: tt.updateErr}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withContribution(fakeContributionService))
 			req := httptest.NewRequest(http.MethodPatch, "/api/admin/contributions/"+tt.pathID, bytes.NewBufferString(tt.body))
 			req.SetPathValue("id", tt.pathID)
 			req.Header.Set("Content-Type", "application/json")
@@ -458,9 +455,8 @@ func TestHandleAdminDeleteContribution(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeReportService := &fakeReportService{}
 			fakeContributionService := &fakeContributionService{deleteErr: tt.deleteErr}
-			h := testHandler(t, fakeReportService, fakeContributionService)
+			h := testHandler(t, withContribution(fakeContributionService))
 			req := httptest.NewRequest(http.MethodDelete, "/api/admin/contributions/10", nil)
 			req.SetPathValue("id", tt.pathID)
 			rr := httptest.NewRecorder()
