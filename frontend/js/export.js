@@ -67,16 +67,64 @@ document.getElementById("modal").addEventListener("click", (e) => {
   if (e.target === document.getElementById("modal")) closeModal();
 });
 
+function applyHighlightFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = (params.get("highlight") || params.get("q") || "").trim();
+  if (!raw) return;
+
+  showView("home");
+  AppState.currentProg = "all";
+  document.querySelector(".filter-row").style.display = "none";
+  const extra = document.getElementById("extraSection");
+  if (extra) extra.style.display = "";
+  renderProgTabs();
+  renderYearFilters();
+  renderSemFilters();
+
+  const search = document.getElementById("searchInput");
+  if (search) search.value = raw;
+  onSearch();
+
+  requestAnimationFrame(() => {
+    const q = raw.toLowerCase();
+    let targetId = null;
+    AppState.courseById.forEach((c) => {
+      if (targetId) return;
+      if (
+        c.code.toLowerCase() === q ||
+        c.code.toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q)
+      ) {
+        targetId = c.id;
+      }
+    });
+    if (targetId) {
+      document
+        .getElementById(`course-card-${targetId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+}
+
 async function initApp() {
   trackVisit();
   await loadAll();
-  
+
+  const highlight =
+    new URLSearchParams(window.location.search).get("highlight") ||
+    new URLSearchParams(window.location.search).get("q");
+  if (highlight && highlight.trim()) {
+    applyHighlightFromURL();
+    return;
+  }
+
   // Restore view from URL path (enables deep-linking with Clean URLs)
   const v = _getPathView();
   if (v !== "home") {
     showView(v);
   }
 }
+window.applyHighlightFromURL = applyHighlightFromURL;
 window.initApp = initApp;
 window.showToast = showToast;
 window.exportData = exportData;

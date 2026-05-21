@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"infolinks-backend/internal/seo"
+
 	"github.com/rs/cors"
 )
 
@@ -50,6 +52,15 @@ func NewRouter() http.Handler {
 	mux.HandleFunc("GET /api/admin/page_views", RequireAdmin(HandleAdminGetPageViews))
 	mux.HandleFunc("GET /api/admin/link_clicks", RequireAdmin(HandleAdminGetLinkClicks))
 
+	// SEO — server-rendered pages (before SPA catch-all)
+	seoH := seo.NewHandler()
+	// Patterns without "GET " match all methods (GET, HEAD) for crawlers.
+	mux.HandleFunc("/course/{code}", seoH.HandleCourse)
+	mux.HandleFunc("/program/{slug}", seoH.HandleProgram)
+	mux.HandleFunc("/courses", seoH.HandleCoursesIndex)
+	mux.HandleFunc("/sitemap.xml", seoH.HandleSitemap)
+	mux.HandleFunc("/robots.txt", seoH.HandleRobots)
+
 	// 3. Static Files & SPA Routing
 	staticDir := "frontend/dist"
 	if _, err := os.Stat(staticDir); err != nil {
@@ -58,6 +69,15 @@ func NewRouter() http.Handler {
 
 	fs := http.FileServer(http.Dir(staticDir))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// SEO paths must not fall through to SPA (safety if route registration changes)
+		if strings.HasPrefix(r.URL.Path, "/course/") ||
+			strings.HasPrefix(r.URL.Path, "/program/") ||
+			r.URL.Path == "/courses" ||
+			r.URL.Path == "/sitemap.xml" ||
+			r.URL.Path == "/robots.txt" {
+			http.NotFound(w, r)
+			return
+		}
 		// If the file exists, serve it
 		relPath := strings.TrimPrefix(filepath.Clean(r.URL.Path), "/")
 		path := filepath.Join(staticDir, relPath)
