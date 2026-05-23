@@ -74,7 +74,7 @@ func mapPostContributionErr(h *Handler, w http.ResponseWriter, err error) {
 
 func mapDeleteContributionErr(h *Handler, w http.ResponseWriter, err error) {
 	switch {
-	case errors.Is(err, errs.ErrInvalidContributionID):
+	case errors.Is(err, errs.ErrContributionInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Invalid contribution id")
 	case errors.Is(err, errs.ErrContributionNotFound):
 		writeJSONError(w, http.StatusNotFound, "Contribution not found")
@@ -88,11 +88,11 @@ func mapUpdateContributionErr(h *Handler, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, errs.ErrContributionNotFound):
 		writeJSONError(w, http.StatusNotFound, "Contribution not found")
-	case errors.Is(err, errs.ErrInvalidContributionID):
+	case errors.Is(err, errs.ErrContributionInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Invalid contribution id")
 	case errors.Is(err, errs.ErrStatusRequired):
 		writeJSONError(w, http.StatusBadRequest, "Status is required")
-	case errors.Is(err, errs.ErrInvalidContributionStatus):
+	case errors.Is(err, errs.ErrContributionInvalidStatus):
 		writeJSONError(w, http.StatusBadRequest, "Status must be pending or approved")
 	default:
 		h.logger.Error("update contribution failed", "error", err)
@@ -104,7 +104,7 @@ func mapListContributionErr(h *Handler, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, errs.ErrInvalidParams):
 		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
-	case errors.Is(err, errs.ErrInvalidContributionStatus):
+	case errors.Is(err, errs.ErrContributionInvalidStatus):
 		writeJSONError(w, http.StatusBadRequest, "Status must be pending or approved")
 	default:
 		h.logger.Error("list contributions failed", "error", err)

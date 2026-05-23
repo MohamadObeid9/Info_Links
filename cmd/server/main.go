@@ -36,6 +36,7 @@ func main() {
 		JWTSecret:           []byte(cfg.JWTSecret),
 		ReportService:       services.ReportService,
 		ContentService:      services.ContentService,
+		FeedbackService:     services.FeedbackService,
 		ContributionService: services.ContributionService,
 	})
 	if err != nil {
@@ -71,12 +72,16 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	contributionsRepo := repository.NewPostgresContributionRepository(db)
 	contributionsService := service.NewContributionService(contributionsRepo)
 
+	feedbackRepo := repository.NewPostgresFeedbackRepository(db)
+	feedbackService := service.NewFeedbackService(feedbackRepo)
+
 	contentRepo := repository.NewPostgresContentRepository(db)
 	contentService := service.NewContentService(contentRepo)
 
 	dependencies := &api.Dependencies{
 		ReportService:       reportService,
 		ContentService:      contentService,
+		FeedbackService:     feedbackService,
 		ContributionService: contributionsService,
 	}
 

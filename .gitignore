@@ -12,5 +12,6 @@ bin/
 *.exe
 *.test
 vendor/
+.server
 
 .cursor

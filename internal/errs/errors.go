@@ -5,13 +5,21 @@ import "errors"
 var (
 	// Reports Errors
 	ErrReportNotFound      = errors.New("report not found")
-	ErrInvalidReportID     = errors.New("invalid report id")
-	ErrInvalidReportStatus = errors.New("status must be open or resolved")
+	ErrReportInvalidID     = errors.New("invalid report id")
+	ErrReportInvalidStatus = errors.New("status must be open or resolved")
 
 	// Contributions Errors
 	ErrContributionNotFound      = errors.New("contribution not found")
-	ErrInvalidContributionID     = errors.New("invalid contribution id")
-	ErrInvalidContributionStatus = errors.New("status must be pending or approved")
+	ErrContributionInvalidID     = errors.New("invalid contribution id")
+	ErrContributionInvalidStatus = errors.New("status must be pending or approved")
+
+	// Feedback Erros
+	ErrFeedbackNotFound                  = errors.New("feedback not found")
+	ErrFeedbackInvalidID                 = errors.New("invalid feedback id")
+	ErrFeedbackInvalidStatus             = errors.New("status must be new or read")
+	ErrFeedbackInvalidRating             = errors.New("rating should be between 1 and 5")
+	ErrFeedbackCategoryAndRatingRequired = errors.New("category and rating are required")
+	ErrFeedbackInvalidCategory           = errors.New("category must be one of the following : ui/ux or content or functionality or performance or accessibility")
 
 	// Common Errors
 	ErrDatabaseDown                 = errors.New("db is down")

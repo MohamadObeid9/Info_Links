@@ -10,6 +10,7 @@ import (
 type handlerTestDeps struct {
 	report       *fakeReportService
 	content      *fakeContentService
+	feedback     *fakeFeedbackService
 	contribution *fakeContributionService
 }
 
@@ -21,6 +22,10 @@ func withReport(s *fakeReportService) testHandlerOption {
 
 func withContent(s *fakeContentService) testHandlerOption {
 	return func(d *handlerTestDeps) { d.content = s }
+}
+
+func withFeedback(s *fakeFeedbackService) testHandlerOption {
+	return func(d *handlerTestDeps) { d.feedback = s }
 }
 
 func withContribution(s *fakeContributionService) testHandlerOption {
@@ -35,6 +40,7 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 	deps := handlerTestDeps{
 		report:       &fakeReportService{},
 		content:      &fakeContentService{},
+		feedback:     &fakeFeedbackService{},
 		contribution: &fakeContributionService{},
 	}
 	for _, opt := range opts {
@@ -46,6 +52,7 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 		JWTSecret:           []byte("test-jwt-secret"),
 		ReportService:       deps.report,
 		ContentService:      deps.content,
+		FeedbackService:     deps.feedback,
 		ContributionService: deps.contribution,
 	})
 	if err != nil {

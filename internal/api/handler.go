@@ -15,6 +15,7 @@ type Handler struct {
 	reportService       reportService
 	contentService      contentService
 	contributionService contributionService
+	feedbackService     feedbackService
 }
 
 type Dependencies struct {
@@ -23,6 +24,7 @@ type Dependencies struct {
 	ReportService       reportService
 	ContentService      contentService
 	ContributionService contributionService
+	FeedbackService     feedbackService
 }
 
 type contentService interface {
@@ -41,6 +43,13 @@ type contributionService interface {
 	Update(ctx context.Context, status string, idStr string) error
 	Create(ctx context.Context, contribution models.Contribution) error
 	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error)
+}
+
+type feedbackService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, feedback models.Feedback) error
+	Update(ctx context.Context, status string, idStr string) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Feedback, error)
 }
 
 func NewHandler(deps Dependencies) (*Handler, error) {
@@ -65,11 +74,16 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("content service is required")
 	}
 
+	if deps.FeedbackService == nil {
+		return nil, fmt.Errorf("feedback service is required ")
+	}
+
 	newHandler := Handler{
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
 		reportService:       deps.ReportService,
 		contentService:      deps.ContentService,
+		feedbackService:     deps.FeedbackService,
 		contributionService: deps.ContributionService,
 	}
 

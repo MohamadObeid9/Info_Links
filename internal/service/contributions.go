@@ -22,7 +22,6 @@ func NewContributionService(repo repository.ContributionRepository) *Contributio
 func (c *ContributionService) Create(ctx context.Context, contribution models.Contribution) error {
 	contribution.CourseName = strings.TrimSpace(contribution.CourseName)
 	contribution.LinkURL = strings.TrimSpace(contribution.LinkURL)
-	contribution.LinkType = strings.TrimSpace(contribution.LinkType)
 	contribution.Note = strings.TrimSpace(contribution.Note)
 	if contribution.CourseName == "" || contribution.LinkURL == "" {
 		return errs.ErrCourseNameAndLinkUrlRequired
@@ -38,7 +37,7 @@ func (c *ContributionService) Delete(ctx context.Context, idStr string) error {
 	idStr = strings.TrimSpace(idStr)
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		return errs.ErrInvalidContributionID
+		return errs.ErrContributionInvalidID
 	}
 	if err := c.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete contribution: %w", err)
@@ -52,7 +51,7 @@ func (c *ContributionService) Update(ctx context.Context, status string, idStr s
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		return errs.ErrInvalidContributionID
+		return errs.ErrContributionInvalidID
 	}
 
 	switch status {
@@ -60,7 +59,7 @@ func (c *ContributionService) Update(ctx context.Context, status string, idStr s
 	case "":
 		return errs.ErrStatusRequired
 	default:
-		return errs.ErrInvalidContributionStatus
+		return errs.ErrContributionInvalidStatus
 	}
 
 	if err := c.repo.Update(ctx, status, id); err != nil {
@@ -77,7 +76,7 @@ func (c *ContributionService) List(ctx context.Context, limit int, offset int, q
 	switch status {
 	case "pending", "approved", "":
 	default:
-		return nil, errs.ErrInvalidContributionStatus
+		return nil, errs.ErrContributionInvalidStatus
 	}
 
 	contributions, err := c.repo.List(ctx, limit, offset, q, status)

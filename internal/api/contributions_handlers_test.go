@@ -79,11 +79,11 @@ func TestHandlePostContribution(t *testing.T) {
 	}{
 		{
 			name:               "201 when service accepts the contribution",
-			body:               `{"course_name":"A","link_url":"https://example.com","link_type":"telegram","note":""}`,
+			body:               `{"course_name":"A","link_url":"https://example.com","note":""}`,
 			createErr:          nil,
 			statusWanted:       http.StatusCreated,
 			wantCalls:          1,
-			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", LinkType: "telegram", Note: ""},
+			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", Note: ""},
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -180,7 +180,7 @@ func TestHandleAdminGetContributions(t *testing.T) {
 		{
 			name:         "reject invalid status",
 			target:       "/api/admin/contributions?limit=10&offset=10&status=open",
-			listErr:      errs.ErrInvalidContributionStatus,
+			listErr:      errs.ErrContributionInvalidStatus,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Status must be pending or approved",
 		},
@@ -297,7 +297,7 @@ func TestHandleAdminUpdateContribution(t *testing.T) {
 			name:         "400 invalid contribution id",
 			pathID:       "abc",
 			body:         `{"status":"pending"}`,
-			updateErr:    errs.ErrInvalidContributionID,
+			updateErr:    errs.ErrContributionInvalidID,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Invalid contribution id",
 			wantCalls:    1,
@@ -324,7 +324,7 @@ func TestHandleAdminUpdateContribution(t *testing.T) {
 			name:         "400 invalid status",
 			pathID:       "10",
 			body:         `{"status":"open"}`,
-			updateErr:    errs.ErrInvalidContributionStatus,
+			updateErr:    errs.ErrContributionInvalidStatus,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Status must be pending or approved",
 			wantCalls:    1,
@@ -417,7 +417,7 @@ func TestHandleAdminDeleteContribution(t *testing.T) {
 		{
 			name:         "400 invalid contribution id",
 			pathID:       "abc",
-			deleteErr:    errs.ErrInvalidContributionID,
+			deleteErr:    errs.ErrContributionInvalidID,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Invalid contribution id",
 			wantCalls:    1,

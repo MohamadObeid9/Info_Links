@@ -41,7 +41,7 @@ func (s *ReportService) List(ctx context.Context, limit int, offset int, q strin
 	switch status {
 	case "open", "resolved", "":
 	default:
-		return nil, errs.ErrInvalidReportStatus
+		return nil, errs.ErrReportInvalidStatus
 	}
 
 	reps, err := s.repo.List(ctx, limit, offset, q, status)
@@ -56,7 +56,7 @@ func (s *ReportService) Delete(ctx context.Context, idStr string) error {
 	idStr = strings.TrimSpace(idStr)
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		return errs.ErrInvalidReportID // err 400
+		return errs.ErrReportInvalidID // err 400
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete report: %w", err) // err 500
@@ -70,7 +70,7 @@ func (s *ReportService) Update(ctx context.Context, status string, idStr string)
 
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
-		return errs.ErrInvalidReportID
+		return errs.ErrReportInvalidID
 	}
 
 	switch status {
@@ -78,7 +78,7 @@ func (s *ReportService) Update(ctx context.Context, status string, idStr string)
 	case "":
 		return errs.ErrStatusRequired
 	default:
-		return errs.ErrInvalidReportStatus
+		return errs.ErrReportInvalidStatus
 	}
 
 	if err := s.repo.Update(ctx, status, id); err != nil {

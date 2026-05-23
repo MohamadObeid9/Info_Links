@@ -131,7 +131,7 @@ func TestContributionService_List(t *testing.T) {
 			offset:  10,
 			q:       "",
 			status:  "open",
-			err:     errs.ErrInvalidContributionStatus,
+			err:     errs.ErrContributionInvalidStatus,
 			listErr: nil,
 		},
 		{
@@ -249,10 +249,10 @@ func TestContributionService_Create(t *testing.T) {
 		},
 		{
 			name:         "trims and persists",
-			contribution: models.Contribution{CourseName: "  My Course  ", LinkURL: "  https://test.com  ", LinkType: "  telegram   ", Note: "  note  "},
+			contribution: models.Contribution{CourseName: "  My Course  ", LinkURL: "  https://test.com  ", Note: "  note  "},
 			createErr:    nil,
 			err:          nil,
-			resultWanted: &models.Contribution{CourseName: "My Course", LinkURL: "https://test.com", LinkType: "telegram", Note: "note"},
+			resultWanted: &models.Contribution{CourseName: "My Course", LinkURL: "https://test.com", Note: "note"},
 		},
 	}
 	for _, tt := range tests {
@@ -300,31 +300,31 @@ func TestContributionService_Delete(t *testing.T) {
 		{
 			name:      "reject non numerical id",
 			idStr:     "ABD",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			deleteErr: nil,
 		},
 		{
 			name:      "reject empty id with spaces",
 			idStr:     "  ",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			deleteErr: nil,
 		},
 		{
 			name:      "reject empty id without spaces",
 			idStr:     "",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			deleteErr: nil,
 		},
 		{
 			name:      "reject id = 0",
 			idStr:     "0",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			deleteErr: nil,
 		},
 		{
 			name:      "reject id < 0",
 			idStr:     "-10",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			deleteErr: nil,
 		},
 		{
@@ -392,33 +392,33 @@ func TestContributionService_Update(t *testing.T) {
 		{
 			name:      "reject non numerical id",
 			idStr:     "abc",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			updateErr: nil,
 		},
 		{
 			name:      "reject empty id with spaces",
 			idStr:     "  ",
 			status:    "pending",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			updateErr: nil,
 		},
 		{
 			name:      "reject empty id without spaces",
 			idStr:     "",
 			status:    "open",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			updateErr: nil,
 		},
 		{
 			name:      "reject id = 0",
 			idStr:     "0",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			updateErr: nil,
 		},
 		{
 			name:      "reject id < 0",
 			idStr:     "-10",
-			err:       errs.ErrInvalidContributionID,
+			err:       errs.ErrContributionInvalidID,
 			updateErr: nil,
 		},
 		{
@@ -439,7 +439,7 @@ func TestContributionService_Update(t *testing.T) {
 			name:      "reject invalid status",
 			idStr:     "10",
 			status:    "open",
-			err:       errs.ErrInvalidContributionStatus,
+			err:       errs.ErrContributionInvalidStatus,
 			updateErr: nil,
 		},
 		{
