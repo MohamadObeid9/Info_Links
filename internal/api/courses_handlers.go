@@ -1,49 +1,81 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
-	"infolinks-backend/internal/database"
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
 
 // ── Admin Protected Handlers ────────────────────────────────────────────────
 
 func (h *Handler) handleAdminPostCourse(w http.ResponseWriter, r *http.Request) {
-	var c models.Course
-	if !decodeJSONBody(w, r, &c) {
+	var course models.Course
+	if !decodeJSONBody(w, r, &course) {
 		return
 	}
-	_, err := database.DB.Exec("INSERT INTO courses (semester_id, name, code, is_optional, display_order) VALUES ($1, $2, $3, $4, $5)",
-		c.SemesterID, c.Name, c.Code, c.IsOptional, c.DisplayOrder)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	if err := h.courseService.Create(r.Context(), course); err != nil {
+		mapPostCourseErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleAdminPatchCourse(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	var c models.Course
-	if !decodeJSONBody(w, r, &c) {
+	idStr := r.PathValue("id")
+	var course models.Course
+	if !decodeJSONBody(w, r, &course) {
 		return
 	}
-	_, err := database.DB.Exec("UPDATE courses SET name = $1, code = $2, semester_id = $3 WHERE id = $4",
-		c.Name, c.Code, c.SemesterID, id)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	if err := h.courseService.Update(r.Context(), course, idStr); err != nil {
+		mapUpdateCourseErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleAdminDeleteCourse(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	_, err := database.DB.Exec("DELETE FROM courses WHERE id = $1", id)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	idStr := r.PathValue("id")
+	if err := h.courseService.Delete(r.Context(), idStr); err != nil {
+		mapDeleteCourseErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Helpers functions
+
+func mapPostCourseErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
+		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
+	default:
+		h.logger.Error("create course failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapDeleteCourseErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrCourseInvalidID):
+		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
+	case errors.Is(err, errs.ErrCourseNotFound):
+		writeJSONError(w, http.StatusNotFound, "Course not found")
+	default:
+		h.logger.Error("delete course failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrCourseInvalidID):
+		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
+	case errors.Is(err, errs.ErrCourseNotFound):
+		writeJSONError(w, http.StatusNotFound, "Course not found")
+	default:
+		h.logger.Error("update course failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
 }

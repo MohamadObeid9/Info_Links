@@ -13,5 +13,6 @@ bin/
 *.test
 vendor/
 .server
+tmp/
 
 .cursor

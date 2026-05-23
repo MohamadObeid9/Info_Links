@@ -69,10 +69,10 @@ type Contribution struct {
 	ID         int    `json:"id"`
 	CourseName string `json:"course_name"`
 	LinkURL    string `json:"link_url"`
-	LinkType   string `json:"link_type"`
-	Note       string `json:"note"`
-	Status     string `json:"status"` // pending, approved
-	CreatedAt  string `json:"created_at"`
+	// LinkType   string `json:"link_type"`
+	Note      string `json:"note"`
+	Status    string `json:"status"` // pending, approved
+	CreatedAt string `json:"created_at"`
 }
 
 // Feedback represents user feedback

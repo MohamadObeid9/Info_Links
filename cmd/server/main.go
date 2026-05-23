@@ -34,9 +34,12 @@ func main() {
 	apiHandler, err := api.NewHandler(api.Dependencies{
 		Logger:              logger.With("component", "api"),
 		JWTSecret:           []byte(cfg.JWTSecret),
+		CourseService:       services.CourseService,
 		ReportService:       services.ReportService,
 		ContentService:      services.ContentService,
 		FeedbackService:     services.FeedbackService,
+		PageViewService:     services.PageViewService,
+		LinkClickService:    services.LinkClickService,
 		ContributionService: services.ContributionService,
 	})
 	if err != nil {
@@ -78,10 +81,22 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	contentRepo := repository.NewPostgresContentRepository(db)
 	contentService := service.NewContentService(contentRepo)
 
+	courseRepo := repository.NewPostgresCourseRepository(db)
+	courseService := service.NewCourseService(courseRepo)
+
+	pageViewRepo := repository.NewPostgresPageViewRepository(db)
+	pageViewService := service.NewPageViewService(pageViewRepo)
+
+	linkClickRepo := repository.NewPostgresLinkClickRepository(db)
+	linkClickService := service.NewLinkClickService(linkClickRepo)
+
 	dependencies := &api.Dependencies{
+		CourseService:       courseService,
 		ReportService:       reportService,
 		ContentService:      contentService,
 		FeedbackService:     feedbackService,
+		PageViewService:     pageViewService,
+		LinkClickService:    linkClickService,
 		ContributionService: contributionsService,
 	}
 

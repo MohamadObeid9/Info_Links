@@ -16,6 +16,9 @@ type Handler struct {
 	contentService      contentService
 	contributionService contributionService
 	feedbackService     feedbackService
+	courseService       courseService
+	linkClickService    linkClickService
+	pageViewService     pageViewService
 }
 
 type Dependencies struct {
@@ -25,10 +28,23 @@ type Dependencies struct {
 	ContentService      contentService
 	ContributionService contributionService
 	FeedbackService     feedbackService
+	CourseService       courseService
+	LinkClickService    linkClickService
+	PageViewService     pageViewService
 }
 
 type contentService interface {
 	Get(ctx context.Context) ([]byte, error)
+}
+
+type pageViewService interface {
+	List(ctx context.Context) ([]models.PageView, error)
+	Create(ctx context.Context, pv models.PageView) error
+}
+
+type linkClickService interface {
+	List(ctx context.Context) ([]models.LinkClick, error)
+	Create(ctx context.Context, lc models.LinkClick) error
 }
 
 type reportService interface {
@@ -50,6 +66,12 @@ type feedbackService interface {
 	Create(ctx context.Context, feedback models.Feedback) error
 	Update(ctx context.Context, status string, idStr string) error
 	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Feedback, error)
+}
+
+type courseService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, course models.Course) error
+	Update(ctx context.Context, course models.Course, idStr string) error
 }
 
 func NewHandler(deps Dependencies) (*Handler, error) {
@@ -78,12 +100,23 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("feedback service is required ")
 	}
 
+	if deps.CourseService == nil {
+		return nil, fmt.Errorf("course service is required")
+	}
+
+	if deps.LinkClickService == nil {
+		return nil, fmt.Errorf("link click servie is required")
+	}
+
 	newHandler := Handler{
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
+		courseService:       deps.CourseService,
 		reportService:       deps.ReportService,
 		contentService:      deps.ContentService,
 		feedbackService:     deps.FeedbackService,
+		pageViewService:     deps.PageViewService,
+		linkClickService:    deps.LinkClickService,
 		contributionService: deps.ContributionService,
 	}
 
