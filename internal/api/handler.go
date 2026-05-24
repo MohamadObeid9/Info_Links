@@ -19,6 +19,7 @@ type Handler struct {
 	courseService       courseService
 	linkClickService    linkClickService
 	pageViewService     pageViewService
+	linkService         linkService
 }
 
 type Dependencies struct {
@@ -31,10 +32,17 @@ type Dependencies struct {
 	CourseService       courseService
 	LinkClickService    linkClickService
 	PageViewService     pageViewService
+	LinkService         linkService
 }
 
 type contentService interface {
 	Get(ctx context.Context) ([]byte, error)
+}
+
+type linkService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, link models.Link) error
+	Update(ctx context.Context, link models.Link, idStr string) error
 }
 
 type pageViewService interface {
@@ -108,9 +116,14 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("link click servie is required")
 	}
 
+	if deps.LinkService == nil {
+		return nil, fmt.Errorf("link service is required")
+	}
+
 	newHandler := Handler{
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
+		linkService:         deps.LinkService,
 		courseService:       deps.CourseService,
 		reportService:       deps.ReportService,
 		contentService:      deps.ContentService,

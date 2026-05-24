@@ -1,49 +1,81 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
-	"infolinks-backend/internal/database"
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
 
 // ── Admin Protected Handlers ────────────────────────────────────────────────
 
 func (h *Handler) handleAdminPostLink(w http.ResponseWriter, r *http.Request) {
-	var l models.Link
-	if !decodeJSONBody(w, r, &l) {
+	var link models.Link
+	if !decodeJSONBody(w, r, &link) {
 		return
 	}
-	_, err := database.DB.Exec("INSERT INTO links (course_id, type, url, label, note, content_type, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-		l.CourseID, l.Type, l.URL, l.Label, l.Note, l.ContentType, l.DisplayOrder)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	if err := h.linkService.Create(r.Context(), link); err != nil {
+		mapPostLinkErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleAdminPatchLink(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	var l models.Link
-	if !decodeJSONBody(w, r, &l) {
+	idStr := r.PathValue("id")
+	var link models.Link
+	if !decodeJSONBody(w, r, &link) {
 		return
 	}
-	_, err := database.DB.Exec("UPDATE links SET type = $1, url = $2, label = $3, note = $4, content_type = $5 WHERE id = $6",
-		l.Type, l.URL, l.Label, l.Note, l.ContentType, id)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	if err := h.linkService.Update(r.Context(), link, idStr); err != nil {
+		mapUpdateLinkErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) handleAdminDeleteLink(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	_, err := database.DB.Exec("DELETE FROM links WHERE id = $1", id)
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	idStr := r.PathValue("id")
+	if err := h.linkService.Delete(r.Context(), idStr); err != nil {
+		mapDeleteLinkErr(h, w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// Helpers functions
+
+func mapPostLinkErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrLinkURLAndLabelRequired):
+		writeJSONError(w, http.StatusBadRequest, "Link url and link label are required")
+	default:
+		h.logger.Error("create link failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapDeleteLinkErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrLinkInvalidID):
+		writeJSONError(w, http.StatusBadRequest, "Invalid link id")
+	case errors.Is(err, errs.ErrLinkNotFound):
+		writeJSONError(w, http.StatusNotFound, "Link not found")
+	default:
+		h.logger.Error("delete link failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapUpdateLinkErr(h *Handler, w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errs.ErrLinkNotFound):
+		writeJSONError(w, http.StatusNotFound, "Link not found")
+	case errors.Is(err, errs.ErrLinkInvalidID):
+		writeJSONError(w, http.StatusBadRequest, "Invalid link id")
+	default:
+		h.logger.Error("update link failed", "error", err)
+		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+	}
 }

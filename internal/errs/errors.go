@@ -26,6 +26,11 @@ var (
 	ErrCourseInvalidID           = errors.New("course invalid id")
 	ErrCourseCodeAndNameRequired = errors.New("course code and course name are required")
 
+	// Links Errors
+	ErrLinkNotFound            = errors.New("link not found")
+	ErrLinkInvalidID           = errors.New("invalid link id")
+	ErrLinkURLAndLabelRequired = errors.New("link url and link label are required")
+
 	// Common Errors
 	ErrDatabaseDown                 = errors.New("db is down")
 	ErrStatusRequired               = errors.New("status is required")

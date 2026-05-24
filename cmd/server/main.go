@@ -90,7 +90,11 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	linkClickRepo := repository.NewPostgresLinkClickRepository(db)
 	linkClickService := service.NewLinkClickService(linkClickRepo)
 
+	linkRepo := repository.NewPostgresLinkRepository(db)
+	linkService := service.NewLinkService(linkRepo)
+
 	dependencies := &api.Dependencies{
+		LinkService:         linkService,
 		CourseService:       courseService,
 		ReportService:       reportService,
 		ContentService:      contentService,

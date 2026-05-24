@@ -10,8 +10,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-var DB *sql.DB
-
 type Client struct {
 	DB *sql.DB
 }
