@@ -12,27 +12,27 @@ import (
 type Handler struct {
 	logger              *slog.Logger
 	jwtSecret           []byte
-	reportService       reportService
-	contentService      contentService
-	contributionService contributionService
-	feedbackService     feedbackService
-	courseService       courseService
-	linkClickService    linkClickService
-	pageViewService     pageViewService
 	linkService         linkService
+	reportService       reportService
+	courseService       courseService
+	contentService      contentService
+	pageViewService     pageViewService
+	feedbackService     feedbackService
+	linkClickService    linkClickService
+	contributionService contributionService
 }
 
 type Dependencies struct {
 	Logger              *slog.Logger
 	JWTSecret           []byte
-	ReportService       reportService
-	ContentService      contentService
-	ContributionService contributionService
-	FeedbackService     feedbackService
-	CourseService       courseService
-	LinkClickService    linkClickService
-	PageViewService     pageViewService
 	LinkService         linkService
+	ReportService       reportService
+	CourseService       courseService
+	ContentService      contentService
+	FeedbackService     feedbackService
+	PageViewService     pageViewService
+	LinkClickService    linkClickService
+	ContributionService contributionService
 }
 
 type contentService interface {

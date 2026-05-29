@@ -34,6 +34,7 @@ func main() {
 	apiHandler, err := api.NewHandler(api.Dependencies{
 		Logger:              logger.With("component", "api"),
 		JWTSecret:           []byte(cfg.JWTSecret),
+		LinkService:         services.LinkService,
 		CourseService:       services.CourseService,
 		ReportService:       services.ReportService,
 		ContentService:      services.ContentService,
