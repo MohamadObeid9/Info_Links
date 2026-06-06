@@ -1,4 +1,3 @@
-
 // ===================== CONFIRM MODAL =====================
 let _modalCallback = null;
 let _lastFocusedElement = null;
@@ -34,7 +33,10 @@ function confirmLink(linkId, rawUrl) {
         for (const s of y.sems) {
           for (const c of s.courses) {
             for (const l of c.links) {
-              if (l.id === linkId) { url = l.url; break outer; }
+              if (l.id === linkId) {
+                url = l.url;
+                break outer;
+              }
             }
           }
         }
@@ -135,7 +137,11 @@ function _trapModalFocus(e) {
 
 // ── Content type checkboxes (multi-select) ─────────────────────────────────
 function _contentTypeCheckboxes(selectedStr, prefix = "ct") {
-  const selected = selectedStr ? String(selectedStr).split(",").map(t => t.trim()) : [];
+  const selected = selectedStr
+    ? String(selectedStr)
+        .split(",")
+        .map((t) => t.trim())
+    : [];
   const opts = [
     ["td", "✏️ TD"],
     ["cours", "📄 Cours"],
@@ -144,15 +150,21 @@ function _contentTypeCheckboxes(selectedStr, prefix = "ct") {
     ["exams", "📝 Exams"],
     ["other", "📦 Other"],
   ];
-  return `<div class="content-type-group" id="${prefix}Group">` +
-    opts.map(([v, label]) =>
-      `<label class="ct-checkbox-label"><input type="checkbox" name="${prefix}" value="${v}" ${selected.includes(v) ? "checked" : ""}/>${label}</label>`
-    ).join("") + `</div>`;
+  return (
+    `<div class="content-type-group" id="${prefix}Group">` +
+    opts
+      .map(
+        ([v, label]) =>
+          `<label class="ct-checkbox-label"><input type="checkbox" name="${prefix}" value="${v}" ${selected.includes(v) ? "checked" : ""}/>${label}</label>`,
+      )
+      .join("") +
+    `</div>`
+  );
 }
 
 function _readContentTypeCheckboxes(prefix = "ct") {
   const checks = document.querySelectorAll(`input[name="${prefix}"]:checked`);
-  const vals = [...checks].map(c => c.value);
+  const vals = [...checks].map((c) => c.value);
   return vals.length ? vals.join(",") : null;
 }
 
@@ -344,18 +356,33 @@ async function saveCourse(id) {
         y.sems.forEach((s) =>
           s.courses.forEach((c) => {
             if (c.id !== id && c.code === originalCode)
-              duplicates.push({ id: c.id, name: c.name, prog: p.name, year: y.name, sem: s.name });
+              duplicates.push({
+                id: c.id,
+                name: c.name,
+                prog: p.name,
+                year: y.name,
+                sem: s.name,
+              });
           }),
         ),
       ),
     );
   }
 
-  AppState._pendingCourseEdit = { id, name, code, semId, duplicateIds: duplicates.map((d) => d.id) };
+  AppState._pendingCourseEdit = {
+    id,
+    name,
+    code,
+    semId,
+    duplicateIds: duplicates.map((d) => d.id),
+  };
 
   if (duplicates.length > 0) {
     const dupList = duplicates
-      .map((d) => `<li style="margin-bottom:6px;"><strong>${esc(d.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(d.prog)} › ${esc(d.year)} › ${esc(d.sem)}</span></li>`)
+      .map(
+        (d) =>
+          `<li style="margin-bottom:6px;"><strong>${esc(d.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(d.prog)} › ${esc(d.year)} › ${esc(d.sem)}</span></li>`,
+      )
       .join("");
     openModal(`<h2>🔁 Shared Course Detected</h2>
   <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;">
@@ -379,14 +406,26 @@ async function applySaveCourse(updateAll) {
   const btn = document.querySelector("#modalBox .btn-primary");
   setBtnLoading(btn, true, "Saving…");
   try {
-    await sb(`courses?id=eq.${id}`, "PATCH", { name, code, semester_id: semId });
+    await sb(`courses?id=eq.${id}`, "PATCH", {
+      name,
+      code,
+      semester_id: semId,
+    });
     if (updateAll && duplicateIds.length) {
-      await Promise.all(duplicateIds.map((did) => sb(`courses?id=eq.${did}`, "PATCH", { name, code })));
+      await Promise.all(
+        duplicateIds.map((did) =>
+          sb(`courses?id=eq.${did}`, "PATCH", { name, code }),
+        ),
+      );
     }
     closeModal();
     _clearCache();
     loadAll();
-    showToast(updateAll ? `Updated all ${duplicateIds.length + 1} occurrences!` : "Course updated!");
+    showToast(
+      updateAll
+        ? `Updated all ${duplicateIds.length + 1} occurrences!`
+        : "Course updated!",
+    );
   } catch (e) {
     showToast(e.message, true);
   } finally {
@@ -407,18 +446,32 @@ function openAddLinkModal(courseId) {
 }
 async function addLink(courseId) {
   const url = document.getElementById("lUrl").value.trim();
-  if (!url) { showToast("URL required.", true); return; }
+  if (!url) {
+    showToast("URL required.", true);
+    return;
+  }
   const type = document.getElementById("lType").value;
   const label = document.getElementById("lLabel").value.trim() || "Link";
   const note = document.getElementById("lNote").value.trim();
   const contentType = _readContentTypeCheckboxes("lct");
 
   const { code, siblings } = _findSharedCourses(courseId);
-  AppState._pendingLinkOp = { courseId, url, type, label, note, contentType, siblingCourseIds: siblings.map((s) => s.id) };
+  AppState._pendingLinkOp = {
+    courseId,
+    url,
+    type,
+    label,
+    note,
+    contentType,
+    siblingCourseIds: siblings.map((s) => s.id),
+  };
 
   if (siblings.length) {
     const list = siblings
-      .map((s) => `<li style="margin-bottom:4px;"><strong>${esc(s.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(s.prog)} › ${esc(s.year)} › ${esc(s.sem)}</span></li>`)
+      .map(
+        (s) =>
+          `<li style="margin-bottom:4px;"><strong>${esc(s.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(s.prog)} › ${esc(s.year)} › ${esc(s.sem)}</span></li>`,
+      )
       .join("");
     openModal(`<h2>🔁 Shared Course</h2>
   <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${siblings.length}</strong> other course(s) share code <strong>${esc(code)}</strong>:</p>
@@ -450,25 +503,40 @@ function _getNextDisplayOrder(courseId) {
   return max + 1;
 }
 async function applyAddLink(addToAll) {
-  const { courseId, url, type, label, note, contentType, siblingCourseIds } = AppState._pendingLinkOp;
+  const { courseId, url, type, label, note, contentType, siblingCourseIds } =
+    AppState._pendingLinkOp;
   try {
     await sb("links", "POST", {
-      course_id: courseId, type, url, label, note,
+      course_id: courseId,
+      type,
+      url,
+      label,
+      note,
       content_type: contentType,
       display_order: _getNextDisplayOrder(courseId),
     });
     if (addToAll && siblingCourseIds.length)
-      await Promise.all(siblingCourseIds.map((sid) =>
-        sb("links", "POST", {
-          course_id: sid, type, url, label, note,
-          content_type: contentType,
-          display_order: _getNextDisplayOrder(sid),
-        }),
-      ));
+      await Promise.all(
+        siblingCourseIds.map((sid) =>
+          sb("links", "POST", {
+            course_id: sid,
+            type,
+            url,
+            label,
+            note,
+            content_type: contentType,
+            display_order: _getNextDisplayOrder(sid),
+          }),
+        ),
+      );
     closeModal();
     _clearCache();
     loadAll();
-    showToast(addToAll ? `Link added to all ${siblingCourseIds.length + 1} courses!` : "Link added!");
+    showToast(
+      addToAll
+        ? `Link added to all ${siblingCourseIds.length + 1} courses!`
+        : "Link added!",
+    );
   } catch (e) {
     showToast(e.message, true);
   } finally {
@@ -483,7 +551,9 @@ function openEditLinkModal(linkId, courseId) {
     p.years.forEach((y) =>
       y.sems.forEach((s) =>
         s.courses.forEach((c) =>
-          c.links.forEach((lk) => { if (lk.id === linkId) l = lk; }),
+          c.links.forEach((lk) => {
+            if (lk.id === linkId) l = lk;
+          }),
         ),
       ),
     ),
@@ -500,7 +570,10 @@ function openEditLinkModal(linkId, courseId) {
 }
 async function saveLink(linkId, courseId) {
   const url = document.getElementById("elUrl").value.trim();
-  if (!url) { showToast("URL required.", true); return; }
+  if (!url) {
+    showToast("URL required.", true);
+    return;
+  }
   const type = document.getElementById("elType").value;
   const label = document.getElementById("elLabel").value.trim() || "Link";
   const note = document.getElementById("elNote").value.trim();
@@ -511,7 +584,9 @@ async function saveLink(linkId, courseId) {
     p.years.forEach((y) =>
       y.sems.forEach((s) =>
         s.courses.forEach((c) =>
-          c.links.forEach((lk) => { if (lk.id === linkId) originalUrl = lk.url; }),
+          c.links.forEach((lk) => {
+            if (lk.id === linkId) originalUrl = lk.url;
+          }),
         ),
       ),
     ),
@@ -522,15 +597,32 @@ async function saveLink(linkId, courseId) {
   siblings.forEach((sib) =>
     sib.links.forEach((lk) => {
       if (lk.url === originalUrl)
-        matchingLinks.push({ id: lk.id, sibName: sib.name, prog: sib.prog, year: sib.year, sem: sib.sem });
+        matchingLinks.push({
+          id: lk.id,
+          sibName: sib.name,
+          prog: sib.prog,
+          year: sib.year,
+          sem: sib.sem,
+        });
     }),
   );
 
-  AppState._pendingLinkOp = { linkId, url, type, label, note, contentType, matchingLinkIds: matchingLinks.map((m) => m.id) };
+  AppState._pendingLinkOp = {
+    linkId,
+    url,
+    type,
+    label,
+    note,
+    contentType,
+    matchingLinkIds: matchingLinks.map((m) => m.id),
+  };
 
   if (matchingLinks.length) {
     const list = matchingLinks
-      .map((m) => `<li style="margin-bottom:4px;"><strong>${esc(m.sibName)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(m.prog)} › ${esc(m.year)} › ${esc(m.sem)}</span></li>`)
+      .map(
+        (m) =>
+          `<li style="margin-bottom:4px;"><strong>${esc(m.sibName)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(m.prog)} › ${esc(m.year)} › ${esc(m.sem)}</span></li>`,
+      )
       .join("");
     openModal(`<h2>🔁 Shared Link</h2>
   <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${matchingLinks.length}</strong> sibling course(s) share the same link:</p>
@@ -546,17 +638,36 @@ async function saveLink(linkId, courseId) {
   }
 }
 async function applySaveLink(updateAll) {
-  const { linkId, url, type, label, note, contentType, matchingLinkIds } = AppState._pendingLinkOp;
+  const { linkId, url, type, label, note, contentType, matchingLinkIds } =
+    AppState._pendingLinkOp;
   try {
-    await sb(`links?id=eq.${linkId}`, "PATCH", { type, url, label, note, content_type: contentType });
+    await sb(`links?id=eq.${linkId}`, "PATCH", {
+      type,
+      url,
+      label,
+      note,
+      content_type: contentType,
+    });
     if (updateAll && matchingLinkIds.length)
-      await Promise.all(matchingLinkIds.map((mid) =>
-        sb(`links?id=eq.${mid}`, "PATCH", { type, url, label, note, content_type: contentType }),
-      ));
+      await Promise.all(
+        matchingLinkIds.map((mid) =>
+          sb(`links?id=eq.${mid}`, "PATCH", {
+            type,
+            url,
+            label,
+            note,
+            content_type: contentType,
+          }),
+        ),
+      );
     closeModal();
     _clearCache();
     loadAll();
-    showToast(updateAll ? `Updated ${matchingLinkIds.length + 1} links!` : "Link updated!");
+    showToast(
+      updateAll
+        ? `Updated ${matchingLinkIds.length + 1} links!`
+        : "Link updated!",
+    );
   } catch (e) {
     showToast(e.message, true);
   } finally {
@@ -574,7 +685,10 @@ function openAddExtraSectionModal() {
 async function addExtraSection() {
   const title = document.getElementById("exTitle").value.trim();
   const icon = document.getElementById("exIcon").value.trim() || "📁";
-  if (!title) { showToast("Title required.", true); return; }
+  if (!title) {
+    showToast("Title required.", true);
+    return;
+  }
   try {
     await sb("extra_sections", "POST", { title, icon, display_order: 0 });
     closeModal();
@@ -620,7 +734,10 @@ function openAddExtraLinkModal(sectionId) {
 }
 async function addExtraLink(sectionId) {
   const url = document.getElementById("elxUrl").value.trim();
-  if (!url) { showToast("URL required.", true); return; }
+  if (!url) {
+    showToast("URL required.", true);
+    return;
+  }
   try {
     await sb("extra_links", "POST", {
       section_id: sectionId,
@@ -654,7 +771,10 @@ function openEditExtraLinkModal(linkId, sectionId) {
 }
 async function saveExtraLink(id) {
   const url = document.getElementById("elxUrl").value.trim();
-  if (!url) { showToast("URL required.", true); return; }
+  if (!url) {
+    showToast("URL required.", true);
+    return;
+  }
   try {
     await sb(`extra_links?id=eq.${id}`, "PATCH", {
       type: document.getElementById("elxType").value,

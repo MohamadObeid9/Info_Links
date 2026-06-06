@@ -11,7 +11,7 @@ import (
 	"infolinks-backend/internal/errs"
 )
 
-func newTestContentRepo(t *testing.T) (*PostgresContentRepository, sqlmock.Sqlmock) {
+func newTestContentRepo(t *testing.T) (ContentRepository, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {

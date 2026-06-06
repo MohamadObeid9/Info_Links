@@ -1,0 +1,53 @@
+package repository
+
+import (
+	"context"
+	"infolinks-backend/internal/models"
+)
+
+type ContentRepository interface {
+	Get(ctx context.Context) ([]byte, error)
+}
+
+type LinkClickRepository interface {
+	List(ctx context.Context) ([]models.LinkClick, error)
+	Create(ctx context.Context, lc models.LinkClick) error
+}
+
+type PageViewRepository interface {
+	List(ctx context.Context) ([]models.PageView, error)
+	Create(ctx context.Context, pv models.PageView) error
+}
+
+type CourseRepository interface {
+	Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, course models.Course) error
+	Update(ctx context.Context, course models.Course, id int) error
+}
+
+type LinkRepository interface {
+	Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, link models.Link) error
+	Update(ctx context.Context, link models.Link, id int) error
+}
+
+type ReportRepository interface {
+	Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, report models.Report) error
+	Update(ctx context.Context, status string, id int) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Report, error)
+}
+
+type ContributionRepository interface {
+	Delete(ctx context.Context, id int) error
+	Update(ctx context.Context, status string, id int) error
+	Create(ctx context.Context, contribution models.Contribution) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error)
+}
+
+type FeedbackRepository interface {
+	Delete(ctx context.Context, id int) error
+	Update(ctx context.Context, status string, id int) error
+	Create(ctx context.Context, feedback models.Feedback) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Feedback, error)
+}

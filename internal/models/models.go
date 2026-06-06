@@ -4,6 +4,7 @@ package models
 type Program struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
+	Slug         string `json:"slug"`
 	DisplayOrder int    `json:"display_order"`
 }
 
@@ -36,8 +37,7 @@ type Course struct {
 // Link represents a useful resource for a course or extra section
 type Link struct {
 	ID           int     `json:"id"`
-	CourseID     *int    `json:"course_id,omitempty"`  // For course links
-	SectionID    *int    `json:"section_id,omitempty"` // For extra links
+	CourseID     *int    `json:"course_id,omitempty"`
 	Type         string  `json:"type"`
 	Label        string  `json:"label"`
 	URL          string  `json:"url"`
@@ -50,8 +50,20 @@ type Link struct {
 type ExtraSection struct {
 	ID           int    `json:"id"`
 	Title        string `json:"title"`
-	Icon         string `json:"icon"`
+	Icon         string `json:"icon"` // For course links
 	DisplayOrder int    `json:"display_order"`
+}
+
+// Extra Link represents a useful resource for an additional course or extra section
+type ExtraLink struct {
+	ID           int     `json:"id"`
+	SectionID    *int    `json:"section_id,omitempty"`
+	Type         string  `json:"type"`
+	Label        string  `json:"label"`
+	URL          string  `json:"url"`
+	Note         string  `json:"note"`
+	ContentType  *string `json:"content_type"`
+	DisplayOrder int     `json:"display_order"`
 }
 
 // Report represents a reported issue with a link
@@ -69,10 +81,9 @@ type Contribution struct {
 	ID         int    `json:"id"`
 	CourseName string `json:"course_name"`
 	LinkURL    string `json:"link_url"`
-	// LinkType   string `json:"link_type"`
-	Note      string `json:"note"`
-	Status    string `json:"status"` // pending, approved
-	CreatedAt string `json:"created_at"`
+	Note       string `json:"note"`
+	Status     string `json:"status"` // pending, approved
+	CreatedAt  string `json:"created_at"`
 }
 
 // Feedback represents user feedback
@@ -107,5 +118,5 @@ type ContentResponse struct {
 	Courses       []Course       `json:"courses"`
 	Links         []Link         `json:"links"`
 	ExtraSections []ExtraSection `json:"extra_sections"`
-	ExtraLinks    []Link         `json:"extra_links"`
+	ExtraLinks    []ExtraLink    `json:"extra_links"`
 }

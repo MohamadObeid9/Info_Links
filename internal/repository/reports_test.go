@@ -12,7 +12,7 @@ import (
 	"infolinks-backend/internal/models"
 )
 
-func newTestReportRepo(t *testing.T) (*PostgresReportRepository, sqlmock.Sqlmock) {
+func newTestReportRepo(t *testing.T) (ReportRepository, sqlmock.Sqlmock) {
 	t.Helper()
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	if err != nil {

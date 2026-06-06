@@ -8,31 +8,15 @@ import (
 	"infolinks-backend/internal/models"
 )
 
-const (
-	insertLinkClickQuery = `INSERT INTO link_clicks (link_id) VALUES ($1)`
-	GetLinkClickQuery    = `SELECT id, link_id, clicked_at FROM link_clicks WHERE link_id IS NOT NULL ORDER BY clicked_at DESC`
-)
-
-type LinkClickRepository interface {
-	List(ctx context.Context) ([]models.LinkClick, error)
-	Create(ctx context.Context, lc models.LinkClick) error
-}
-
-type PostgresLinkClickRepository struct {
+type postgresLinkClickRepository struct {
 	db *sql.DB
 }
 
-func NewPostgresLinkClickRepository(db *sql.DB) *PostgresLinkClickRepository {
-	return &PostgresLinkClickRepository{db: db}
+func NewPostgresLinkClickRepository(db *sql.DB) LinkClickRepository {
+	return &postgresLinkClickRepository{db: db}
 }
 
-func (r *PostgresLinkClickRepository) Create(ctx context.Context, lc models.LinkClick) error {
-	if _, err := r.db.ExecContext(ctx, insertLinkClickQuery, lc.LinkID); err != nil {
-		return fmt.Errorf("insert link click: %w", err)
-	}
-	return nil
-}
-func (r *PostgresLinkClickRepository) List(ctx context.Context) ([]models.LinkClick, error) {
+func (r *postgresLinkClickRepository) List(ctx context.Context) ([]models.LinkClick, error) {
 	rows, err := r.db.QueryContext(ctx, GetLinkClickQuery)
 	if err != nil {
 		return nil, fmt.Errorf("get link clicks: %w", err)
@@ -48,4 +32,11 @@ func (r *PostgresLinkClickRepository) List(ctx context.Context) ([]models.LinkCl
 		clicks = append(clicks, click)
 	}
 	return clicks, nil
+}
+
+func (r *postgresLinkClickRepository) Create(ctx context.Context, lc models.LinkClick) error {
+	if _, err := r.db.ExecContext(ctx, insertLinkClickQuery, lc.LinkID); err != nil {
+		return fmt.Errorf("insert link click: %w", err)
+	}
+	return nil
 }

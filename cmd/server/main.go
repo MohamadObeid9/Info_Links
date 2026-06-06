@@ -70,11 +70,14 @@ func newLogger(env string) *slog.Logger {
 }
 
 func handleServices(db *sql.DB) *api.Dependencies {
+	linkRepo := repository.NewPostgresLinkRepository(db)
+	linkService := service.NewLinkService(linkRepo)
+
+	courseRepo := repository.NewPostgresCourseRepository(db)
+	courseService := service.NewCourseService(courseRepo)
+
 	reportRepo := repository.NewPostgresReportRepository(db)
 	reportService := service.NewReportService(reportRepo)
-
-	contributionsRepo := repository.NewPostgresContributionRepository(db)
-	contributionsService := service.NewContributionService(contributionsRepo)
 
 	feedbackRepo := repository.NewPostgresFeedbackRepository(db)
 	feedbackService := service.NewFeedbackService(feedbackRepo)
@@ -82,17 +85,14 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	contentRepo := repository.NewPostgresContentRepository(db)
 	contentService := service.NewContentService(contentRepo)
 
-	courseRepo := repository.NewPostgresCourseRepository(db)
-	courseService := service.NewCourseService(courseRepo)
-
 	pageViewRepo := repository.NewPostgresPageViewRepository(db)
 	pageViewService := service.NewPageViewService(pageViewRepo)
 
 	linkClickRepo := repository.NewPostgresLinkClickRepository(db)
 	linkClickService := service.NewLinkClickService(linkClickRepo)
 
-	linkRepo := repository.NewPostgresLinkRepository(db)
-	linkService := service.NewLinkService(linkRepo)
+	contributionsRepo := repository.NewPostgresContributionRepository(db)
+	contributionsService := service.NewContributionService(contributionsRepo)
 
 	dependencies := &api.Dependencies{
 		LinkService:         linkService,

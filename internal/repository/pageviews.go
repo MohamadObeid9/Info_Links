@@ -8,31 +8,15 @@ import (
 	"infolinks-backend/internal/models"
 )
 
-const (
-	insertPageViewQuery = `INSERT INTO page_views (page) VALUES ($1)`
-	GetPageViewQuery    = `SELECT id, page, visited_at FROM page_views ORDER BY visited_at DESC`
-)
-
-type PageViewRepository interface {
-	List(ctx context.Context) ([]models.PageView, error)
-	Create(ctx context.Context, pv models.PageView) error
-}
-
-type PostgresPageViewRepository struct {
+type postgresPageViewRepository struct {
 	db *sql.DB
 }
 
-func NewPostgresPageViewRepository(db *sql.DB) *PostgresPageViewRepository {
-	return &PostgresPageViewRepository{db: db}
+func NewPostgresPageViewRepository(db *sql.DB) PageViewRepository {
+	return &postgresPageViewRepository{db: db}
 }
 
-func (r *PostgresPageViewRepository) Create(ctx context.Context, pv models.PageView) error {
-	if _, err := r.db.ExecContext(ctx, insertPageViewQuery, pv.Page); err != nil {
-		return fmt.Errorf("insert page view: %w", err)
-	}
-	return nil
-}
-func (r *PostgresPageViewRepository) List(ctx context.Context) ([]models.PageView, error) {
+func (r *postgresPageViewRepository) List(ctx context.Context) ([]models.PageView, error) {
 	rows, err := r.db.QueryContext(ctx, GetPageViewQuery)
 	if err != nil {
 		return nil, fmt.Errorf("get page views: %w", err)
@@ -48,4 +32,11 @@ func (r *PostgresPageViewRepository) List(ctx context.Context) ([]models.PageVie
 		views = append(views, v)
 	}
 	return views, nil
+}
+
+func (r *postgresPageViewRepository) Create(ctx context.Context, pv models.PageView) error {
+	if _, err := r.db.ExecContext(ctx, insertPageViewQuery, pv.Page); err != nil {
+		return fmt.Errorf("insert page view: %w", err)
+	}
+	return nil
 }

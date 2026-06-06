@@ -10,7 +10,7 @@ import (
 )
 
 type fakeContentRepo struct {
-	getCalls int
+	getCalls  int
 	getResult []byte
 	getErr    error
 }
