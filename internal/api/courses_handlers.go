@@ -79,6 +79,10 @@ func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusNotFound, "Course not found")
 	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
 		writeJSONError(w, http.StatusBadRequest, "Course invalid semestre id ")
+	case errors.Is(err, errs.ErrCoursePatchEmpty):
+		writeJSONError(w, http.StatusBadRequest, "Course invalid update parameters")
+	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
+		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
 	default:
 		h.logger.Error("update course failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
