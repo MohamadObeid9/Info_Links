@@ -42,6 +42,8 @@ func main() {
 		PageViewService:     services.PageViewService,
 		LinkClickService:    services.LinkClickService,
 		ContributionService: services.ContributionService,
+		ExtraSectionService: services.ExtraSectionService,
+		ExtraLinkService:    services.ExtraLinkService,
 	})
 	if err != nil {
 		logger.Error("api handler initialization failed", "error", err)
@@ -94,6 +96,12 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	contributionsRepo := repository.NewPostgresContributionRepository(db)
 	contributionsService := service.NewContributionService(contributionsRepo)
 
+	extraSectionRepo := repository.NewPostgresExtraSectionRepository(db)
+	extraSectionService := service.NewExtraSectionService(extraSectionRepo)
+
+	extraLinkRepo := repository.NewPostgresExtraLinkRepository(db)
+	extraLinkService := service.NewExtraLinkService(extraLinkRepo)
+
 	dependencies := &api.Dependencies{
 		LinkService:         linkService,
 		CourseService:       courseService,
@@ -103,6 +111,8 @@ func handleServices(db *sql.DB) *api.Dependencies {
 		PageViewService:     pageViewService,
 		LinkClickService:    linkClickService,
 		ContributionService: contributionsService,
+		ExtraSectionService: extraSectionService,
+		ExtraLinkService:    extraLinkService,
 	}
 
 	return dependencies

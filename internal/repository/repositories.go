@@ -25,6 +25,20 @@ type LinkRepository interface {
 	Update(ctx context.Context, link models.Link, id int) error
 }
 
+type ExtraSectionRepository interface {
+	List(ctx context.Context) ([]models.ExtraSection, error)
+	Create(ctx context.Context, section models.ExtraSection) error
+	Update(ctx context.Context, section models.ExtraSection, id int) error
+	Delete(ctx context.Context, id int) error
+}
+
+type ExtraLinkRepository interface {
+	List(ctx context.Context) ([]models.ExtraLink, error)
+	Create(ctx context.Context, link models.ExtraLink) error
+	Update(ctx context.Context, link models.ExtraLink, id int) error
+	Delete(ctx context.Context, id int) error
+}
+
 type CourseRepository interface {
 	Delete(ctx context.Context, id int) error
 	Create(ctx context.Context, course models.Course) error

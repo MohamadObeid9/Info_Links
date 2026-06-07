@@ -86,6 +86,13 @@ func TestHandlePostContribution(t *testing.T) {
 			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", Note: ""},
 		},
 		{
+			name:               "201 accepts link_type from frontend",
+			body:               `{"course_name":"A","link_url":"https://example.com","link_type":"drive","note":"[Type:drive] "}`,
+			statusWanted:       http.StatusCreated,
+			wantCalls:          1,
+			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", LinkType: "drive", Note: "[Type:drive] "},
+		},
+		{
 			name:         "400 invalid JSON body",
 			body:         `{`,
 			statusWanted: http.StatusBadRequest,

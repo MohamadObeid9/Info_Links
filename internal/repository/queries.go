@@ -27,6 +27,23 @@ const (
 	insertLinkQuery = `INSERT INTO links (course_id, type, url, label, note, content_type, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)`
 )
 
+// Extra sections queries
+const (
+	listExtraSectionsQuery       = `SELECT id, title, icon, display_order FROM extra_sections ORDER BY display_order ASC`
+	insertExtraSectionQuery      = `INSERT INTO extra_sections (title, icon, display_order) VALUES ($1, $2, $3)`
+	updateExtraSectionQuery      = `UPDATE extra_sections SET title = $1, icon = $2 WHERE id = $3`
+	deleteExtraSectionQuery      = `DELETE FROM extra_sections WHERE id = $1`
+	deleteExtraLinksBySectionQuery = `DELETE FROM extra_links WHERE section_id = $1`
+)
+
+// Extra links queries
+const (
+	listExtraLinksQuery  = `SELECT id, section_id, type, url, label, note, content_type, display_order FROM extra_links ORDER BY display_order ASC`
+	insertExtraLinkQuery = `INSERT INTO extra_links (section_id, type, url, label, note, content_type, display_order) VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	updateExtraLinkQuery = `UPDATE extra_links SET type = $1, url = $2, label = $3, note = $4, content_type = $5 WHERE id = $6`
+	deleteExtraLinkQuery = `DELETE FROM extra_links WHERE id = $1`
+)
+
 // Feedbacks Queries
 const (
 	deleteFeedbackQuery = `DELETE FROM feedback WHERE id = $1`

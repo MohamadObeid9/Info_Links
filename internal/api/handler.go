@@ -20,6 +20,8 @@ type Handler struct {
 	feedbackService     feedbackService
 	linkClickService    linkClickService
 	contributionService contributionService
+	extraSectionService extraSectionService
+	extraLinkService    extraLinkService
 }
 
 type Dependencies struct {
@@ -33,6 +35,8 @@ type Dependencies struct {
 	PageViewService     pageViewService
 	LinkClickService    linkClickService
 	ContributionService contributionService
+	ExtraSectionService extraSectionService
+	ExtraLinkService    extraLinkService
 }
 
 type contentService interface {
@@ -82,6 +86,20 @@ type contributionService interface {
 	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error)
 }
 
+type extraSectionService interface {
+	List(ctx context.Context) ([]models.ExtraSection, error)
+	Create(ctx context.Context, section models.ExtraSection) error
+	Update(ctx context.Context, section models.ExtraSection, idStr string) error
+	Delete(ctx context.Context, idStr string) error
+}
+
+type extraLinkService interface {
+	List(ctx context.Context) ([]models.ExtraLink, error)
+	Create(ctx context.Context, link models.ExtraLink) error
+	Update(ctx context.Context, link models.ExtraLink, idStr string) error
+	Delete(ctx context.Context, idStr string) error
+}
+
 func NewHandler(deps Dependencies) (*Handler, error) {
 
 	if deps.Logger == nil {
@@ -120,6 +138,14 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("link service is required")
 	}
 
+	if deps.ExtraSectionService == nil {
+		return nil, fmt.Errorf("extra section service is required")
+	}
+
+	if deps.ExtraLinkService == nil {
+		return nil, fmt.Errorf("extra link service is required")
+	}
+
 	newHandler := Handler{
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
@@ -131,6 +157,8 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		pageViewService:     deps.PageViewService,
 		linkClickService:    deps.LinkClickService,
 		contributionService: deps.ContributionService,
+		extraSectionService: deps.ExtraSectionService,
+		extraLinkService:    deps.ExtraLinkService,
 	}
 
 	return &newHandler, nil

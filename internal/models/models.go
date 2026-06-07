@@ -90,6 +90,7 @@ type Contribution struct {
 	Note       string `json:"note"`
 	Status     string `json:"status"` // pending, approved
 	LinkURL    string `json:"link_url"`
+	LinkType   string `json:"link_type,omitempty"` // accepted on POST; stored in note as [Type:...]
 	CreatedAt  string `json:"created_at"`
 	CourseName string `json:"course_name"`
 }

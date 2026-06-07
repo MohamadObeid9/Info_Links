@@ -16,6 +16,21 @@ var (
 	ErrLinkURLAndLabelRequired = errors.New("link url and link label are required")
 )
 
+// Extra section errors
+var (
+	ErrExtraSectionNotFound      = errors.New("extra section not found")
+	ErrExtraSectionInvalidID     = errors.New("invalid extra section id")
+	ErrExtraSectionTitleRequired = errors.New("extra section title is required")
+)
+
+// Extra link errors
+var (
+	ErrExtraLinkNotFound            = errors.New("extra link not found")
+	ErrExtraLinkInvalidID           = errors.New("invalid extra link id")
+	ErrExtraLinkURLAndLabelRequired = errors.New("extra link url and label are required")
+	ErrExtraLinkInvalidSectionID    = errors.New("extra link invalid section id")
+)
+
 // Course Errors
 var (
 	ErrCourseNotFound            = errors.New("course not found")

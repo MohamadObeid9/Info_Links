@@ -71,6 +71,16 @@ func registerAdminRoutes(mux *http.ServeMux, h *Handler) {
 	handleAdminFunc("PATCH /api/admin/contributions/{id}", h.handleAdminUpdateContribution)
 	handleAdminFunc("DELETE /api/admin/contributions/{id}", h.handleAdminDeleteContribution)
 
+	handleAdminFunc("GET /api/admin/extra_sections", h.handleAdminGetExtraSections)
+	handleAdminFunc("POST /api/admin/extra_sections", h.handleAdminPostExtraSection)
+	handleAdminFunc("PATCH /api/admin/extra_sections/{id}", h.handleAdminPatchExtraSection)
+	handleAdminFunc("DELETE /api/admin/extra_sections/{id}", h.handleAdminDeleteExtraSection)
+
+	handleAdminFunc("GET /api/admin/extra_links", h.handleAdminGetExtraLinks)
+	handleAdminFunc("POST /api/admin/extra_links", h.handleAdminPostExtraLink)
+	handleAdminFunc("PATCH /api/admin/extra_links/{id}", h.handleAdminPatchExtraLink)
+	handleAdminFunc("DELETE /api/admin/extra_links/{id}", h.handleAdminDeleteExtraLink)
+
 }
 
 func resolveStaticDir() string {
