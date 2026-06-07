@@ -1,60 +1,61 @@
 package database
 
 import (
+	"context"
 	"database/sql"
-	"log"
-	"os"
+	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/joho/godotenv"
-	_ "github.com/jackc/pgx/v5/stdlib" // The postgres driver
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// DB is our global database connection pool.
-var DB *sql.DB
+type Client struct {
+	DB *sql.DB
+}
 
-// InitDB reads the connection string and connects to Postgres.
-func InitDB() {
-	// 1. Load the .env file.
-	// We try multiple paths to find the .env file depending on where the code is run from.
-	paths := []string{".env", "../.env", "../../.env", "../../../.env"}
-	loaded := false
-	for _, p := range paths {
-		if err := godotenv.Load(p); err == nil {
-			loaded = true
-			break
-		}
+func New(dbUrl string, logger *slog.Logger) (*Client, error) {
+
+	if logger == nil {
+		return nil, fmt.Errorf("database logger is required")
 	}
 
-	if !loaded {
-		log.Println("Note: No .env file found. Using system environment variables.")
+	if dbUrl == "" {
+		return nil, fmt.Errorf("database_url is required")
 	}
 
-	// 2. Get the connection string
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("ERROR: DATABASE_URL is not set. Please add it to your .env file.")
-	}
-
-	// 3. Open the connection pool using the pgx driver
-	db, err := sql.Open("pgx", dbURL)
+	db, err := sql.Open("pgx", dbUrl)
 	if err != nil {
-		log.Fatal("Failed to open database config:", err)
+		return nil, fmt.Errorf("open database: %w", err)
 	}
 
-	// 4. Ping the database
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("Failed to connect to the database. Check your password and URL! Error:", err)
-	}
-
-	// 5. Basic pool tuning for production stability
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(30 * time.Minute)
 	db.SetConnMaxIdleTime(10 * time.Minute)
 
-	log.Println("✅ Successfully connected to Supabase Postgres database!")
-	
-	DB = db
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("ping database: %w", err)
+	}
+
+	logger.Info("successfully connected to database")
+
+	return &Client{DB: db}, nil
+}
+
+func (c *Client) Ping(ctx context.Context) error {
+	if c == nil || c.DB == nil {
+		return fmt.Errorf("database client is nil")
+	}
+	return c.DB.PingContext(ctx)
+}
+
+func (c *Client) Close() error {
+	if c == nil || c.DB == nil {
+		return nil
+	}
+	return c.DB.Close()
 }

@@ -24,22 +24,6 @@ const AppState = {
   favorites: new Set(), // Set of course IDs (strings from localStorage)
 };
 
-// ── Theme: read from localStorage first, then system preference ──────────────
-(function initTheme() {
-  const saved = localStorage.getItem("infolinks_theme");
-  if (saved) {
-    AppState.isDark = saved === "dark";
-  } else {
-    AppState.isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  }
-  document.documentElement.setAttribute(
-    "data-theme",
-    AppState.isDark ? "dark" : "light",
-  );
-  const themeBtn = document.getElementById("themeBtn");
-  if (themeBtn) themeBtn.textContent = AppState.isDark ? "🌙" : "☀️";
-})();
-
 // ── Favorites: restore from localStorage ─────────────────────────────────────
 (function initFavorites() {
   try {

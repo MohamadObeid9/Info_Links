@@ -1,42 +1,123 @@
 package main
 
 import (
-	"log"
+	"database/sql"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
 	"infolinks-backend/internal/api"
+	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/database"
-
-	"github.com/joho/godotenv"
+	"infolinks-backend/internal/repository"
+	"infolinks-backend/internal/seo"
+	"infolinks-backend/internal/service"
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("Note: No .env file found, using system environment variables")
-	}
-
-	// Initialize database
-	database.InitDB()
-	defer database.DB.Close()
-
-	if err := api.SetJWTSecret(os.Getenv("JWT_SECRET")); err != nil {
-		log.Fatal("failed to configure JWT secret: ", err)
-	}
-
-	// Setup router
-	handler := api.NewRouter()
-
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("🚀 Backend server is starting on port %s...", port)
-	err := http.ListenAndServe(":"+port, handler)
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("Server failed to start:", err)
+		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	logger := newLogger(cfg.AppEnv)
+
+	dbClient, err := database.New(cfg.DatabaseURL, logger.With("component", "database"))
+	if err != nil {
+		logger.Error("database initialization failed", "error", err)
+		os.Exit(1)
+	}
+	defer dbClient.Close()
+
+	services := handleServices(dbClient.DB)
+	apiHandler, err := api.NewHandler(api.Dependencies{
+		Logger:              logger.With("component", "api"),
+		JWTSecret:           []byte(cfg.JWTSecret),
+		LinkService:         services.LinkService,
+		CourseService:       services.CourseService,
+		ReportService:       services.ReportService,
+		ContentService:      services.ContentService,
+		FeedbackService:     services.FeedbackService,
+		PageViewService:     services.PageViewService,
+		LinkClickService:    services.LinkClickService,
+		ContributionService: services.ContributionService,
+		ExtraSectionService: services.ExtraSectionService,
+		ExtraLinkService:    services.ExtraLinkService,
+	})
+	if err != nil {
+		logger.Error("api handler initialization failed", "error", err)
+		os.Exit(1)
+	}
+
+	seoHandler := seo.NewHandler(
+		logger,
+		service.NewSEOService(repository.NewPostgresSEORepository(dbClient.DB)),
+		cfg.SiteBaseURL,
+	)
+	handler := api.NewRouter(cfg, apiHandler, seoHandler)
+	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
+
+	addr := ":" + cfg.Port
+	if err = http.ListenAndServe(addr, handler); err != nil {
+		logger.Error("server failed to start", "error", err)
+		os.Exit(1)
+	}
+}
+
+func newLogger(env string) *slog.Logger {
+	var logHandler slog.Handler
+	if env == "development" {
+		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	} else {
+		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	}
+	logger := slog.New(logHandler).With("env", env)
+	return logger
+}
+
+func handleServices(db *sql.DB) *api.Dependencies {
+	linkRepo := repository.NewPostgresLinkRepository(db)
+	linkService := service.NewLinkService(linkRepo)
+
+	courseRepo := repository.NewPostgresCourseRepository(db)
+	courseService := service.NewCourseService(courseRepo)
+
+	reportRepo := repository.NewPostgresReportRepository(db)
+	reportService := service.NewReportService(reportRepo)
+
+	feedbackRepo := repository.NewPostgresFeedbackRepository(db)
+	feedbackService := service.NewFeedbackService(feedbackRepo)
+
+	contentRepo := repository.NewPostgresContentRepository(db)
+	contentService := service.NewContentService(contentRepo)
+
+	pageViewRepo := repository.NewPostgresPageViewRepository(db)
+	pageViewService := service.NewPageViewService(pageViewRepo)
+
+	linkClickRepo := repository.NewPostgresLinkClickRepository(db)
+	linkClickService := service.NewLinkClickService(linkClickRepo)
+
+	contributionsRepo := repository.NewPostgresContributionRepository(db)
+	contributionsService := service.NewContributionService(contributionsRepo)
+
+	extraSectionRepo := repository.NewPostgresExtraSectionRepository(db)
+	extraSectionService := service.NewExtraSectionService(extraSectionRepo)
+
+	extraLinkRepo := repository.NewPostgresExtraLinkRepository(db)
+	extraLinkService := service.NewExtraLinkService(extraLinkRepo)
+
+	return &api.Dependencies{
+		LinkService:         linkService,
+		CourseService:       courseService,
+		ReportService:       reportService,
+		ContentService:      contentService,
+		FeedbackService:     feedbackService,
+		PageViewService:     pageViewService,
+		LinkClickService:    linkClickService,
+		ContributionService: contributionsService,
+		ExtraSectionService: extraSectionService,
+		ExtraLinkService:    extraLinkService,
 	}
 }

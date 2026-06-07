@@ -1,0 +1,165 @@
+package api
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"strings"
+
+	"infolinks-backend/internal/models"
+)
+
+type Handler struct {
+	logger              *slog.Logger
+	jwtSecret           []byte
+	linkService         linkService
+	reportService       reportService
+	courseService       courseService
+	contentService      contentService
+	pageViewService     pageViewService
+	feedbackService     feedbackService
+	linkClickService    linkClickService
+	contributionService contributionService
+	extraSectionService extraSectionService
+	extraLinkService    extraLinkService
+}
+
+type Dependencies struct {
+	Logger              *slog.Logger
+	JWTSecret           []byte
+	LinkService         linkService
+	ReportService       reportService
+	CourseService       courseService
+	ContentService      contentService
+	FeedbackService     feedbackService
+	PageViewService     pageViewService
+	LinkClickService    linkClickService
+	ContributionService contributionService
+	ExtraSectionService extraSectionService
+	ExtraLinkService    extraLinkService
+}
+
+type contentService interface {
+	Get(ctx context.Context) ([]byte, error)
+}
+
+type pageViewService interface {
+	List(ctx context.Context) ([]models.PageView, error)
+	Create(ctx context.Context, pv models.PageView) error
+}
+
+type linkClickService interface {
+	List(ctx context.Context) ([]models.LinkClick, error)
+	Create(ctx context.Context, lc models.LinkClick) error
+}
+
+type linkService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, link models.Link) error
+	Update(ctx context.Context, link models.Link, idStr string) error
+}
+
+type courseService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, course models.Course) error
+	Update(ctx context.Context, patch models.CoursePatch, idStr string) error
+}
+
+type reportService interface {
+	Delete(ctx context.Context, id string) error
+	Create(ctx context.Context, report models.Report) error
+	Update(ctx context.Context, status string, idStr string) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Report, error)
+}
+
+type feedbackService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, feedback models.Feedback) error
+	Update(ctx context.Context, status string, idStr string) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Feedback, error)
+}
+
+type contributionService interface {
+	Delete(ctx context.Context, idStr string) error
+	Update(ctx context.Context, status string, idStr string) error
+	Create(ctx context.Context, contribution models.Contribution) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error)
+}
+
+type extraSectionService interface {
+	List(ctx context.Context) ([]models.ExtraSection, error)
+	Create(ctx context.Context, section models.ExtraSection) error
+	Update(ctx context.Context, section models.ExtraSection, idStr string) error
+	Delete(ctx context.Context, idStr string) error
+}
+
+type extraLinkService interface {
+	List(ctx context.Context) ([]models.ExtraLink, error)
+	Create(ctx context.Context, link models.ExtraLink) error
+	Update(ctx context.Context, link models.ExtraLink, idStr string) error
+	Delete(ctx context.Context, idStr string) error
+}
+
+func NewHandler(deps Dependencies) (*Handler, error) {
+
+	if deps.Logger == nil {
+		return nil, fmt.Errorf("logger is required")
+	}
+
+	if len(deps.JWTSecret) == 0 || strings.TrimSpace(string(deps.JWTSecret)) == "" {
+		return nil, fmt.Errorf("jwt secret is required")
+	}
+
+	if deps.ReportService == nil {
+		return nil, fmt.Errorf("report service is required")
+	}
+
+	if deps.ContributionService == nil {
+		return nil, fmt.Errorf("contribution service is required")
+	}
+
+	if deps.ContentService == nil {
+		return nil, fmt.Errorf("content service is required")
+	}
+
+	if deps.FeedbackService == nil {
+		return nil, fmt.Errorf("feedback service is required ")
+	}
+
+	if deps.CourseService == nil {
+		return nil, fmt.Errorf("course service is required")
+	}
+
+	if deps.LinkClickService == nil {
+		return nil, fmt.Errorf("link click servie is required")
+	}
+
+	if deps.LinkService == nil {
+		return nil, fmt.Errorf("link service is required")
+	}
+
+	if deps.ExtraSectionService == nil {
+		return nil, fmt.Errorf("extra section service is required")
+	}
+
+	if deps.ExtraLinkService == nil {
+		return nil, fmt.Errorf("extra link service is required")
+	}
+
+	newHandler := Handler{
+		logger:              deps.Logger,
+		jwtSecret:           deps.JWTSecret,
+		linkService:         deps.LinkService,
+		courseService:       deps.CourseService,
+		reportService:       deps.ReportService,
+		contentService:      deps.ContentService,
+		feedbackService:     deps.FeedbackService,
+		pageViewService:     deps.PageViewService,
+		linkClickService:    deps.LinkClickService,
+		contributionService: deps.ContributionService,
+		extraSectionService: deps.ExtraSectionService,
+		extraLinkService:    deps.ExtraLinkService,
+	}
+
+	return &newHandler, nil
+}

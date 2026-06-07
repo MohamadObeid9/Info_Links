@@ -6,145 +6,194 @@ import (
 	"path/filepath"
 	"strings"
 
+	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/seo"
 
 	"github.com/rs/cors"
 )
 
-// NewRouter sets up the API routes and CORS middleware.
-func NewRouter() http.Handler {
+// NewRouter sets up the API routes, static frontend, security headers, and CORS middleware.
+func NewRouter(cfg config.Config, h *Handler, seoH *seo.Handler) http.Handler {
 	mux := http.NewServeMux()
 
-	// 1. Public API Routes
-	mux.HandleFunc("GET /api", HandleApiRoot)
-	mux.HandleFunc("GET /api/", HandleApiRoot)
-	mux.HandleFunc("GET /api/content", HandleGetContent)
-	mux.HandleFunc("GET /api/health", HandleHealth)
-	mux.HandleFunc("POST /api/auth/login", HandleLogin)
+	registerPublicRoutes(mux, h)
+	registerAdminRoutes(mux, h)
+	registerSEORoutes(mux, seoH)
+	mux.Handle("/", newStaticFileHandler(resolveStaticDir()))
 
-	mux.HandleFunc("POST /api/page_views", HandlePostPageView)
-	mux.HandleFunc("POST /api/link_clicks", HandlePostLinkClick)
-	mux.HandleFunc("POST /api/reports", HandlePostReport)
-	mux.HandleFunc("POST /api/contributions", HandlePostContribution)
-	mux.HandleFunc("POST /api/feedback", HandlePostFeedback)
+	origins := allowedOrigins(cfg.CorsAllowedOrigins)
+	securedHandler := withSecurityHeaders(mux, contentSecurityPolicy(origins))
 
-	// 2. Admin Protected API Routes
-	mux.HandleFunc("GET /api/admin/reports", RequireAdmin(HandleAdminGetReports))
-	mux.HandleFunc("PATCH /api/admin/reports/{id}", RequireAdmin(HandleAdminUpdateReport))
-	mux.HandleFunc("DELETE /api/admin/reports/{id}", RequireAdmin(HandleAdminDeleteReport))
+	return cors.New(cors.Options{
+		AllowedOrigins:   origins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowCredentials: false,
+	}).Handler(securedHandler)
+}
 
-	mux.HandleFunc("GET /api/admin/feedback", RequireAdmin(HandleAdminGetFeedback))
-	mux.HandleFunc("PATCH /api/admin/feedback/{id}", RequireAdmin(HandleAdminPatchFeedback))
-	mux.HandleFunc("DELETE /api/admin/feedback/{id}", RequireAdmin(HandleAdminDeleteFeedback))
+func registerPublicRoutes(mux *http.ServeMux, h *Handler) {
+	mux.HandleFunc("GET /api", h.handleApiRoot)
+	mux.HandleFunc("GET /api/", h.handleApiRoot)
+	mux.HandleFunc("GET /api/health", h.handleHealth)
+	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
+	mux.HandleFunc("GET /api/content", h.handleGetContent)
 
-	mux.HandleFunc("GET /api/admin/contributions", RequireAdmin(HandleAdminGetContributions))
-	mux.HandleFunc("PATCH /api/admin/contributions/{id}", RequireAdmin(HandleAdminUpdateContribution))
-	mux.HandleFunc("DELETE /api/admin/contributions/{id}", RequireAdmin(HandleAdminDeleteContribution))
+	mux.HandleFunc("POST /api/reports", h.handlePostReport)
+	mux.HandleFunc("POST /api/feedback", h.handlePostFeedback)
+	mux.HandleFunc("POST /api/page_views", h.handlePostPageView)
+	mux.HandleFunc("POST /api/link_clicks", h.handlePostLinkClick)
+	mux.HandleFunc("POST /api/contributions", h.handlePostContribution)
+}
 
-	mux.HandleFunc("POST /api/admin/courses", RequireAdmin(HandleAdminPostCourse))
-	mux.HandleFunc("PATCH /api/admin/courses/{id}", RequireAdmin(HandleAdminPatchCourse))
-	mux.HandleFunc("DELETE /api/admin/courses/{id}", RequireAdmin(HandleAdminDeleteCourse))
+func registerAdminRoutes(mux *http.ServeMux, h *Handler) {
+	handleAdminFunc := func(pattern string, handler http.HandlerFunc) {
+		mux.HandleFunc(pattern, h.requireAdmin(handler))
+	}
+	handleAdminFunc("GET /api/admin/page_views", h.handleAdminGetPageViews)
+	handleAdminFunc("GET /api/admin/link_clicks", h.handleAdminGetLinkClicks)
 
-	mux.HandleFunc("POST /api/admin/links", RequireAdmin(HandleAdminPostLink))
-	mux.HandleFunc("PATCH /api/admin/links/{id}", RequireAdmin(HandleAdminPatchLink))
-	mux.HandleFunc("DELETE /api/admin/links/{id}", RequireAdmin(HandleAdminDeleteLink))
+	handleAdminFunc("POST /api/admin/links", h.handleAdminPostLink)
+	handleAdminFunc("PATCH /api/admin/links/{id}", h.handleAdminPatchLink)
+	handleAdminFunc("DELETE /api/admin/links/{id}", h.handleAdminDeleteLink)
 
-	mux.HandleFunc("GET /api/admin/page_views", RequireAdmin(HandleAdminGetPageViews))
-	mux.HandleFunc("GET /api/admin/link_clicks", RequireAdmin(HandleAdminGetLinkClicks))
+	handleAdminFunc("POST /api/admin/courses", h.handleAdminPostCourse)
+	handleAdminFunc("PATCH /api/admin/courses/{id}", h.handleAdminPatchCourse)
+	handleAdminFunc("DELETE /api/admin/courses/{id}", h.handleAdminDeleteCourse)
 
-	// SEO — server-rendered pages (before SPA catch-all)
-	seoH := seo.NewHandler()
-	// Patterns without "GET " match all methods (GET, HEAD) for crawlers.
+	handleAdminFunc("GET /api/admin/reports", h.handleAdminGetReports)
+	handleAdminFunc("PATCH /api/admin/reports/{id}", h.handleAdminUpdateReport)
+	handleAdminFunc("DELETE /api/admin/reports/{id}", h.handleAdminDeleteReport)
+
+	handleAdminFunc("GET /api/admin/feedback", h.handleAdminGetFeedback)
+	handleAdminFunc("PATCH /api/admin/feedback/{id}", h.handleAdminPatchFeedback)
+	handleAdminFunc("DELETE /api/admin/feedback/{id}", h.handleAdminDeleteFeedback)
+
+	handleAdminFunc("GET /api/admin/contributions", h.handleAdminGetContributions)
+	handleAdminFunc("PATCH /api/admin/contributions/{id}", h.handleAdminUpdateContribution)
+	handleAdminFunc("DELETE /api/admin/contributions/{id}", h.handleAdminDeleteContribution)
+
+	handleAdminFunc("GET /api/admin/extra_sections", h.handleAdminGetExtraSections)
+	handleAdminFunc("POST /api/admin/extra_sections", h.handleAdminPostExtraSection)
+	handleAdminFunc("PATCH /api/admin/extra_sections/{id}", h.handleAdminPatchExtraSection)
+	handleAdminFunc("DELETE /api/admin/extra_sections/{id}", h.handleAdminDeleteExtraSection)
+
+	handleAdminFunc("GET /api/admin/extra_links", h.handleAdminGetExtraLinks)
+	handleAdminFunc("POST /api/admin/extra_links", h.handleAdminPostExtraLink)
+	handleAdminFunc("PATCH /api/admin/extra_links/{id}", h.handleAdminPatchExtraLink)
+	handleAdminFunc("DELETE /api/admin/extra_links/{id}", h.handleAdminDeleteExtraLink)
+}
+
+func registerSEORoutes(mux *http.ServeMux, seoH *seo.Handler) {
+	if seoH == nil {
+		return
+	}
 	mux.HandleFunc("/course/{code}", seoH.HandleCourse)
 	mux.HandleFunc("/program/{slug}", seoH.HandleProgram)
 	mux.HandleFunc("/courses", seoH.HandleCoursesIndex)
 	mux.HandleFunc("/sitemap.xml", seoH.HandleSitemap)
 	mux.HandleFunc("/robots.txt", seoH.HandleRobots)
+}
 
-	// 3. Static Files & SPA Routing
+func resolveStaticDir() string {
 	staticDir := "frontend/dist"
 	if _, err := os.Stat(staticDir); err != nil {
-		staticDir = "frontend"
+		return "frontend"
 	}
+	return staticDir
+}
 
+func newStaticFileHandler(staticDir string) http.Handler {
 	fs := http.FileServer(http.Dir(staticDir))
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// SEO paths must not fall through to SPA (safety if route registration changes)
-		if strings.HasPrefix(r.URL.Path, "/course/") ||
-			strings.HasPrefix(r.URL.Path, "/program/") ||
-			r.URL.Path == "/courses" ||
-			r.URL.Path == "/sitemap.xml" ||
-			r.URL.Path == "/robots.txt" {
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isSEOPath(r.URL.Path) {
 			http.NotFound(w, r)
 			return
 		}
-		// If the file exists, serve it
+
 		relPath := strings.TrimPrefix(filepath.Clean(r.URL.Path), "/")
 		path := filepath.Join(staticDir, relPath)
+
 		info, err := os.Stat(path)
-		if os.IsNotExist(err) || info.IsDir() {
-			// If it doesn't exist or is a directory (and we want index.html), serve index.html
-			// We check if it's a directory to avoid serving directory listings
-			if info != nil && info.IsDir() && r.URL.Path != "/" {
-				// If it's a sub-directory, we still serve index.html for the SPA
-				http.ServeFile(w, r, staticDir+"/index.html")
-				return
-			}
+		if err != nil {
 			if os.IsNotExist(err) {
-				http.ServeFile(w, r, staticDir+"/index.html")
+				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 				return
 			}
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
 		}
-		// Otherwise serve the file
+
+		if info.IsDir() && r.URL.Path != "/" {
+			http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+			return
+		}
+
 		fs.ServeHTTP(w, r)
 	})
+}
 
-	allowedOrigins := []string{"http://localhost:8080", "http://localhost:5173"}
-	if raw := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS")); raw != "" {
-		allowedOrigins = nil
-		for _, item := range strings.Split(raw, ",") {
-			origin := strings.TrimSpace(item)
-			if origin != "" {
-				allowedOrigins = append(allowedOrigins, origin)
-			}
+func isSEOPath(path string) bool {
+	return strings.HasPrefix(path, "/course/") ||
+		strings.HasPrefix(path, "/program/") ||
+		path == "/courses" ||
+		path == "/sitemap.xml" ||
+		path == "/robots.txt"
+}
+
+func allowedOrigins(rawOrigins string) []string {
+	defaultOrigins := []string{"http://localhost:8080", "http://localhost:5173"}
+
+	rawOrigins = strings.TrimSpace(rawOrigins)
+	if rawOrigins == "" {
+		return defaultOrigins
+	}
+
+	var origins []string
+	for _, item := range strings.Split(rawOrigins, ",") {
+		origin := strings.TrimSpace(item)
+		if origin != "" {
+			origins = append(origins, origin)
 		}
 	}
 
+	if len(origins) == 0 {
+		return defaultOrigins
+	}
+
+	return origins
+}
+
+func contentSecurityPolicy(allowedOrigins []string) string {
 	connectSrcValues := []string{"'self'"}
 	for _, origin := range allowedOrigins {
 		if origin != "" {
 			connectSrcValues = append(connectSrcValues, origin)
 		}
 	}
-	connectSrc := strings.Join(connectSrcValues, " ")
-	cspValue := strings.Join([]string{
+
+	return strings.Join([]string{
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline'",
 		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
 		"img-src 'self' data:",
 		"font-src 'self' https://fonts.gstatic.com",
-		"connect-src " + connectSrc,
+		"connect-src " + strings.Join(connectSrcValues, " "),
 		"object-src 'none'",
 		"base-uri 'self'",
 		"frame-ancestors 'none'",
 	}, "; ")
+}
 
-	// 3. CORS
-	c := cors.New(cors.Options{
-		AllowedOrigins:   allowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		AllowCredentials: false,
-	})
-	withSecurityHeaders := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Security headers are applied centrally to both API and static responses.
+func withSecurityHeaders(next http.Handler, cspValue string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 		w.Header().Set("Content-Security-Policy", cspValue)
-		mux.ServeHTTP(w, r)
-	})
 
-	return c.Handler(withSecurityHeaders)
+		next.ServeHTTP(w, r)
+	})
 }
