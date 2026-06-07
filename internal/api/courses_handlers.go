@@ -51,6 +51,8 @@ func mapPostCourseErr(h *Handler, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
 		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
+	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
+		writeJSONError(w, http.StatusBadRequest, "Course invalid semestre id ")
 	default:
 		h.logger.Error("create course failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")

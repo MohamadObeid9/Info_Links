@@ -25,6 +25,9 @@ func (s *CourseService) Create(ctx context.Context, course models.Course) error 
 	if course.Name == "" || course.Code == "" {
 		return errs.ErrCourseCodeAndNameRequired
 	}
+	if course.SemesterID <= 0 {
+		return errs.ErrCourseInvalidSemestreID
+	}
 
 	if err := s.repo.Create(ctx, course); err != nil {
 		return fmt.Errorf("create course: %w", err)
