@@ -11,20 +11,39 @@ function esc(str) {
 }
 
 // ===================== THEME =====================
-function toggleTheme() {
-  AppState.isDark = !AppState.isDark;
+function getSystemDark() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function applyTheme(isDark) {
+  AppState.isDark = isDark;
   document.documentElement.setAttribute(
     "data-theme",
-    AppState.isDark ? "dark" : "light",
+    isDark ? "dark" : "light",
   );
-  document.getElementById("themeBtn").textContent =
-    AppState.isDark ? "🌙" : "☀️";
-  // Persist preference
-  localStorage.setItem(
-    "infolinks_theme",
-    AppState.isDark ? "dark" : "light",
-  );
+  const themeBtn = document.getElementById("themeBtn");
+  if (themeBtn) themeBtn.textContent = isDark ? "🌙" : "☀️";
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+  if (themeColor) {
+    themeColor.setAttribute("content", isDark ? "#0f0f13" : "#f4f4fb");
+  }
 }
+
+function applySystemTheme() {
+  applyTheme(getSystemDark());
+}
+
+function toggleTheme() {
+  applyTheme(!AppState.isDark);
+}
+
+(function initTheme() {
+  localStorage.removeItem("infolinks_theme");
+  applySystemTheme();
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", applySystemTheme);
+})();
 
 // ===================== MOBILE =====================
 function toggleMobileMenu() {
@@ -267,6 +286,8 @@ function setBtnLoading(btn, loading, loadingText = "…") {
 }
 
 window.toggleTheme = toggleTheme;
+window.applyTheme = applyTheme;
+window.applySystemTheme = applySystemTheme;
 window.toggleMobileMenu = toggleMobileMenu;
 window.toggleFilters = toggleFilters;
 window.copyLink = copyLink;
