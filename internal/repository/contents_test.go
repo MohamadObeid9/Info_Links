@@ -21,7 +21,7 @@ func newTestContentRepo(t *testing.T) (ContentRepository, sqlmock.Sqlmock) {
 	return NewPostgresContentRepository(db), mock
 }
 
-func TestPostgresContentRepository_Get(t *testing.T) {
+func TestContentRepository_Get(t *testing.T) {
 	sampleJSON := `{"programs":[],"years":[],"semesters":[],"courses":[],"links":[],"extra_sections":[],"extra_links":[]}`
 
 	tests := []struct {

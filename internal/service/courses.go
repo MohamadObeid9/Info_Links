@@ -44,16 +44,47 @@ func (s *CourseService) Delete(ctx context.Context, idStr string) error {
 	return nil
 }
 
-func (s *CourseService) Update(ctx context.Context, course models.Course, idStr string) error {
+func (s *CourseService) Update(ctx context.Context, patch models.CoursePatch, idStr string) error {
 	idStr = strings.TrimSpace(idStr)
-	course.Name = strings.TrimSpace(course.Name)
-	course.Code = strings.TrimSpace(course.Code)
-
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
 		return errs.ErrCourseInvalidID
 	}
-	if err := s.repo.Update(ctx, course, id); err != nil {
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("update course: %w", err)
+	}
+
+	merged := existing
+
+	if patch.Name == nil && patch.Code == nil && patch.SemesterID == nil && patch.IsOptional == nil {
+		return errs.ErrCoursePatchEmpty
+	}
+
+	if patch.Name != nil {
+		merged.Name = strings.TrimSpace(*patch.Name)
+	}
+	if patch.Code != nil {
+		merged.Code = strings.TrimSpace(*patch.Code)
+	}
+	if patch.SemesterID != nil {
+		if *patch.SemesterID <= 0 {
+			return errs.ErrCourseInvalidSemestreID
+		}
+		merged.SemesterID = *patch.SemesterID
+	}
+	if patch.IsOptional != nil {
+		merged.IsOptional = *patch.IsOptional
+	}
+
+	if merged.Name == "" || merged.Code == "" {
+		return errs.ErrCourseCodeAndNameRequired
+	}
+	if merged.SemesterID <= 0 {
+		return errs.ErrCourseInvalidSemestreID
+	}
+
+	if err := s.repo.Update(ctx, merged, id); err != nil {
 		return fmt.Errorf("update course: %w", err)
 	}
 	return nil

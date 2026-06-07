@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"infolinks-backend/internal/errs"
@@ -39,8 +40,22 @@ func (r *postgresCourseRepository) Create(ctx context.Context, course models.Cou
 	return nil
 }
 
+func (r *postgresCourseRepository) GetByID(ctx context.Context, id int) (models.Course, error) {
+	var c models.Course
+	err := r.db.QueryRowContext(ctx, getCourseByIDQuery, id).Scan(
+		&c.ID, &c.SemesterID, &c.Name, &c.Code, &c.IsOptional, &c.DisplayOrder,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.Course{}, errs.ErrCourseNotFound
+		}
+		return models.Course{}, fmt.Errorf("get course: %w", err)
+	}
+	return c, nil
+}
+
 func (r *postgresCourseRepository) Update(ctx context.Context, course models.Course, id int) error {
-	resp, err := r.db.ExecContext(ctx, updateCourseQuery, course.Name, course.Code, course.SemesterID, id)
+	resp, err := r.db.ExecContext(ctx, updateCourseQuery, course.Name, course.Code, course.SemesterID, course.IsOptional, id)
 	if err != nil {
 		return fmt.Errorf("update course: %w", err)
 	}

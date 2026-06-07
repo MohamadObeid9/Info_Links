@@ -22,7 +22,7 @@ func newTestReportRepo(t *testing.T) (ReportRepository, sqlmock.Sqlmock) {
 	return NewPostgresReportRepository(db), mock
 }
 
-func TestPostgresReportRepository_Create(t *testing.T) {
+func TestReportRepository_Create(t *testing.T) {
 	tests := []struct {
 		name    string
 		report  models.Report
@@ -68,7 +68,7 @@ func TestPostgresReportRepository_Create(t *testing.T) {
 	}
 }
 
-func TestPostgresReportRepository_Delete(t *testing.T) {
+func TestReportRepository_Delete(t *testing.T) {
 	tests := []struct {
 		name         string
 		id           int
@@ -121,7 +121,7 @@ func TestPostgresReportRepository_Delete(t *testing.T) {
 	}
 }
 
-func TestPostgresReportRepository_Update(t *testing.T) {
+func TestReportRepository_Update(t *testing.T) {
 	tests := []struct {
 		name         string
 		status       string
@@ -178,7 +178,7 @@ func TestPostgresReportRepository_Update(t *testing.T) {
 	}
 }
 
-func TestPostgresReportRepository_List(t *testing.T) {
+func TestReportRepository_List(t *testing.T) {
 	sampleRow := models.Report{
 		ID:          1,
 		CourseName:  "Linux",

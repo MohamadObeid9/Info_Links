@@ -39,12 +39,6 @@ type contentService interface {
 	Get(ctx context.Context) ([]byte, error)
 }
 
-type linkService interface {
-	Delete(ctx context.Context, idStr string) error
-	Create(ctx context.Context, link models.Link) error
-	Update(ctx context.Context, link models.Link, idStr string) error
-}
-
 type pageViewService interface {
 	List(ctx context.Context) ([]models.PageView, error)
 	Create(ctx context.Context, pv models.PageView) error
@@ -55,18 +49,23 @@ type linkClickService interface {
 	Create(ctx context.Context, lc models.LinkClick) error
 }
 
+type linkService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, link models.Link) error
+	Update(ctx context.Context, link models.Link, idStr string) error
+}
+
+type courseService interface {
+	Delete(ctx context.Context, idStr string) error
+	Create(ctx context.Context, course models.Course) error
+	Update(ctx context.Context, patch models.CoursePatch, idStr string) error
+}
+
 type reportService interface {
 	Delete(ctx context.Context, id string) error
 	Create(ctx context.Context, report models.Report) error
 	Update(ctx context.Context, status string, idStr string) error
 	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Report, error)
-}
-
-type contributionService interface {
-	Delete(ctx context.Context, idStr string) error
-	Update(ctx context.Context, status string, idStr string) error
-	Create(ctx context.Context, contribution models.Contribution) error
-	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error)
 }
 
 type feedbackService interface {
@@ -76,10 +75,11 @@ type feedbackService interface {
 	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Feedback, error)
 }
 
-type courseService interface {
+type contributionService interface {
 	Delete(ctx context.Context, idStr string) error
-	Create(ctx context.Context, course models.Course) error
-	Update(ctx context.Context, course models.Course, idStr string) error
+	Update(ctx context.Context, status string, idStr string) error
+	Create(ctx context.Context, contribution models.Contribution) error
+	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Contribution, error)
 }
 
 func NewHandler(deps Dependencies) (*Handler, error) {

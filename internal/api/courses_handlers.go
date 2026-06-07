@@ -24,11 +24,12 @@ func (h *Handler) handleAdminPostCourse(w http.ResponseWriter, r *http.Request) 
 
 func (h *Handler) handleAdminPatchCourse(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
-	var course models.Course
-	if !decodeJSONBody(w, r, &course) {
+	var patch models.CoursePatch
+	if !decodeJSONBody(w, r, &patch) {
 		return
 	}
-	if err := h.courseService.Update(r.Context(), course, idStr); err != nil {
+
+	if err := h.courseService.Update(r.Context(), patch, idStr); err != nil {
 		mapUpdateCourseErr(h, w, err)
 		return
 	}
@@ -74,6 +75,8 @@ func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, err error) {
 		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
 	case errors.Is(err, errs.ErrCourseNotFound):
 		writeJSONError(w, http.StatusNotFound, "Course not found")
+	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
+		writeJSONError(w, http.StatusBadRequest, "Course invalid semestre id ")
 	default:
 		h.logger.Error("update course failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")

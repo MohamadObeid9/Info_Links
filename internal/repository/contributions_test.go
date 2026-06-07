@@ -22,7 +22,7 @@ func newTestContributionRepo(t *testing.T) (ContributionRepository, sqlmock.Sqlm
 	return NewPostgresContributionRepository(db), mock
 }
 
-func TestPostgresContributionRepository_Create(t *testing.T) {
+func TestContributionRepository_Create(t *testing.T) {
 	tests := []struct {
 		name         string
 		contribution models.Contribution
@@ -68,7 +68,7 @@ func TestPostgresContributionRepository_Create(t *testing.T) {
 	}
 }
 
-func TestPostgresContributionRepository_Delete(t *testing.T) {
+func TestContributionRepository_Delete(t *testing.T) {
 	tests := []struct {
 		name         string
 		id           int
@@ -121,7 +121,7 @@ func TestPostgresContributionRepository_Delete(t *testing.T) {
 	}
 }
 
-func TestPostgresContributionRepository_Update(t *testing.T) {
+func TestContributionRepository_Update(t *testing.T) {
 	tests := []struct {
 		name         string
 		status       string
@@ -184,7 +184,7 @@ func TestPostgresContributionRepository_Update(t *testing.T) {
 	}
 }
 
-func TestPostgresContributionRepository_List(t *testing.T) {
+func TestContributionRepository_List(t *testing.T) {
 	sampleRow := models.Contribution{
 		ID:         3,
 		CourseName: "Linux",

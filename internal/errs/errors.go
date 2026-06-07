@@ -20,6 +20,8 @@ var (
 var (
 	ErrCourseNotFound            = errors.New("course not found")
 	ErrCourseInvalidID           = errors.New("course invalid id")
+	ErrCourseInvalidSemestreID   = errors.New("course invalid semestre id")
+	ErrCoursePatchEmpty          = errors.New("course invalid update parameters")
 	ErrCourseCodeAndNameRequired = errors.New("course code and course name are required")
 )
 

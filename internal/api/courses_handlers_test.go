@@ -15,6 +15,6 @@ func (s *fakeCourseService) Delete(ctx context.Context, idStr string) error {
 	return nil
 }
 
-func (s *fakeCourseService) Update(ctx context.Context, course models.Course, idStr string) error {
+func (s *fakeCourseService) Update(ctx context.Context, patch models.CoursePatch, idStr string) error {
 	return nil
 }

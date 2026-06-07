@@ -19,16 +19,17 @@ type PageViewRepository interface {
 	Create(ctx context.Context, pv models.PageView) error
 }
 
-type CourseRepository interface {
-	Delete(ctx context.Context, id int) error
-	Create(ctx context.Context, course models.Course) error
-	Update(ctx context.Context, course models.Course, id int) error
-}
-
 type LinkRepository interface {
 	Delete(ctx context.Context, id int) error
 	Create(ctx context.Context, link models.Link) error
 	Update(ctx context.Context, link models.Link, id int) error
+}
+
+type CourseRepository interface {
+	Delete(ctx context.Context, id int) error
+	Create(ctx context.Context, course models.Course) error
+	GetByID(ctx context.Context, id int) (models.Course, error)
+	Update(ctx context.Context, course models.Course, id int) error
 }
 
 type ReportRepository interface {

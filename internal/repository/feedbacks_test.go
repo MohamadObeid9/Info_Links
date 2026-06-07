@@ -22,7 +22,7 @@ func newTestFeedbackRepo(t *testing.T) (FeedbackRepository, sqlmock.Sqlmock) {
 	return NewPostgresFeedbackRepository(db), mock
 }
 
-func TestPostgresFeedbackRepository_Create(t *testing.T) {
+func TestFeedbackRepository_Create(t *testing.T) {
 	tests := []struct {
 		name     string
 		feedback models.Feedback
@@ -68,7 +68,7 @@ func TestPostgresFeedbackRepository_Create(t *testing.T) {
 	}
 }
 
-func TestPostgresFeedbackRepository_Update(t *testing.T) {
+func TestFeedbackRepository_Update(t *testing.T) {
 	tests := []struct {
 		name         string
 		status       string
@@ -125,7 +125,7 @@ func TestPostgresFeedbackRepository_Update(t *testing.T) {
 	}
 }
 
-func TestPostgresFeedbackRepository_Delete(t *testing.T) {
+func TestFeedbackRepository_Delete(t *testing.T) {
 	tests := []struct {
 		name         string
 		id           int
@@ -178,7 +178,7 @@ func TestPostgresFeedbackRepository_Delete(t *testing.T) {
 	}
 }
 
-func TestPostgresFeedbackRepository_List(t *testing.T) {
+func TestFeedbackRepository_List(t *testing.T) {
 	sampleRow := models.Feedback{
 		ID:        1,
 		Category:  "Performance",
