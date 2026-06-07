@@ -11,6 +11,7 @@ import (
 	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/database"
 	"infolinks-backend/internal/repository"
+	"infolinks-backend/internal/seo"
 	"infolinks-backend/internal/service"
 )
 
@@ -50,7 +51,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := api.NewRouter(cfg, apiHandler)
+	seoHandler := seo.NewHandler(
+		logger,
+		service.NewSEOService(repository.NewPostgresSEORepository(dbClient.DB)),
+		cfg.SiteBaseURL,
+	)
+	handler := api.NewRouter(cfg, apiHandler, seoHandler)
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
 
 	addr := ":" + cfg.Port
@@ -102,7 +108,7 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	extraLinkRepo := repository.NewPostgresExtraLinkRepository(db)
 	extraLinkService := service.NewExtraLinkService(extraLinkRepo)
 
-	dependencies := &api.Dependencies{
+	return &api.Dependencies{
 		LinkService:         linkService,
 		CourseService:       courseService,
 		ReportService:       reportService,
@@ -114,6 +120,4 @@ func handleServices(db *sql.DB) *api.Dependencies {
 		ExtraSectionService: extraSectionService,
 		ExtraLinkService:    extraLinkService,
 	}
-
-	return dependencies
 }

@@ -7,16 +7,18 @@ import (
 	"strings"
 
 	"infolinks-backend/internal/config"
+	"infolinks-backend/internal/seo"
 
 	"github.com/rs/cors"
 )
 
 // NewRouter sets up the API routes, static frontend, security headers, and CORS middleware.
-func NewRouter(cfg config.Config, h *Handler) http.Handler {
+func NewRouter(cfg config.Config, h *Handler, seoH *seo.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	registerPublicRoutes(mux, h)
 	registerAdminRoutes(mux, h)
+	registerSEORoutes(mux, seoH)
 	mux.Handle("/", newStaticFileHandler(resolveStaticDir()))
 
 	origins := allowedOrigins(cfg.CorsAllowedOrigins)
@@ -80,7 +82,17 @@ func registerAdminRoutes(mux *http.ServeMux, h *Handler) {
 	handleAdminFunc("POST /api/admin/extra_links", h.handleAdminPostExtraLink)
 	handleAdminFunc("PATCH /api/admin/extra_links/{id}", h.handleAdminPatchExtraLink)
 	handleAdminFunc("DELETE /api/admin/extra_links/{id}", h.handleAdminDeleteExtraLink)
+}
 
+func registerSEORoutes(mux *http.ServeMux, seoH *seo.Handler) {
+	if seoH == nil {
+		return
+	}
+	mux.HandleFunc("/course/{code}", seoH.HandleCourse)
+	mux.HandleFunc("/program/{slug}", seoH.HandleProgram)
+	mux.HandleFunc("/courses", seoH.HandleCoursesIndex)
+	mux.HandleFunc("/sitemap.xml", seoH.HandleSitemap)
+	mux.HandleFunc("/robots.txt", seoH.HandleRobots)
 }
 
 func resolveStaticDir() string {
@@ -95,6 +107,11 @@ func newStaticFileHandler(staticDir string) http.Handler {
 	fs := http.FileServer(http.Dir(staticDir))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isSEOPath(r.URL.Path) {
+			http.NotFound(w, r)
+			return
+		}
+
 		relPath := strings.TrimPrefix(filepath.Clean(r.URL.Path), "/")
 		path := filepath.Join(staticDir, relPath)
 
@@ -115,6 +132,14 @@ func newStaticFileHandler(staticDir string) http.Handler {
 
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func isSEOPath(path string) bool {
+	return strings.HasPrefix(path, "/course/") ||
+		strings.HasPrefix(path, "/program/") ||
+		path == "/courses" ||
+		path == "/sitemap.xml" ||
+		path == "/robots.txt"
 }
 
 func allowedOrigins(rawOrigins string) []string {

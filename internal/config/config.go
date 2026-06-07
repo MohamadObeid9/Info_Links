@@ -14,6 +14,7 @@ type Config struct {
 	DatabaseURL        string
 	JWTSecret          string
 	CorsAllowedOrigins string
+	SiteBaseURL        string
 }
 
 func Load() (Config, error) {
@@ -23,6 +24,7 @@ func Load() (Config, error) {
 		Port:               getenv("PORT", "8080"),
 		AppEnv:             getenv("APP_ENV", "development"),
 		CorsAllowedOrigins: getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://localhost:5173"),
+		SiteBaseURL:        getenv("SITE_BASE_URL", "http://localhost:8080"),
 		DatabaseURL:        getenv("DATABASE_URL"),
 		JWTSecret:          getenv("JWT_SECRET"),
 	}

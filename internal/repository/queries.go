@@ -83,6 +83,52 @@ const (
 	listContributionsWithQStatusQuery = listContributionsBaseQuery + ` WHERE (course_name ILIKE $1 OR link_url ILIKE $1 OR note ILIKE $1) AND status = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`
 )
 
+// SEO Queries
+const (
+	getSEOCoursePlacementsQuery = `
+		SELECT c.id, c.name, c.code, c.is_optional,
+		       p.id, p.name, y.name, s.name
+		FROM courses c
+		JOIN semesters s ON c.semester_id = s.id
+		JOIN years y ON s.year_id = y.id
+		JOIN programs p ON y.program_id = p.id
+		WHERE LOWER(TRIM(c.code)) = LOWER(TRIM($1))
+		ORDER BY p.display_order, y.display_order, s.display_order, c.display_order`
+
+	listSEOLinksByCourseIDsQuery = `
+		SELECT l.id, l.label, l.url, COALESCE(l.note, ''),
+		       COALESCE(l.content_type, ''), COALESCE(l.type, '')
+		FROM links l
+		WHERE l.course_id IN (%s)
+		ORDER BY l.display_order ASC`
+
+	listSEOCourseCodesForSitemapQuery = `
+		SELECT DISTINCT LOWER(TRIM(code))
+		FROM courses
+		WHERE code IS NOT NULL AND TRIM(code) <> ''
+		ORDER BY 1`
+
+	listSEOProgramsQuery = `SELECT id, name FROM programs ORDER BY display_order ASC`
+
+	listSEOCoursesIndexQuery = `
+		SELECT DISTINCT ON (LOWER(TRIM(c.code)))
+		       LOWER(TRIM(c.code)), c.name, p.name
+		FROM courses c
+		JOIN semesters s ON c.semester_id = s.id
+		JOIN years y ON s.year_id = y.id
+		JOIN programs p ON y.program_id = p.id
+		WHERE c.code IS NOT NULL AND TRIM(c.code) <> ''
+		ORDER BY LOWER(TRIM(c.code)), p.display_order, c.display_order`
+
+	listSEOProgramCoursesQuery = `
+		SELECT DISTINCT ON (LOWER(TRIM(c.code))) LOWER(TRIM(c.code)), c.name
+		FROM courses c
+		JOIN semesters s ON c.semester_id = s.id
+		JOIN years y ON s.year_id = y.id
+		WHERE y.program_id = $1 AND c.code IS NOT NULL AND TRIM(c.code) <> ''
+		ORDER BY LOWER(TRIM(c.code)), c.display_order`
+)
+
 // Contents Queries
 const (
 	getContentQuery = `

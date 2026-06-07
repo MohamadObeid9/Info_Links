@@ -10,6 +10,11 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:8080',
+      '/robots.txt': 'http://localhost:8080',
+      '/sitemap.xml': 'http://localhost:8080',
+      '/courses': 'http://localhost:8080',
+      '/course': 'http://localhost:8080',
+      '/program': 'http://localhost:8080',
     },
   },
   plugins: [

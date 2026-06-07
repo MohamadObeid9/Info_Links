@@ -165,10 +165,10 @@ function _buildCourseCard(c) {
   return `
     <div class="course-card" id="course-card-${c.id}">
       <div class="course-header">
-        <div class="course-name">${esc(c.name)}</div>
+        <h2 class="course-name">${esc(c.name)}</h2>
         <div style="display:flex;align-items:center;gap:6px;">
           ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
-          <div class="course-code">${esc(c.code)}</div>
+          <h3 class="course-code">${esc(c.code)}</h3>
           <button class="fav-btn ${isFav ? "active" : ""}"
             title="${isFav ? "Remove from My Courses" : "Add to My Courses"}"
             onclick="handleFavoriteToggle(${c.id})"

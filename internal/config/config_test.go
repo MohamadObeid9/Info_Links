@@ -12,6 +12,7 @@ func TestLoad(t *testing.T) {
 	)
 
 	defaultCORS := "http://localhost:8080,http://localhost:5173"
+	defaultSiteBaseURL := "http://localhost:8080"
 
 	tests := []struct {
 		name    string
@@ -34,6 +35,7 @@ func TestLoad(t *testing.T) {
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
 				CorsAllowedOrigins: defaultCORS,
+				SiteBaseURL:        defaultSiteBaseURL,
 			},
 		},
 		{
@@ -51,6 +53,7 @@ func TestLoad(t *testing.T) {
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
 				CorsAllowedOrigins: "https://example.com",
+				SiteBaseURL:        defaultSiteBaseURL,
 			},
 		},
 		{
@@ -66,10 +69,26 @@ func TestLoad(t *testing.T) {
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
 				CorsAllowedOrigins: defaultCORS,
+				SiteBaseURL:        defaultSiteBaseURL,
 			},
 		},
 		{
-			name: "missing database url",
+			name: "loads custom site base url",
+			env: map[string]string{
+				"DATABASE_URL":  dbURL,
+				"JWT_SECRET":    secret,
+				"SITE_BASE_URL": "https://infolinks.example.com",
+			},
+			want: Config{
+				Port:               "8080",
+				AppEnv:             "development",
+				DatabaseURL:        dbURL,
+				JWTSecret:          secret,
+				CorsAllowedOrigins: defaultCORS,
+				SiteBaseURL:        "https://infolinks.example.com",
+			},
+		},
+		{
 			env: map[string]string{
 				"DATABASE_URL": "",
 				"JWT_SECRET":   secret,

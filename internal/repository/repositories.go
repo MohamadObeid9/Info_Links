@@ -9,6 +9,14 @@ type ContentRepository interface {
 	Get(ctx context.Context) ([]byte, error)
 }
 
+type SEORepository interface {
+	GetCoursePageByCode(ctx context.Context, code string) (*CoursePageData, error)
+	ListCourseCodesForSitemap(ctx context.Context) ([]string, error)
+	ListProgramsForSitemap(ctx context.Context, slugFn func(string) string) ([]ProgramSitemapEntry, error)
+	ListCoursesIndex(ctx context.Context) ([]CourseIndexEntry, error)
+	GetProgramBySlug(ctx context.Context, slug string, slugFn func(string) string) (*ProgramPageData, error)
+}
+
 type LinkClickRepository interface {
 	List(ctx context.Context) ([]models.LinkClick, error)
 	Create(ctx context.Context, lc models.LinkClick) error
