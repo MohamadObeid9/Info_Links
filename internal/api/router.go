@@ -24,13 +24,15 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 
 	origins := allowedOrigins(cfg.CorsAllowedOrigins)
 	securedHandler := withSecurityHeaders(mux, contentSecurityPolicy(origins))
+	handlerWithRecover := middleware.Recover(logger, securedHandler)
+	handlerWithRequestID := middleware.RequestIDWithLogging(logger, handlerWithRecover)
 
 	return cors.New(cors.Options{
 		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: false,
-	}).Handler(middleware.RequestIDWithLogging(logger, securedHandler))
+	}).Handler(handlerWithRequestID)
 }
 
 func registerPublicRoutes(mux *http.ServeMux, h *Handler) {
