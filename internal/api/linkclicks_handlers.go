@@ -12,7 +12,7 @@ func (h *Handler) handlePostLinkClick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.linkClickService.Create(r.Context(), lc); err != nil {
-		h.logger.Error("post link click failed", "error", err)
+		h.LoggerWithID(r).Error("post link click failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}

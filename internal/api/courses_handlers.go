@@ -16,7 +16,7 @@ func (h *Handler) handleAdminPostCourse(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.courseService.Create(r.Context(), course); err != nil {
-		mapPostCourseErr(h, w, err)
+		mapPostCourseErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
@@ -30,7 +30,7 @@ func (h *Handler) handleAdminPatchCourse(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.courseService.Update(r.Context(), patch, idStr); err != nil {
-		mapUpdateCourseErr(h, w, err)
+		mapUpdateCourseErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -39,7 +39,7 @@ func (h *Handler) handleAdminPatchCourse(w http.ResponseWriter, r *http.Request)
 func (h *Handler) handleAdminDeleteCourse(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if err := h.courseService.Delete(r.Context(), idStr); err != nil {
-		mapDeleteCourseErr(h, w, err)
+		mapDeleteCourseErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -47,31 +47,31 @@ func (h *Handler) handleAdminDeleteCourse(w http.ResponseWriter, r *http.Request
 
 // Helpers functions
 
-func mapPostCourseErr(h *Handler, w http.ResponseWriter, err error) {
+func mapPostCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
 		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
 	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
 		writeJSONError(w, http.StatusBadRequest, "Course invalid semestre id ")
 	default:
-		h.logger.Error("create course failed", "error", err)
+		h.LoggerWithID(r).Error("create course failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapDeleteCourseErr(h *Handler, w http.ResponseWriter, err error) {
+func mapDeleteCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
 	case errors.Is(err, errs.ErrCourseNotFound):
 		writeJSONError(w, http.StatusNotFound, "Course not found")
 	default:
-		h.logger.Error("delete course failed", "error", err)
+		h.LoggerWithID(r).Error("delete course failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, err error) {
+func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
@@ -84,7 +84,7 @@ func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, err error) {
 	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
 		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
 	default:
-		h.logger.Error("update course failed", "error", err)
+		h.LoggerWithID(r).Error("update course failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }

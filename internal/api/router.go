@@ -1,19 +1,20 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"infolinks-backend/internal/config"
+	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/seo"
 
 	"github.com/rs/cors"
 )
 
-// NewRouter sets up the API routes, static frontend, security headers, and CORS middleware.
-func NewRouter(cfg config.Config, h *Handler, seoH *seo.Handler) http.Handler {
+func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	registerPublicRoutes(mux, h)
@@ -29,7 +30,7 @@ func NewRouter(cfg config.Config, h *Handler, seoH *seo.Handler) http.Handler {
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: false,
-	}).Handler(securedHandler)
+	}).Handler(middleware.RequestIDWithLogging(logger, securedHandler))
 }
 
 func registerPublicRoutes(mux *http.ServeMux, h *Handler) {

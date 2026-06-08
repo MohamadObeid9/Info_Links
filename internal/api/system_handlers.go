@@ -16,11 +16,11 @@ func (h *Handler) handleHealthz(w http.ResponseWriter, r *http.Request) {
 
 // handleReadyz checks if the site is ready , used on render
 func (h *Handler) handleReadyz(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	if err := h.db.Ping(ctx); err != nil {
-		h.logger.Warn("readiness check failed", "error", err)
+		h.LoggerWithID(r).Warn("readiness check failed", "error", err)
 		writeJSONError(w, http.StatusServiceUnavailable, "db is unreachable")
 		return
 	}

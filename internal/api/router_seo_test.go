@@ -1,6 +1,7 @@
 package api
 
 import (
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +44,7 @@ func testSEORouter(t *testing.T) http.Handler {
 		seoHandler = seo.NewHandler(slog.Default(), nil, cfg.SiteBaseURL)
 	}
 
-	return NewRouter(cfg, apiHandler, seoHandler)
+	return NewRouter(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)), apiHandler, seoHandler)
 }
 
 func TestRouterRobotsTxt(t *testing.T) {

@@ -9,27 +9,27 @@ import (
 )
 
 func buildCourseJSONLD(baseURL string, data *repository.CoursePageData, canonical string) string {
-	items := make([]map[string]interface{}, 0, len(data.Links))
+	items := make([]map[string]any, 0, len(data.Links))
 	for i, l := range data.Links {
-		items = append(items, map[string]interface{}{
+		items = append(items, map[string]any{
 			"@type":    "ListItem",
 			"position": i + 1,
-			"item": map[string]interface{}{
+			"item": map[string]any{
 				"@type": "WebPage",
 				"name":  l.Label,
 				"url":   l.URL,
 			},
 		})
 	}
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"@context": "https://schema.org",
-		"@graph": []map[string]interface{}{
+		"@graph": []map[string]any{
 			{
-				"@type":            "Course",
-				"name":             data.Name,
-				"courseCode":       strings.ToUpper(data.Code),
-				"url":              canonical,
-				"provider": map[string]interface{}{
+				"@type":      "Course",
+				"name":       data.Name,
+				"courseCode": strings.ToUpper(data.Code),
+				"url":        canonical,
+				"provider": map[string]any{
 					"@type": "Organization",
 					"name":  "Le CNAM Liban — Info Links",
 				},

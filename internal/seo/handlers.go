@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"infolinks-backend/internal/errs"
+	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/service"
 )
 
@@ -28,8 +29,15 @@ func NewHandler(logger *slog.Logger, seoService *service.SEOService, baseURL str
 	return &Handler{
 		service: seoService,
 		baseURL: strings.TrimSuffix(strings.TrimSpace(baseURL), "/"),
-		logger:  logger.With("component", "seo"),
+		logger:  logger,
 	}
+}
+
+func (h *Handler) loggerWithID(r *http.Request) *slog.Logger {
+	if id := middleware.RequestIDFromContext(r.Context()); id != "" {
+		return h.logger.With("request_id", id)
+	}
+	return h.logger
 }
 
 func (h *Handler) writeHTML(w http.ResponseWriter, status int, html string) {
@@ -53,13 +61,13 @@ func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
 			h.serve404(w)
 			return
 		}
-		h.logger.Error("course page failed", "error", err, "code", code)
+		h.loggerWithID(r).Error("course page failed", "error", err, "code", code)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	html, err := renderCoursePage(h.baseURL, data)
 	if err != nil {
-		h.logger.Error("render course page failed", "error", err, "code", code)
+		h.loggerWithID(r).Error("render course page failed", "error", err, "code", code)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -81,13 +89,13 @@ func (h *Handler) HandleProgram(w http.ResponseWriter, r *http.Request) {
 			h.serve404(w)
 			return
 		}
-		h.logger.Error("program page failed", "error", err, "slug", slug)
+		h.loggerWithID(r).Error("program page failed", "error", err, "slug", slug)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	html, err := renderProgramPage(h.baseURL, data)
 	if err != nil {
-		h.logger.Error("render program page failed", "error", err, "slug", slug)
+		h.loggerWithID(r).Error("render program page failed", "error", err, "slug", slug)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -100,13 +108,13 @@ func (h *Handler) HandleCoursesIndex(w http.ResponseWriter, r *http.Request) {
 
 	entries, err := h.service.ListCoursesIndex(ctx)
 	if err != nil {
-		h.logger.Error("courses index failed", "error", err)
+		h.loggerWithID(r).Error("courses index failed", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	html, err := renderCoursesIndex(h.baseURL, entries)
 	if err != nil {
-		h.logger.Error("render courses index failed", "error", err)
+		h.loggerWithID(r).Error("render courses index failed", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -125,7 +133,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 
 	codes, err := h.service.ListCourseCodesForSitemap(ctx)
 	if err != nil {
-		h.logger.Error("sitemap course codes failed", "error", err)
+		h.loggerWithID(r).Error("sitemap course codes failed", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -135,7 +143,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 
 	programs, err := h.service.ListProgramsForSitemap(ctx, ProgramSlug)
 	if err != nil {
-		h.logger.Error("sitemap programs failed", "error", err)
+		h.loggerWithID(r).Error("sitemap programs failed", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

@@ -74,7 +74,7 @@ func (r *postgresSEORepository) fetchLinksForCourses(ctx context.Context, course
 		return nil, nil
 	}
 
-	args := make([]interface{}, len(courseIDs))
+	args := make([]any, len(courseIDs))
 	placeholders := make([]string, len(courseIDs))
 	for i, id := range courseIDs {
 		args[i] = id

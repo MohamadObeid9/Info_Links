@@ -15,7 +15,7 @@ func (h *Handler) handlePostFeedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.feedbackService.Create(r.Context(), feedback); err != nil {
-		mapPostFeedbackErr(h, w, err)
+		mapPostFeedbackErr(h, w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -29,7 +29,7 @@ func (h *Handler) handleAdminGetFeedback(w http.ResponseWriter, r *http.Request)
 
 	feedbacks, err := h.feedbackService.List(r.Context(), limit, offset, q, status)
 	if err != nil {
-		mapListFeedbackErr(h, w, err)
+		mapListFeedbackErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, feedbacks)
@@ -44,7 +44,7 @@ func (h *Handler) handleAdminPatchFeedback(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.feedbackService.Update(r.Context(), body.Status, idStr); err != nil {
-		mapUpdateFeedbackErr(h, w, err)
+		mapUpdateFeedbackErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -53,7 +53,7 @@ func (h *Handler) handleAdminPatchFeedback(w http.ResponseWriter, r *http.Reques
 func (h *Handler) handleAdminDeleteFeedback(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if err := h.feedbackService.Delete(r.Context(), idStr); err != nil {
-		mapDeleteFeedbackErr(h, w, err)
+		mapDeleteFeedbackErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -61,7 +61,7 @@ func (h *Handler) handleAdminDeleteFeedback(w http.ResponseWriter, r *http.Reque
 
 // Helpers functions
 
-func mapPostFeedbackErr(h *Handler, w http.ResponseWriter, err error) {
+func mapPostFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackCategoryAndRatingRequired):
 		writeJSONError(w, http.StatusBadRequest, "Category and rating are required")
@@ -70,12 +70,12 @@ func mapPostFeedbackErr(h *Handler, w http.ResponseWriter, err error) {
 	case errors.Is(err, errs.ErrFeedbackInvalidCategory):
 		writeJSONError(w, http.StatusBadRequest, "Category must be one of the following : ui/ux or content or functionality or performance or accessibility")
 	default:
-		h.logger.Error("create feedback failed", "error", err)
+		h.LoggerWithID(r).Error("create feedback failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapUpdateFeedbackErr(h *Handler, w http.ResponseWriter, err error) {
+func mapUpdateFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackNotFound):
 		writeJSONError(w, http.StatusNotFound, "Feedback not found")
@@ -86,31 +86,31 @@ func mapUpdateFeedbackErr(h *Handler, w http.ResponseWriter, err error) {
 	case errors.Is(err, errs.ErrFeedbackInvalidStatus):
 		writeJSONError(w, http.StatusBadRequest, "Status must be new or read")
 	default:
-		h.logger.Error("update feedback failed", "error", err)
+		h.LoggerWithID(r).Error("update feedback failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapDeleteFeedbackErr(h *Handler, w http.ResponseWriter, err error) {
+func mapDeleteFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Invalid feedback id")
 	case errors.Is(err, errs.ErrFeedbackNotFound):
 		writeJSONError(w, http.StatusNotFound, "Feedback not found")
 	default:
-		h.logger.Error("delete feedback failed", "error", err)
+		h.LoggerWithID(r).Error("delete feedback failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapListFeedbackErr(h *Handler, w http.ResponseWriter, err error) {
+func mapListFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackInvalidStatus):
 		writeJSONError(w, http.StatusBadRequest, "Status must be new or read")
 	case errors.Is(err, errs.ErrInvalidParams):
 		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	default:
-		h.logger.Error("list feedbacks failed", "error", err)
+		h.LoggerWithID(r).Error("list feedbacks failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }

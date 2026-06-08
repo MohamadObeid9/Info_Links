@@ -12,7 +12,7 @@ func (h *Handler) handlePostPageView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.pageViewService.Create(r.Context(), pv); err != nil {
-		h.logger.Error("post page view failed", "error", err)
+		h.LoggerWithID(r).Error("post page view failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}

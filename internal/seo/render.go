@@ -151,7 +151,7 @@ var tplFuncs = template.FuncMap{
 	"lower": strings.ToLower,
 }
 
-func executeTemplate(name string, data interface{}) (string, error) {
+func executeTemplate(name string, data any) (string, error) {
 	var bodyT *template.Template
 	var err error
 	switch name {

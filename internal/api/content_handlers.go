@@ -8,7 +8,7 @@ import (
 func (h *Handler) handleGetContent(w http.ResponseWriter, r *http.Request) {
 	result, err := h.contentService.Get(r.Context())
 	if err != nil {
-		h.logger.Error("get content failed", "error", err)
+		h.LoggerWithID(r).Error("get content failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}

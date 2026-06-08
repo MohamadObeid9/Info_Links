@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
+	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/models"
 )
 
@@ -173,4 +175,12 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 	}
 
 	return &newHandler, nil
+}
+
+// LoggerWithID returns a logger enriched with the request ID when present.
+func (h *Handler) LoggerWithID(r *http.Request) *slog.Logger {
+	if id := middleware.RequestIDFromContext(r.Context()); id != "" {
+		return h.logger.With("request_id", id)
+	}
+	return h.logger
 }

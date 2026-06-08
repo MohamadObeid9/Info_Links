@@ -53,11 +53,16 @@ func main() {
 	}
 
 	seoHandler := seo.NewHandler(
-		logger,
+		logger.With("component", "seo"),
 		service.NewSEOService(repository.NewPostgresSEORepository(dbClient.DB)),
 		cfg.SiteBaseURL,
 	)
-	handler := api.NewRouter(cfg, apiHandler, seoHandler)
+	handler := api.NewRouter(
+		cfg,
+		logger.With("component", "http"),
+		apiHandler,
+		seoHandler,
+	)
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
 
 	addr := ":" + cfg.Port

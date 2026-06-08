@@ -23,7 +23,7 @@ func (h *Handler) handleAdminPostExtraLink(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.extraLinkService.Create(r.Context(), link); err != nil {
-		mapPostExtraLinkErr(h, w, err)
+		mapPostExtraLinkErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
@@ -36,7 +36,7 @@ func (h *Handler) handleAdminPatchExtraLink(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	if err := h.extraLinkService.Update(r.Context(), link, idStr); err != nil {
-		mapUpdateExtraLinkErr(h, w, err)
+		mapUpdateExtraLinkErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -45,44 +45,44 @@ func (h *Handler) handleAdminPatchExtraLink(w http.ResponseWriter, r *http.Reque
 func (h *Handler) handleAdminDeleteExtraLink(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if err := h.extraLinkService.Delete(r.Context(), idStr); err != nil {
-		mapDeleteExtraLinkErr(h, w, err)
+		mapDeleteExtraLinkErr(h, w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func mapPostExtraLinkErr(h *Handler, w http.ResponseWriter, err error) {
+func mapPostExtraLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraLinkURLAndLabelRequired):
 		writeJSONError(w, http.StatusBadRequest, "Extra link url and label are required")
 	case errors.Is(err, errs.ErrExtraLinkInvalidSectionID):
 		writeJSONError(w, http.StatusBadRequest, "Extra link invalid section id")
 	default:
-		h.logger.Error("create extra link failed", "error", err)
+		h.LoggerWithID(r).Error("create extra link failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapUpdateExtraLinkErr(h *Handler, w http.ResponseWriter, err error) {
+func mapUpdateExtraLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraLinkInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Invalid extra link id")
 	case errors.Is(err, errs.ErrExtraLinkNotFound):
 		writeJSONError(w, http.StatusNotFound, "Extra link not found")
 	default:
-		h.logger.Error("update extra link failed", "error", err)
+		h.LoggerWithID(r).Error("update extra link failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
-func mapDeleteExtraLinkErr(h *Handler, w http.ResponseWriter, err error) {
+func mapDeleteExtraLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraLinkInvalidID):
 		writeJSONError(w, http.StatusBadRequest, "Invalid extra link id")
 	case errors.Is(err, errs.ErrExtraLinkNotFound):
 		writeJSONError(w, http.StatusNotFound, "Extra link not found")
 	default:
-		h.logger.Error("delete extra link failed", "error", err)
+		h.LoggerWithID(r).Error("delete extra link failed", "error", err)
 		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
 	}
 }
