@@ -34,6 +34,7 @@ func main() {
 	services := handleServices(dbClient.DB)
 	apiHandler, err := api.NewHandler(api.Dependencies{
 		Logger:              logger.With("component", "api"),
+		DB:                  dbClient,
 		JWTSecret:           []byte(cfg.JWTSecret),
 		LinkService:         services.LinkService,
 		CourseService:       services.CourseService,
@@ -78,6 +79,7 @@ func newLogger(env string) *slog.Logger {
 }
 
 func handleServices(db *sql.DB) *api.Dependencies {
+
 	linkRepo := repository.NewPostgresLinkRepository(db)
 	linkService := service.NewLinkService(linkRepo)
 

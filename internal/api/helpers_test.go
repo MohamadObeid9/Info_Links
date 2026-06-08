@@ -1,13 +1,23 @@
 package api
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"testing"
 )
 
+type mockPinger struct {
+	err error
+}
+
+func (m mockPinger) Ping(ctx context.Context) error {
+	return m.err
+}
+
 // handlerTestDeps holds fakes for NewHandler in tests. Nil fields use harmless defaults.
 type handlerTestDeps struct {
+	db           *mockPinger
 	link         *fakeLinkService
 	course       *fakeCourseService
 	report       *fakeReportService
@@ -21,6 +31,10 @@ type handlerTestDeps struct {
 }
 
 type testHandlerOption func(*handlerTestDeps)
+
+func withDB(p *mockPinger) testHandlerOption {
+	return func(d *handlerTestDeps) { d.db = p }
+}
 
 func withReport(s *fakeReportService) testHandlerOption {
 	return func(d *handlerTestDeps) { d.report = s }
@@ -62,6 +76,7 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 	t.Helper()
 
 	deps := handlerTestDeps{
+		db:           &mockPinger{},
 		link:         &fakeLinkService{},
 		report:       &fakeReportService{},
 		course:       &fakeCourseService{},
@@ -80,6 +95,7 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 	h, err := NewHandler(Dependencies{
 		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 		JWTSecret:           []byte("test-jwt-secret"),
+		DB:                  deps.db,
 		LinkService:         deps.link,
 		ReportService:       deps.report,
 		CourseService:       deps.course,

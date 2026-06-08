@@ -12,6 +12,7 @@ import (
 type Handler struct {
 	logger              *slog.Logger
 	jwtSecret           []byte
+	db                  dbPinger
 	linkService         linkService
 	reportService       reportService
 	courseService       courseService
@@ -27,6 +28,7 @@ type Handler struct {
 type Dependencies struct {
 	Logger              *slog.Logger
 	JWTSecret           []byte
+	DB                  dbPinger
 	LinkService         linkService
 	ReportService       reportService
 	CourseService       courseService
@@ -37,6 +39,10 @@ type Dependencies struct {
 	ContributionService contributionService
 	ExtraSectionService extraSectionService
 	ExtraLinkService    extraLinkService
+}
+
+type dbPinger interface {
+	Ping(ctx context.Context) error
 }
 
 type contentService interface {
@@ -110,6 +116,10 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("jwt secret is required")
 	}
 
+	if deps.DB == nil {
+		return nil, fmt.Errorf("db pinger is required")
+	}
+
 	if deps.ReportService == nil {
 		return nil, fmt.Errorf("report service is required")
 	}
@@ -149,6 +159,7 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 	newHandler := Handler{
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
+		db:                  deps.DB,
 		linkService:         deps.LinkService,
 		courseService:       deps.CourseService,
 		reportService:       deps.ReportService,

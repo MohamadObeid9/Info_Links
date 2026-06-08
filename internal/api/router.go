@@ -35,10 +35,11 @@ func NewRouter(cfg config.Config, h *Handler, seoH *seo.Handler) http.Handler {
 func registerPublicRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("GET /api", h.handleApiRoot)
 	mux.HandleFunc("GET /api/", h.handleApiRoot)
-	mux.HandleFunc("GET /api/health", h.handleHealth)
-	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
+	mux.HandleFunc("GET /readyz", h.handleReadyz)
+	mux.HandleFunc("GET /healthz", h.handleHealthz)
 	mux.HandleFunc("GET /api/content", h.handleGetContent)
 
+	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
 	mux.HandleFunc("POST /api/reports", h.handlePostReport)
 	mux.HandleFunc("POST /api/feedback", h.handlePostFeedback)
 	mux.HandleFunc("POST /api/page_views", h.handlePostPageView)
