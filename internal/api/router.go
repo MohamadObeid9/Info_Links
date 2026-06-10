@@ -11,13 +11,14 @@ import (
 	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/seo"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/cors"
 )
 
 func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Handler) http.Handler {
 	mux := http.NewServeMux()
 
-	registerPublicRoutes(mux, h)
+	registerPublicRoutes(mux, h, cfg)
 	registerAdminRoutes(mux, h)
 	registerSEORoutes(mux, seoH)
 	mux.Handle("/", newStaticFileHandler(resolveStaticDir()))
@@ -25,7 +26,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	origins := allowedOrigins(cfg.CorsAllowedOrigins)
 	securedHandler := withSecurityHeaders(mux, contentSecurityPolicy(origins))
 	handlerWithRecover := middleware.Recover(logger, securedHandler)
-	handlerWithRequestID := middleware.RequestIDWithLogging(logger, handlerWithRecover)
+	handlerWithMetrics := middleware.Metrics(handlerWithRecover)
+	handlerWithRequestID := middleware.RequestIDWithLogging(logger, handlerWithMetrics)
 
 	return cors.New(cors.Options{
 		AllowedOrigins:   origins,
@@ -35,7 +37,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	}).Handler(handlerWithRequestID)
 }
 
-func registerPublicRoutes(mux *http.ServeMux, h *Handler) {
+func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
+	mux.Handle("GET /metrics", metricsHandler(cfg))
+
 	mux.HandleFunc("GET /api", h.handleApiRoot)
 	mux.HandleFunc("GET /api/", h.handleApiRoot)
 	mux.HandleFunc("GET /readyz", h.handleReadyz)
@@ -48,6 +52,22 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("POST /api/page_views", h.handlePostPageView)
 	mux.HandleFunc("POST /api/link_clicks", h.handlePostLinkClick)
 	mux.HandleFunc("POST /api/contributions", h.handlePostContribution)
+}
+
+func metricsHandler(cfg config.Config) http.Handler {
+	handler := promhttp.Handler()
+	switch {
+	case cfg.MetricsAuthEnabled():
+		return middleware.MetricsBasicAuth(
+			cfg.MetricsBasicAuthUser,
+			cfg.MetricsBasicAuthPass,
+			handler,
+		)
+	case cfg.AppEnv == "production":
+		return middleware.MetricsDenied()
+	default:
+		return handler
+	}
 }
 
 func registerAdminRoutes(mux *http.ServeMux, h *Handler) {

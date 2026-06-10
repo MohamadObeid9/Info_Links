@@ -78,14 +78,17 @@ func RequestIDWithLogging(logger *slog.Logger, next http.Handler) http.Handler {
 
 		next.ServeHTTP(ww, r.WithContext(ctx))
 
-		if !strings.Contains(r.URL.Path, "js") && !strings.Contains(r.URL.Path, "styles") {
-			logger.Info("request completed",
-				"request_id", id,
-				"method", r.Method,
-				"path", r.URL.Path,
-				"status", ww.status,
-				"duration_ms", time.Since(start).Milliseconds(),
-			)
+		path := r.URL.Path
+		if !strings.Contains(path, "js") && !strings.Contains(path, "styles") && !strings.Contains(path, "assets") {
+			if path != "/readyz" && r.Method != "HEAD" {
+				logger.Info("request completed",
+					"request_id", id,
+					"method", r.Method,
+					"path", path,
+					"status", ww.status,
+					"duration_ms", time.Since(start).Milliseconds(),
+				)
+			}
 		}
 	})
 }

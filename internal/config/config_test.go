@@ -41,19 +41,23 @@ func TestLoad(t *testing.T) {
 		{
 			name: "loads custom optional vars",
 			env: map[string]string{
-				"DATABASE_URL":         dbURL,
-				"JWT_SECRET":           secret,
-				"PORT":                 "3000",
-				"APP_ENV":              "production",
-				"CORS_ALLOWED_ORIGINS": "https://example.com",
+				"DATABASE_URL":                dbURL,
+				"JWT_SECRET":                  secret,
+				"PORT":                        "3000",
+				"APP_ENV":                     "production",
+				"CORS_ALLOWED_ORIGINS":        "https://example.com",
+				"METRICS_BASIC_AUTH_USER":     "grafana-scraper",
+				"METRICS_BASIC_AUTH_PASSWORD": "metrics-secret",
 			},
 			want: Config{
-				Port:               "3000",
-				AppEnv:             "production",
-				DatabaseURL:        dbURL,
-				JWTSecret:          secret,
-				CorsAllowedOrigins: "https://example.com",
-				SiteBaseURL:        defaultSiteBaseURL,
+				Port:                 "3000",
+				AppEnv:               "production",
+				DatabaseURL:          dbURL,
+				JWTSecret:            secret,
+				CorsAllowedOrigins:   "https://example.com",
+				SiteBaseURL:          defaultSiteBaseURL,
+				MetricsBasicAuthUser: "grafana-scraper",
+				MetricsBasicAuthPass: "metrics-secret",
 			},
 		},
 		{
@@ -118,6 +122,24 @@ func TestLoad(t *testing.T) {
 				"JWT_SECRET":   "   ",
 			},
 			wantErr: "jwt_secret is required",
+		},
+		{
+			name: "production requires metrics basic auth",
+			env: map[string]string{
+				"DATABASE_URL": dbURL,
+				"JWT_SECRET":   secret,
+				"APP_ENV":      "production",
+			},
+			wantErr: "metrics basic auth is required in production",
+		},
+		{
+			name: "metrics basic auth user without password",
+			env: map[string]string{
+				"DATABASE_URL":            dbURL,
+				"JWT_SECRET":              secret,
+				"METRICS_BASIC_AUTH_USER": "grafana-scraper",
+			},
+			wantErr: "metrics basic auth user and password must both be set",
 		},
 	}
 
