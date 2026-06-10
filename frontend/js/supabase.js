@@ -1,20 +1,68 @@
-
-
 // ===================== API CORE =====================
 const API_TIMEOUT_MS = 12000;
+
+function _appendRequestRef(message, status, requestId) {
+  if (
+    status >= 500 &&
+    typeof requestId === "string" &&
+    requestId.trim() &&
+    !message.includes("(ref:")
+  ) {
+    return `${message} (ref: ${requestId.trim()})`;
+  }
+  return message;
+}
 
 function _buildApiError(status, fallbackMessage, payloadText) {
   if (!payloadText) return new Error(fallbackMessage);
   try {
     const parsed = JSON.parse(payloadText);
     if (parsed && typeof parsed.error === "string" && parsed.error.trim()) {
-      return new Error(parsed.error);
+      const message = _appendRequestRef(
+        parsed.error,
+        status,
+        parsed.request_id,
+      );
+      const err = new Error(message);
+      if (typeof parsed.request_id === "string" && parsed.request_id.trim()) {
+        err.requestId = parsed.request_id.trim();
+      }
+      return err;
     }
   } catch (e) {}
-  return new Error(payloadText || fallbackMessage || `Request failed (${status})`);
+  return new Error(
+    payloadText || fallbackMessage || `Request failed (${status})`,
+  );
 }
 
-async function apiRequest(url, { method = "GET", body = null, headers = {}, timeoutMs = API_TIMEOUT_MS } = {}) {
+/** User-facing text from an API error; falls back when message is empty. */
+function formatApiError(err, fallback = "Something went wrong") {
+  if (err && typeof err.message === "string" && err.message.trim()) {
+    return err.message;
+  }
+  return fallback;
+}
+
+/** Structured console log for API failures (message + request id when present). */
+function logApiError(err, context, status) {
+  const entry = {
+    context: context || "api",
+    message: err?.message || String(err),
+  };
+  if (status) entry.status = status;
+  if (err?.requestId) entry.requestId = err.requestId;
+  console.error("[API error]", entry);
+}
+
+async function apiRequest(
+  url,
+  {
+    method = "GET",
+    body = null,
+    headers = {},
+    timeoutMs = API_TIMEOUT_MS,
+  } = {},
+) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -35,7 +83,24 @@ async function apiRequest(url, { method = "GET", body = null, headers = {}, time
     });
     const text = await res.text();
     if (!res.ok) {
-      throw _buildApiError(res.status, `Request failed (${res.status})`, text);
+      let apiErr = _buildApiError(
+        res.status,
+        `Request failed (${res.status})`,
+        text,
+      );
+      const headerId = res.headers.get("X-Request-ID");
+      if (!apiErr.requestId && headerId?.trim()) {
+        apiErr.requestId = headerId.trim();
+        if (res.status >= 500 && !apiErr.message.includes("(ref:")) {
+          apiErr.message = _appendRequestRef(
+            apiErr.message,
+            res.status,
+            headerId,
+          );
+        }
+      }
+      logApiError(apiErr, `${method} ${url}`, res.status);
+      throw apiErr;
     }
     return text ? JSON.parse(text) : [];
   } catch (err) {
@@ -49,7 +114,13 @@ async function apiRequest(url, { method = "GET", body = null, headers = {}, time
 }
 
 // ===================== API PROXY =====================
-async function sb(table, method = "GET", body = null, matchString = null, select = null) {
+async function sb(
+  table,
+  method = "GET",
+  body = null,
+  matchString = null,
+  select = null,
+) {
   let cleanTable = table;
   let id = null;
 
@@ -106,3 +177,5 @@ window.sbLogout = sbLogout;
 window.trackVisit = trackVisit;
 window.trackLinkClick = trackLinkClick;
 window.apiRequest = apiRequest;
+window.formatApiError = formatApiError;
+window.logApiError = logApiError;

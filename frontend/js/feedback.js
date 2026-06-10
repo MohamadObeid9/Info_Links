@@ -50,8 +50,8 @@ async function submitFeedback() {
         updateStarDisplay();
         showView('home');
     } catch (err) {
-        console.error('Feedback submission error:', err);
-        showToast('Failed to submit feedback', true);
+        logApiError(err, 'submitFeedback');
+        showToast(formatApiError(err, 'Failed to submit feedback'), true);
     } finally {
         setBtnLoading(btn, false);
     }
@@ -177,8 +177,8 @@ async function toggleFeedbackStatus(id, currentStatus) {
         loadReportsBadges();
         showToast(`Marked as ${newStatus}`);
     } catch (err) {
-        console.error('Error updating feedback:', err);
-        showToast('Failed to update feedback', true);
+        logApiError(err, 'updateFeedback');
+        showToast(formatApiError(err, 'Failed to update feedback'), true);
     }
 }
 
@@ -189,8 +189,8 @@ async function deleteFeedback(id) {
         loadReportsBadges();
         showToast('Feedback deleted');
     } catch (err) {
-        console.error('Error deleting feedback:', err);
-        showToast('Failed to delete feedback', true);
+        logApiError(err, 'deleteFeedback');
+        showToast(formatApiError(err, 'Failed to delete feedback'), true);
     }
 }
 window.submitFeedback = submitFeedback; window.setRating = setRating; window.handleStarHover = handleStarHover; window.clearStarHover = clearStarHover;

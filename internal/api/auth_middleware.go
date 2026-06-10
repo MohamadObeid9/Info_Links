@@ -12,7 +12,7 @@ func (h *Handler) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
-			writeJSONError(w, http.StatusUnauthorized, "Unauthorized: No token provided")
+			writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: No token provided")
 			return
 		}
 
@@ -29,17 +29,17 @@ func (h *Handler) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			writeJSONError(w, http.StatusUnauthorized, "Unauthorized: Invalid token")
+			writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: Invalid token")
 			return
 		}
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			writeJSONError(w, http.StatusUnauthorized, "Unauthorized: Invalid token claims")
+			writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: Invalid token claims")
 			return
 		}
 		adminClaim, ok := claims["admin"].(bool)
 		if !ok || !adminClaim {
-			writeJSONError(w, http.StatusForbidden, "Forbidden: Admin access required")
+			writeJSONError(w, r, http.StatusForbidden, "Forbidden: Admin access required")
 			return
 		}
 

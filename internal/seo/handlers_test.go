@@ -12,6 +12,7 @@ import (
 
 	"infolinks-backend/internal/database"
 	"infolinks-backend/internal/errs"
+	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/repository"
 	"infolinks-backend/internal/service"
 )
@@ -35,6 +36,18 @@ func testSEOHandler(t *testing.T) *Handler {
 func testSEOHandlerWithRepo(t *testing.T, repo repository.SEORepository) *Handler {
 	t.Helper()
 	return NewHandler(slog.Default(), service.NewSEOService(repo), "https://example.com")
+}
+
+func serveSEO(
+	h http.Handler,
+	rr *httptest.ResponseRecorder,
+	req *http.Request,
+	requestID string,
+) {
+	if requestID != "" {
+		req.Header.Set(middleware.HeaderRequestID, requestID)
+	}
+	middleware.RequestID(h).ServeHTTP(rr, req)
 }
 
 func TestNewHandler(t *testing.T) {
@@ -93,10 +106,13 @@ func TestHandleSitemapServiceError(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/sitemap.xml", nil)
 	rr := httptest.NewRecorder()
-	h.HandleSitemap(rr, req)
+	serveSEO(http.HandlerFunc(h.HandleSitemap), rr, req, "sitemap-trace-1")
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status: got %d want 500", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "ref: sitemap-trace-1") {
+		t.Fatalf("body missing request ref: %q", rr.Body.String())
 	}
 }
 
@@ -152,10 +168,16 @@ func TestHandleCourseServiceError(t *testing.T) {
 	req.SetPathValue("code", "nfa008")
 	rr := httptest.NewRecorder()
 
-	h.HandleCourse(rr, req)
+	serveSEO(http.HandlerFunc(h.HandleCourse), rr, req, "course-trace-1")
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status: got %d want 500", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "course-trace-1") {
+		t.Fatalf("body missing request id: %q", rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "Something went wrong") {
+		t.Fatalf("body missing error page: %q", rr.Body.String())
 	}
 }
 
@@ -232,10 +254,13 @@ func TestHandleCoursesIndexServiceError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/courses", nil)
 	rr := httptest.NewRecorder()
 
-	h.HandleCoursesIndex(rr, req)
+	serveSEO(http.HandlerFunc(h.HandleCoursesIndex), rr, req, "courses-trace-1")
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("status: got %d want 500", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), "courses-trace-1") {
+		t.Fatalf("body missing request id: %q", rr.Body.String())
 	}
 }
 

@@ -21,7 +21,7 @@ func (h *Handler) handleReadyz(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.db.Ping(ctx); err != nil {
 		h.LoggerWithID(r).Warn("readiness check failed", "error", err)
-		writeJSONError(w, http.StatusServiceUnavailable, "db is unreachable")
+		writeJSONError(w, r, http.StatusServiceUnavailable, "db is unreachable")
 		return
 	}
 

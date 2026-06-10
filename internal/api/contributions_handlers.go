@@ -65,49 +65,49 @@ func (h *Handler) handleAdminDeleteContribution(w http.ResponseWriter, r *http.R
 func mapPostContributionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseNameAndLinkUrlRequired):
-		writeJSONError(w, http.StatusBadRequest, "Course name and link URL are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Course name and link URL are required")
 	default:
 		h.LoggerWithID(r).Error("create contribution failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteContributionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrContributionInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid contribution id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid contribution id")
 	case errors.Is(err, errs.ErrContributionNotFound):
-		writeJSONError(w, http.StatusNotFound, "Contribution not found")
+		writeJSONError(w, r, http.StatusNotFound, "Contribution not found")
 	default:
 		h.LoggerWithID(r).Error("delete contribution failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateContributionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrContributionNotFound):
-		writeJSONError(w, http.StatusNotFound, "Contribution not found")
+		writeJSONError(w, r, http.StatusNotFound, "Contribution not found")
 	case errors.Is(err, errs.ErrContributionInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid contribution id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid contribution id")
 	case errors.Is(err, errs.ErrStatusRequired):
-		writeJSONError(w, http.StatusBadRequest, "Status is required")
+		writeJSONError(w, r, http.StatusBadRequest, "Status is required")
 	case errors.Is(err, errs.ErrContributionInvalidStatus):
-		writeJSONError(w, http.StatusBadRequest, "Status must be pending or approved")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be pending or approved")
 	default:
 		h.LoggerWithID(r).Error("update contribution failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapListContributionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrInvalidParams):
-		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
+		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	case errors.Is(err, errs.ErrContributionInvalidStatus):
-		writeJSONError(w, http.StatusBadRequest, "Status must be pending or approved")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be pending or approved")
 	default:
 		h.LoggerWithID(r).Error("list contributions failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

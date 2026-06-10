@@ -40,10 +40,10 @@ func (h *Handler) loggerWithID(r *http.Request) *slog.Logger {
 	return h.logger
 }
 
-func (h *Handler) writeHTML(w http.ResponseWriter, status int, html string) {
+func (h *Handler) writeHTML(w http.ResponseWriter, status int, payload string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	_, _ = w.Write([]byte(html))
+	_, _ = w.Write([]byte(payload))
 }
 
 func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
@@ -62,13 +62,13 @@ func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.loggerWithID(r).Error("course page failed", "error", err, "code", code)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500HTML(w, r)
 		return
 	}
 	html, err := renderCoursePage(h.baseURL, data)
 	if err != nil {
 		h.loggerWithID(r).Error("render course page failed", "error", err, "code", code)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500HTML(w, r)
 		return
 	}
 	h.writeHTML(w, http.StatusOK, html)
@@ -90,13 +90,13 @@ func (h *Handler) HandleProgram(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.loggerWithID(r).Error("program page failed", "error", err, "slug", slug)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500HTML(w, r)
 		return
 	}
 	html, err := renderProgramPage(h.baseURL, data)
 	if err != nil {
 		h.loggerWithID(r).Error("render program page failed", "error", err, "slug", slug)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500HTML(w, r)
 		return
 	}
 	h.writeHTML(w, http.StatusOK, html)
@@ -109,13 +109,13 @@ func (h *Handler) HandleCoursesIndex(w http.ResponseWriter, r *http.Request) {
 	entries, err := h.service.ListCoursesIndex(ctx)
 	if err != nil {
 		h.loggerWithID(r).Error("courses index failed", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500HTML(w, r)
 		return
 	}
 	html, err := renderCoursesIndex(h.baseURL, entries)
 	if err != nil {
 		h.loggerWithID(r).Error("render courses index failed", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500HTML(w, r)
 		return
 	}
 	h.writeHTML(w, http.StatusOK, html)
@@ -134,7 +134,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 	codes, err := h.service.ListCourseCodesForSitemap(ctx)
 	if err != nil {
 		h.loggerWithID(r).Error("sitemap course codes failed", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500Plain(w, r)
 		return
 	}
 	for _, code := range codes {
@@ -144,7 +144,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 	programs, err := h.service.ListProgramsForSitemap(ctx, ProgramSlug)
 	if err != nil {
 		h.loggerWithID(r).Error("sitemap programs failed", "error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		h.serve500Plain(w, r)
 		return
 	}
 	for _, p := range programs {
@@ -194,4 +194,23 @@ func (h *Handler) serve404(w http.ResponseWriter) {
 		return
 	}
 	h.writeHTML(w, http.StatusNotFound, html)
+}
+
+func (h *Handler) serve500HTML(w http.ResponseWriter, r *http.Request) {
+	id := middleware.RequestIDFromContext(r.Context())
+	html, err := render500(h.baseURL, id)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	h.writeHTML(w, http.StatusInternalServerError, html)
+}
+
+func (h *Handler) serve500Plain(w http.ResponseWriter, r *http.Request) {
+	id := middleware.RequestIDFromContext(r.Context())
+	msg := "Internal Server Error"
+	if id != "" {
+		msg += " (ref: " + id + ")"
+	}
+	http.Error(w, msg, http.StatusInternalServerError)
 }

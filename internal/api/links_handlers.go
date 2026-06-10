@@ -49,33 +49,33 @@ func (h *Handler) handleAdminDeleteLink(w http.ResponseWriter, r *http.Request) 
 func mapPostLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrLinkURLAndLabelRequired):
-		writeJSONError(w, http.StatusBadRequest, "Link url and link label are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Link url and link label are required")
 	default:
 		h.LoggerWithID(r).Error("create link failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrLinkInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid link id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid link id")
 	case errors.Is(err, errs.ErrLinkNotFound):
-		writeJSONError(w, http.StatusNotFound, "Link not found")
+		writeJSONError(w, r, http.StatusNotFound, "Link not found")
 	default:
 		h.LoggerWithID(r).Error("delete link failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrLinkNotFound):
-		writeJSONError(w, http.StatusNotFound, "Link not found")
+		writeJSONError(w, r, http.StatusNotFound, "Link not found")
 	case errors.Is(err, errs.ErrLinkInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid link id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid link id")
 	default:
 		h.LoggerWithID(r).Error("update link failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

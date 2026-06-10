@@ -11,7 +11,7 @@ import (
 func (h *Handler) handleAdminGetExtraLinks(w http.ResponseWriter, r *http.Request) {
 	links, err := h.extraLinkService.List(r.Context())
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	writeJSON(w, http.StatusOK, links)
@@ -54,35 +54,35 @@ func (h *Handler) handleAdminDeleteExtraLink(w http.ResponseWriter, r *http.Requ
 func mapPostExtraLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraLinkURLAndLabelRequired):
-		writeJSONError(w, http.StatusBadRequest, "Extra link url and label are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Extra link url and label are required")
 	case errors.Is(err, errs.ErrExtraLinkInvalidSectionID):
-		writeJSONError(w, http.StatusBadRequest, "Extra link invalid section id")
+		writeJSONError(w, r, http.StatusBadRequest, "Extra link invalid section id")
 	default:
 		h.LoggerWithID(r).Error("create extra link failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateExtraLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraLinkInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid extra link id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid extra link id")
 	case errors.Is(err, errs.ErrExtraLinkNotFound):
-		writeJSONError(w, http.StatusNotFound, "Extra link not found")
+		writeJSONError(w, r, http.StatusNotFound, "Extra link not found")
 	default:
 		h.LoggerWithID(r).Error("update extra link failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteExtraLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraLinkInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid extra link id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid extra link id")
 	case errors.Is(err, errs.ErrExtraLinkNotFound):
-		writeJSONError(w, http.StatusNotFound, "Extra link not found")
+		writeJSONError(w, r, http.StatusNotFound, "Extra link not found")
 	default:
 		h.LoggerWithID(r).Error("delete extra link failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

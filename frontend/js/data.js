@@ -122,9 +122,7 @@ async function loadAll() {
     }
 
     // Cache miss — fetch all data from our new Go backend
-    const res = await fetch("/api/content");
-    if (!res.ok) throw new Error("Failed to fetch from backend");
-    const data = await res.json();
+    const data = await apiRequest("/api/content");
 
     if (!AppState.adminLoggedIn) {
       _saveCache({
@@ -150,8 +148,9 @@ async function loadAll() {
     document.getElementById("coursesOutput").dataset.loaded = "1";
     _renderAfterLoad();
   } catch (e) {
+    const message = formatApiError(e, "Failed to fetch from backend");
     document.getElementById("coursesOutput").innerHTML =
-      `<div class="empty">⚠️ Failed to load data: ${e.message}</div>`;
+      `<div class="empty">⚠️ Failed to load data: ${esc(message)}</div>`;
   }
 }
 

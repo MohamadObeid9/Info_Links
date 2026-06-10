@@ -71,6 +71,19 @@ func TestRender404(t *testing.T) {
 	}
 }
 
+func TestRender500(t *testing.T) {
+	html, err := render500("https://example.com", "trace-abc-123")
+	if err != nil {
+		t.Fatalf("render500: %v", err)
+	}
+	if !strings.Contains(html, "Something went wrong") {
+		t.Fatalf("html missing error heading: %q", html)
+	}
+	if !strings.Contains(html, "trace-abc-123") {
+		t.Fatalf("html missing request id: %q", html)
+	}
+}
+
 func TestExecuteTemplateUnknownName(t *testing.T) {
 	_, err := executeTemplate("unknown", nil)
 	if err == nil || !strings.Contains(err.Error(), "unknown template") {

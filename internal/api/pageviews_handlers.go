@@ -13,7 +13,7 @@ func (h *Handler) handlePostPageView(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.pageViewService.Create(r.Context(), pv); err != nil {
 		h.LoggerWithID(r).Error("post page view failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -24,7 +24,7 @@ func (h *Handler) handlePostPageView(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleAdminGetPageViews(w http.ResponseWriter, r *http.Request) {
 	views, err := h.pageViewService.List(r.Context())
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	writeJSON(w, http.StatusOK, views)

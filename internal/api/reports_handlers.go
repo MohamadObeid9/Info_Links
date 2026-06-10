@@ -66,49 +66,49 @@ func (h *Handler) handleAdminDeleteReport(w http.ResponseWriter, r *http.Request
 func mapPostReportErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseNameAndLinkUrlRequired):
-		writeJSONError(w, http.StatusBadRequest, "Course name and link URL are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Course name and link URL are required")
 	default:
 		h.LoggerWithID(r).Error("create report failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteReportErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrReportInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid report id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid report id")
 	case errors.Is(err, errs.ErrReportNotFound):
-		writeJSONError(w, http.StatusNotFound, "Report not found")
+		writeJSONError(w, r, http.StatusNotFound, "Report not found")
 	default:
 		h.LoggerWithID(r).Error("delete report failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapListReportErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrInvalidParams):
-		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
+		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	case errors.Is(err, errs.ErrReportInvalidStatus):
-		writeJSONError(w, http.StatusBadRequest, "Status must be open or resolved")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be open or resolved")
 	default:
 		h.LoggerWithID(r).Error("list reports failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateReportErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrReportNotFound):
-		writeJSONError(w, http.StatusNotFound, "Report not found")
+		writeJSONError(w, r, http.StatusNotFound, "Report not found")
 	case errors.Is(err, errs.ErrReportInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid report id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid report id")
 	case errors.Is(err, errs.ErrStatusRequired):
-		writeJSONError(w, http.StatusBadRequest, "Status is required")
+		writeJSONError(w, r, http.StatusBadRequest, "Status is required")
 	case errors.Is(err, errs.ErrReportInvalidStatus):
-		writeJSONError(w, http.StatusBadRequest, "Status must be open or resolved")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be open or resolved")
 	default:
 		h.LoggerWithID(r).Error("update report failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

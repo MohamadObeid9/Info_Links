@@ -3,6 +3,7 @@ package seo
 import (
 	"bytes"
 	"fmt"
+	"html"
 	"html/template"
 	"strings"
 
@@ -140,6 +141,23 @@ func render404(baseURL string) (string, error) {
 	return executeLayout(pageLayout{
 		Title:       "Cours introuvable | Info Links",
 		Description: "Code cours non trouvé sur Info Links CNAM Liban.",
+		Canonical:   strings.TrimSuffix(baseURL, "/") + "/",
+		BaseURL:     strings.TrimSuffix(baseURL, "/"),
+		Body:        template.HTML(body),
+	})
+}
+
+func render500(baseURL, requestID string) (string, error) {
+	refLine := ""
+	if strings.TrimSpace(requestID) != "" {
+		refLine = `<p>Reference: <code>` + html.EscapeString(strings.TrimSpace(requestID)) + `</code></p>`
+	}
+	body := `<main class="seo-main"><h1>Something went wrong</h1><p>We could not load this page. Please try again in a moment.</p>` +
+		refLine +
+		`<p><a href="/">Retour à l'accueil</a> · <a href="/courses">Tous les cours</a></p></main>`
+	return executeLayout(pageLayout{
+		Title:       "Error | Info Links",
+		Description: "Temporary error on Info Links.",
 		Canonical:   strings.TrimSuffix(baseURL, "/") + "/",
 		BaseURL:     strings.TrimSuffix(baseURL, "/"),
 		Body:        template.HTML(body),

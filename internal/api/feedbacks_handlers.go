@@ -64,53 +64,53 @@ func (h *Handler) handleAdminDeleteFeedback(w http.ResponseWriter, r *http.Reque
 func mapPostFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackCategoryAndRatingRequired):
-		writeJSONError(w, http.StatusBadRequest, "Category and rating are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Category and rating are required")
 	case errors.Is(err, errs.ErrFeedbackInvalidRating):
-		writeJSONError(w, http.StatusBadRequest, "Rating should be between 1 and 5")
+		writeJSONError(w, r, http.StatusBadRequest, "Rating should be between 1 and 5")
 	case errors.Is(err, errs.ErrFeedbackInvalidCategory):
-		writeJSONError(w, http.StatusBadRequest, "Category must be one of the following : ui/ux or content or functionality or performance or accessibility")
+		writeJSONError(w, r, http.StatusBadRequest, "Category must be one of the following : ui/ux or content or functionality or performance or accessibility")
 	default:
 		h.LoggerWithID(r).Error("create feedback failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackNotFound):
-		writeJSONError(w, http.StatusNotFound, "Feedback not found")
+		writeJSONError(w, r, http.StatusNotFound, "Feedback not found")
 	case errors.Is(err, errs.ErrFeedbackInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid feedback id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid feedback id")
 	case errors.Is(err, errs.ErrStatusRequired):
-		writeJSONError(w, http.StatusBadRequest, "Status is required")
+		writeJSONError(w, r, http.StatusBadRequest, "Status is required")
 	case errors.Is(err, errs.ErrFeedbackInvalidStatus):
-		writeJSONError(w, http.StatusBadRequest, "Status must be new or read")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be new or read")
 	default:
 		h.LoggerWithID(r).Error("update feedback failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid feedback id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid feedback id")
 	case errors.Is(err, errs.ErrFeedbackNotFound):
-		writeJSONError(w, http.StatusNotFound, "Feedback not found")
+		writeJSONError(w, r, http.StatusNotFound, "Feedback not found")
 	default:
 		h.LoggerWithID(r).Error("delete feedback failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapListFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackInvalidStatus):
-		writeJSONError(w, http.StatusBadRequest, "Status must be new or read")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be new or read")
 	case errors.Is(err, errs.ErrInvalidParams):
-		writeJSONError(w, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
+		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	default:
 		h.LoggerWithID(r).Error("list feedbacks failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

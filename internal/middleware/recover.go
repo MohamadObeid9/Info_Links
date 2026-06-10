@@ -16,12 +16,13 @@ func Recover(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				log := logger
-				if id := RequestIDFromContext(r.Context()); id != "" {
-					log = log.With("request_id", id)
+				id := RequestIDFromContext(r.Context())
+				if id != "" {
+					logger = logger.With("request_id", id)
 				}
 
-				log.Error("panic recovered",
+				logger.Error(
+					"panic recovered",
 					"panic", rec,
 					"method", r.Method,
 					"path", r.URL.Path,
@@ -31,7 +32,8 @@ func Recover(logger *slog.Logger, next http.Handler) http.Handler {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusInternalServerError)
 				_ = json.NewEncoder(w).Encode(map[string]string{
-					"error": "Internal server error",
+					"error":      "Internal server error",
+					"request_id": id,
 				})
 			}
 		}()

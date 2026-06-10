@@ -50,41 +50,41 @@ func (h *Handler) handleAdminDeleteCourse(w http.ResponseWriter, r *http.Request
 func mapPostCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
-		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Course code and course name are required")
 	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
-		writeJSONError(w, http.StatusBadRequest, "Course invalid semestre id ")
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid semestre id ")
 	default:
 		h.LoggerWithID(r).Error("create course failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid id")
 	case errors.Is(err, errs.ErrCourseNotFound):
-		writeJSONError(w, http.StatusNotFound, "Course not found")
+		writeJSONError(w, r, http.StatusNotFound, "Course not found")
 	default:
 		h.LoggerWithID(r).Error("delete course failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrCourseInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Course invalid id")
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid id")
 	case errors.Is(err, errs.ErrCourseNotFound):
-		writeJSONError(w, http.StatusNotFound, "Course not found")
+		writeJSONError(w, r, http.StatusNotFound, "Course not found")
 	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
-		writeJSONError(w, http.StatusBadRequest, "Course invalid semestre id ")
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid semestre id ")
 	case errors.Is(err, errs.ErrCoursePatchEmpty):
-		writeJSONError(w, http.StatusBadRequest, "Course invalid update parameters")
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid update parameters")
 	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):
-		writeJSONError(w, http.StatusBadRequest, "Course code and course name are required")
+		writeJSONError(w, r, http.StatusBadRequest, "Course code and course name are required")
 	default:
 		h.LoggerWithID(r).Error("update course failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

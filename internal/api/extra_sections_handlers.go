@@ -11,7 +11,7 @@ import (
 func (h *Handler) handleAdminGetExtraSections(w http.ResponseWriter, r *http.Request) {
 	sections, err := h.extraSectionService.List(r.Context())
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	writeJSON(w, http.StatusOK, sections)
@@ -54,35 +54,35 @@ func (h *Handler) handleAdminDeleteExtraSection(w http.ResponseWriter, r *http.R
 func mapPostExtraSectionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraSectionTitleRequired):
-		writeJSONError(w, http.StatusBadRequest, "Extra section title is required")
+		writeJSONError(w, r, http.StatusBadRequest, "Extra section title is required")
 	default:
 		h.LoggerWithID(r).Error("create extra section failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapUpdateExtraSectionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraSectionInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid extra section id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid extra section id")
 	case errors.Is(err, errs.ErrExtraSectionNotFound):
-		writeJSONError(w, http.StatusNotFound, "Extra section not found")
+		writeJSONError(w, r, http.StatusNotFound, "Extra section not found")
 	case errors.Is(err, errs.ErrExtraSectionTitleRequired):
-		writeJSONError(w, http.StatusBadRequest, "Extra section title is required")
+		writeJSONError(w, r, http.StatusBadRequest, "Extra section title is required")
 	default:
 		h.LoggerWithID(r).Error("update extra section failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }
 
 func mapDeleteExtraSectionErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrExtraSectionInvalidID):
-		writeJSONError(w, http.StatusBadRequest, "Invalid extra section id")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid extra section id")
 	case errors.Is(err, errs.ErrExtraSectionNotFound):
-		writeJSONError(w, http.StatusNotFound, "Extra section not found")
+		writeJSONError(w, r, http.StatusNotFound, "Extra section not found")
 	default:
 		h.LoggerWithID(r).Error("delete extra section failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

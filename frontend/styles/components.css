@@ -177,11 +177,15 @@ select.inp {
     position: fixed;
     bottom: 24px;
     right: 24px;
+    left: 24px;
+    max-width: 420px;
+    margin-left: auto;
     background: var(--accent);
     color: #fff;
     padding: 12px 20px;
     border-radius: 10px;
     font-size: 0.88rem;
+    line-height: 1.4;
     z-index: 999;
     opacity: 0;
     transform: translateY(10px);

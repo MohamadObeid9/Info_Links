@@ -24,7 +24,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	adminPass := os.Getenv("ADMIN_PASSWORD")
 
 	if creds.Email != adminEmail || creds.Password != adminPass {
-		writeJSONError(w, http.StatusUnauthorized, "Invalid credentials")
+		writeJSONError(w, r, http.StatusUnauthorized, "Invalid credentials")
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	tokenString, err := token.SignedString(h.jwtSecret)
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to generate token")
+		writeJSONError(w, r, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
 

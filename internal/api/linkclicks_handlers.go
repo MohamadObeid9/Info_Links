@@ -13,7 +13,7 @@ func (h *Handler) handlePostLinkClick(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.linkClickService.Create(r.Context(), lc); err != nil {
 		h.LoggerWithID(r).Error("post link click failed", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
@@ -24,7 +24,7 @@ func (h *Handler) handlePostLinkClick(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleAdminGetLinkClicks(w http.ResponseWriter, r *http.Request) {
 	views, err := h.linkClickService.List(r.Context())
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Internal server error")
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	writeJSON(w, http.StatusOK, views)

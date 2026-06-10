@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"infolinks-backend/internal/middleware"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,8 +16,14 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
-func writeJSONError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
+func writeJSONError(w http.ResponseWriter, r *http.Request, status int, message string) {
+	payload := map[string]string{"error": message}
+	if status >= http.StatusInternalServerError && r != nil {
+		if id := middleware.RequestIDFromContext(r.Context()); id != "" {
+			payload["request_id"] = id
+		}
+	}
+	writeJSON(w, status, payload)
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -24,7 +31,7 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) bool {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid request body")
 		return false
 	}
 	return true

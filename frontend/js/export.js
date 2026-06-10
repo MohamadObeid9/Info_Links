@@ -54,12 +54,24 @@ async function exportData() {
 }
 
 // ===================== TOAST =====================
+let toastHideTimer = null;
+
 function showToast(msg, isError = false) {
   const t = document.getElementById("toast");
   t.textContent = msg;
   t.className = "toast" + (isError ? " error" : "");
   t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 3000);
+  if (toastHideTimer) clearTimeout(toastHideTimer);
+  const text = String(msg);
+  const duration = isError
+    ? text.includes("(ref:")
+      ? 12000
+      : 7000
+    : 3000;
+  toastHideTimer = setTimeout(() => {
+    t.classList.remove("show");
+    toastHideTimer = null;
+  }, duration);
 }
 
 // ===================== INIT =====================
