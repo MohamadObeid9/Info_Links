@@ -9,11 +9,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./cmd/server
+
       - name: Test
-        run: go test ./...
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Vulnerability check
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
   frontend:
     runs-on: ubuntu-latest
@@ -27,7 +46,5 @@ jobs:
           node-version: 20
       - name: Install
         run: npm ci
-      - name: Syntax check
-        run: node --check js/admin.js && node --check js/home.js && node --check js/ui.js && node --check main.js
       - name: Build
         run: npm run build

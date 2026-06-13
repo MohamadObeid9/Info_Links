@@ -26,8 +26,9 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	origins := allowedOrigins(cfg.CorsAllowedOrigins)
 	securedHandler := withSecurityHeaders(mux, contentSecurityPolicy(origins))
 	handlerWithRecover := middleware.Recover(logger, securedHandler)
-	handlerWithMetrics := middleware.Metrics(handlerWithRecover)
-	handlerWithRequestID := middleware.RequestIDWithLogging(logger, handlerWithMetrics)
+	handlerWithRateLimit := middleware.RateLimit(handlerWithRecover)
+	handlerWithMetrics := middleware.Metrics(handlerWithRateLimit)
+	handlerWithRequestID := middleware.RequestIDWithLogging(logger, cfg.AppEnv, handlerWithMetrics)
 
 	return cors.New(cors.Options{
 		AllowedOrigins:   origins,

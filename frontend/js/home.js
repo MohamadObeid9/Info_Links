@@ -1,5 +1,8 @@
 
 // ===================== HOME RENDER =====================
+import { AppState } from "./state.js";
+import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips } from "./ui.js";
+
 function renderProgTabs() {
   document.getElementById("progTabs").innerHTML =
     `<button class="prog-tab ${AppState.currentProg === "all" ? "active" : ""}" onclick="selectProg('all')">All</button>` +
@@ -204,33 +207,34 @@ function renderExtra() {
 
   document.getElementById("extraSection").innerHTML = filtered.length
     ? `
-    <h3 style="font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:16px;">📦 Extra Resources</h3>
+    <h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--accent);">📦 Extra Resources</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
       ${filtered
         .map(
           (r) => `
         <div class="extra-section">
-          <div class="extra-title"><span>${r.icon}</span>${esc(r.title)}</div>
+          <div class="extra-title"><span>${esc(r.icon)}</span>${esc(r.title)}</div>
           <div class="links-list">
-            ${r.links
-              .map(
-                (l) => `
+            ${r.links.length
+              ? r.links
+                .map(
+                  (l) => `
               <a class="link-item"
                  data-url="${esc(l.url)}"
-                 onclick="confirmLink(null, '${esc(l.url)}'); return false;"
-                 href="#">
+                 data-link-id="${l.id}"
+                 href="${esc(l.url)}">
                 <span class="link-item-main">
                   ${getLinkBadge(l.type)}
                   <span class="link-label">${esc(l.label)}</span>
                   ${l.note ? `<span class="link-note">${esc(l.note)}</span>` : ""}
                   <button class="copy-btn" title="Copy link"
-                    onclick="event.stopPropagation(); copyLink('${esc(l.url)}')"
                     aria-label="Copy link">⎘</button>
                 </span>
                 ${getContentTypeChips(l.content_type)}
               </a>`,
-              )
-              .join("")}
+                )
+                .join("")
+              : '<span class="no-links">No links yet — contribute!</span>'}
           </div>
         </div>`,
         )
@@ -291,3 +295,14 @@ window.renderExtra = renderExtra;
 window.selectProg = selectProg;
 window.setYear = setYear;
 window.setSem = setSem;
+
+export {
+  renderProgTabs,
+  renderYearFilters,
+  renderSemFilters,
+  renderCourses,
+  renderExtra,
+  selectProg,
+  setYear,
+  setSem,
+};

@@ -1,3 +1,10 @@
+import { AppState } from "./state.js";
+import { esc, _findSharedCourses } from "./ui.js";
+import { sb, trackLinkClick } from "./supabase.js";
+import { loadAll } from "./data.js";
+import { _clearCache } from "./cache.js";
+import { showToast } from "./export.js";
+
 // ===================== CONFIRM MODAL =====================
 let _modalCallback = null;
 let _lastFocusedElement = null;
@@ -20,10 +27,6 @@ function executeModalAction() {
 
 // ── confirmLink: Fixed XSS — URL stored in dataset, not inline onclick ─────
 function confirmLink(linkId, rawUrl) {
-  // linkId is provided for course links; rawUrl for extra-section links.
-  // Fire click tracking if we have a linkId.
-  if (linkId) trackLinkClick(linkId);
-
   // Resolve URL safely from dataset rather than injecting into onclick attr
   let url = rawUrl;
   if (!url && linkId) {
@@ -70,7 +73,9 @@ function confirmLink(linkId, rawUrl) {
   document.getElementById("modal").classList.add("open");
 
   // Attach click handler safely — no inline eval
+  // Track click only after the user confirms they want to open the link
   document.getElementById("openLinkBtn").addEventListener("click", () => {
+    if (linkId) trackLinkClick(linkId);
     closeModal();
     window.open(parsed.href, "_blank", "noopener,noreferrer");
   });
@@ -146,7 +151,6 @@ function _contentTypeCheckboxes(selectedStr, prefix = "ct") {
     ["td", "✏️ TD"],
     ["cours", "📄 Cours"],
     ["videos", "🎬 Videos"],
-    ["sessions", "🎤 Sessions"],
     ["exams", "📝 Exams"],
     ["other", "📦 Other"],
   ];
@@ -175,7 +179,6 @@ function _contentTypeOptions(selected) {
     ["td", "✏️ TD"],
     ["cours", "📄 Cours"],
     ["videos", "🎬 Videos"],
-    ["sessions", "🎤 Sessions"],
     ["exams", "📝 Exams"],
     ["other", "📦 Other"],
   ];
@@ -434,6 +437,16 @@ async function applySaveCourse(updateAll) {
   }
 }
 
+// URL validation helper
+function _isValidUrl(url) {
+  try {
+    const p = new URL(url);
+    return p.protocol === "http:" || p.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 // Add Link
 function openAddLinkModal(courseId) {
   openModal(`<h2>+ Add Link</h2>
@@ -448,6 +461,10 @@ async function addLink(courseId) {
   const url = document.getElementById("lUrl").value.trim();
   if (!url) {
     showToast("URL required.", true);
+    return;
+  }
+  if (!_isValidUrl(url)) {
+    showToast("Please enter a valid URL (https://… or http://…).", true);
     return;
   }
   const type = document.getElementById("lType").value;
@@ -572,6 +589,10 @@ async function saveLink(linkId, courseId) {
   const url = document.getElementById("elUrl").value.trim();
   if (!url) {
     showToast("URL required.", true);
+    return;
+  }
+  if (!_isValidUrl(url)) {
+    showToast("Please enter a valid URL (https://… or http://…).", true);
     return;
   }
   const type = document.getElementById("elType").value;
@@ -738,6 +759,10 @@ async function addExtraLink(sectionId) {
     showToast("URL required.", true);
     return;
   }
+  if (!_isValidUrl(url)) {
+    showToast("Please enter a valid URL (https://… or http://…).", true);
+    return;
+  }
   try {
     await sb("extra_links", "POST", {
       section_id: sectionId,
@@ -775,6 +800,10 @@ async function saveExtraLink(id) {
     showToast("URL required.", true);
     return;
   }
+  if (!_isValidUrl(url)) {
+    showToast("Please enter a valid URL (https://… or http://…).", true);
+    return;
+  }
   try {
     await sb(`extra_links?id=eq.${id}`, "PATCH", {
       type: document.getElementById("elxType").value,
@@ -791,6 +820,37 @@ async function saveExtraLink(id) {
     showToast(e.message, true);
   }
 }
-window.closeModal = closeModal;
-window.openAddCourseModal = openAddCourseModal;
+Object.assign(window, {
+  confirmAction,
+  executeModalAction,
+  confirmLink,
+  openModal,
+  closeModal,
+  openAddCourseModal,
+  openEditCourseModal,
+  addCourse,
+  saveCourse,
+  applySaveCourse,
+  updateYearSemOpts,
+  updateSemOpts,
+  updateEditYearOpts,
+  updateEditSemOpts,
+  openAddLinkModal,
+  addLink,
+  applyAddLink,
+  openEditLinkModal,
+  saveLink,
+  applySaveLink,
+  openAddExtraSectionModal,
+  addExtraSection,
+  openEditExtraSectionModal,
+  saveExtraSection,
+  openAddExtraLinkModal,
+  addExtraLink,
+  openEditExtraLinkModal,
+  saveExtraLink,
+});
+
 document.addEventListener("keydown", _trapModalFocus);
+
+export { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder };

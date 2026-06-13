@@ -1,5 +1,7 @@
 
 // ===================== HELPERS =====================
+import { AppState, toggleFavorite } from "./state.js";
+
 function esc(str) {
   if (!str) return "";
   return String(str)
@@ -72,13 +74,13 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     const search = document.getElementById("searchInput");
     if (search) {
-      showView("home");
+      window.showView("home");
       search.focus();
       search.select();
     }
   }
   // Escape → close modal
-  if (e.key === "Escape") closeModal();
+  if (e.key === "Escape") window.closeModal?.();
 });
 
 // Helper: find all courses that share the same code as the given courseId
@@ -165,14 +167,12 @@ function _buildCourseCard(c) {
             <a class="link-item"
                data-url="${esc(l.url)}"
                data-link-id="${l.id}"
-               onclick="confirmLink(${l.id}); return false;"
-               href="#">
+               href="${esc(l.url)}">
               <span class="link-item-main">
                 ${getLinkBadge(l.type)}
                 <span class="link-label">${esc(l.label)}</span>
                 ${l.note ? `<span class="link-note">${esc(l.note)}</span>` : ""}
                 <button class="copy-btn" title="Copy link"
-                  onclick="event.stopPropagation(); copyLink('${esc(l.url)}')"
                   aria-label="Copy link">⎘</button>
               </span>
               ${getContentTypeChips(l.content_type)}
@@ -201,11 +201,9 @@ function _buildCourseCard(c) {
 // ===================== FAVORITES =====================
 function handleFavoriteToggle(courseId) {
   toggleFavorite(courseId);
-  // Re-render current view to update the star
   if (AppState.currentProg === "favorites") {
-    renderCourses(); // will re-render favorites tab
+    window.renderCourses();
   } else {
-    // Just flip the star on the existing card without full re-render
     const btn = document.querySelector(`#course-card-${courseId} .fav-btn`);
     if (btn) {
       const isFav = AppState.favorites.has(String(courseId));
@@ -218,50 +216,10 @@ function handleFavoriteToggle(courseId) {
 // ===================== COPY LINK =====================
 function copyLink(url) {
   navigator.clipboard.writeText(url).then(() => {
-    showToast("Link copied to clipboard! 📋");
+    window.showToast("Link copied to clipboard! 📋");
   }).catch(() => {
-    showToast("Copy failed — try manually.", true);
+    window.showToast("Copy failed — try manually.", true);
   });
-}
-
-// ===================== BANNER =====================
-function toggleImportantNote() {
-  document.getElementById("importantNote").classList.toggle("open");
-}
-
-const noteTranslations = {
-  en: {
-    title: "Important Note",
-    content: `We are improving the site and need your help! We're adding details about what each link contains. If
-                you've tried any link and know its content, click on the <strong>Report / Contribute</strong>
-                button. In the <strong>report section</strong>, select the course and the link you want to report.
-                In the description, tell us what the link contains (e.g., TD only, Cours only, videos, sessions,
-                or if there are missing chapters). Do that for each link you know, and we'll appreciate your help. ❤️`,
-  },
-  fr: {
-    title: "Note Importante",
-    content: `Nous améliorons le site et avons besoin de votre aide ! Nous ajoutons des détails sur le contenu de chaque lien. Si vous avez déjà essayé un lien et connaissez son contenu, cliquez sur le bouton <strong>Report / Contribute</strong>. Dans la <strong>section report</strong>, sélectionnez le cours et le lien que vous souhaitez signaler. Dans la description, indiquez ce que contient le lien (ex: TD uniquement, Cours uniquement, vidéos, sessions, ou s'il manque des chapitres). Faites cela pour chaque lien que vous connaissez, et nous apprécierons votre aide. ❤️`,
-  },
-  ar: {
-    title: "ملاحظة هامة",
-    content: `نحن نعمل على تحسين الموقع ونحتاج إلى مساعدتك! نضيف تفاصيل حول محتوى كل رابط. إذا قمت بتجربة أي رابط وتعرف محتواه، انقر فوق الزر <strong>Report / Contribute</strong>. في <strong>قسم التقرير (report)</strong>، اختر المادة والرابط الذي تريد الإبلاغ عنه. في الوصف، أخبرنا بما يحتويه الرابط (مثلاً: TD فقط، Cours فقط، فيديو، جلسات، أو إذا كانت هناك فصول مفقودة). افعل ذلك لكل رابط تعرفه، وسنقدر مساعدتك. ❤️`,
-  },
-};
-
-function setNoteLang(lang) {
-  const trans = noteTranslations[lang];
-  if (trans) {
-    document.getElementById("noteTitleText").textContent = trans.title;
-    document.getElementById("noteContentText").innerHTML = trans.content;
-    const noteEl = document.getElementById("importantNote");
-    if (lang === "ar") {
-      noteEl.style.direction = "rtl";
-      noteEl.style.textAlign = "right";
-    } else {
-      noteEl.style.direction = "ltr";
-      noteEl.style.textAlign = "left";
-    }
-  }
 }
 
 // ===================== LOADING STATES =====================
@@ -293,5 +251,21 @@ window.toggleFilters = toggleFilters;
 window.copyLink = copyLink;
 window.setBtnLoading = setBtnLoading;
 window.esc = esc;
-window.toggleImportantNote = toggleImportantNote;
-window.setNoteLang = setNoteLang;
+window.handleFavoriteToggle = handleFavoriteToggle;
+
+export {
+  esc,
+  _buildCourseCard,
+  _findSharedCourses,
+  getLinkBadge,
+  getContentTypeChips,
+  getContentTypeChip,
+  setBtnLoading,
+  toggleTheme,
+  applyTheme,
+  applySystemTheme,
+  toggleMobileMenu,
+  toggleFilters,
+  copyLink,
+  handleFavoriteToggle,
+};

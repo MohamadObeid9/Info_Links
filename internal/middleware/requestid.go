@@ -63,7 +63,7 @@ func RequestID(next http.Handler) http.Handler {
 }
 
 // RequestIDWithLogging wraps RequestID and logs one access line per request.
-func RequestIDWithLogging(logger *slog.Logger, next http.Handler) http.Handler {
+func RequestIDWithLogging(logger *slog.Logger, appEnv string, next http.Handler) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -79,15 +79,17 @@ func RequestIDWithLogging(logger *slog.Logger, next http.Handler) http.Handler {
 		next.ServeHTTP(ww, r.WithContext(ctx))
 
 		path := r.URL.Path
-		if !strings.Contains(path, "js") && !strings.Contains(path, "styles") && !strings.Contains(path, "assets") {
-			if path != "/readyz" && r.Method != "HEAD" {
-				logger.Info("request completed",
-					"request_id", id,
-					"method", r.Method,
-					"path", path,
-					"status", ww.status,
-					"duration_ms", time.Since(start).Milliseconds(),
-				)
+		if !strings.Contains(path, "js") && !strings.Contains(path, "styles") && !strings.Contains(path, "assets") && !strings.Contains(path, "html") {
+			if (appEnv == "production" && path != "/metrics") || appEnv == "development" {
+				if path != "/readyz" && r.Method != "HEAD" {
+					logger.Info("request completed",
+						"request_id", id,
+						"method", r.Method,
+						"path", path,
+						"status", ww.status,
+						"duration_ms", time.Since(start).Milliseconds(),
+					)
+				}
 			}
 		}
 	})

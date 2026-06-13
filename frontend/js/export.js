@@ -1,3 +1,20 @@
+import { AppState } from "./state.js";
+import { sb, trackVisit } from "./supabase.js";
+import { setBtnLoading } from "./ui.js";
+import { loadAll, onSearch } from "./data.js";
+import {
+  renderProgTabs,
+  renderYearFilters,
+  renderSemFilters,
+} from "./home.js";
+
+const VALID_VIEWS = ["home", "report-submit", "feedback", "admin-gate", "admin"];
+
+function _getPathView() {
+  const path = window.location.pathname.replace("/", "");
+  return VALID_VIEWS.includes(path) ? path : "home";
+}
+
 // ===================== EXPORT =====================
 async function exportData() {
   const btn = document.querySelector(".admin-header .btn-ghost");
@@ -76,7 +93,7 @@ function showToast(msg, isError = false) {
 
 // ===================== INIT =====================
 document.getElementById("modal").addEventListener("click", (e) => {
-  if (e.target === document.getElementById("modal")) closeModal();
+  if (e.target === document.getElementById("modal")) window.closeModal?.();
 });
 
 function applyHighlightFromURL() {
@@ -84,7 +101,7 @@ function applyHighlightFromURL() {
   const raw = (params.get("highlight") || params.get("q") || "").trim();
   if (!raw) return;
 
-  showView("home");
+  window.showView("home");
   AppState.currentProg = "all";
   document.querySelector(".filter-row").style.display = "none";
   const extra = document.getElementById("extraSection");
@@ -133,10 +150,13 @@ async function initApp() {
   // Restore view from URL path (enables deep-linking with Clean URLs)
   const v = _getPathView();
   if (v !== "home") {
-    showView(v);
+    window.showView(v);
   }
 }
+
 window.applyHighlightFromURL = applyHighlightFromURL;
 window.initApp = initApp;
 window.showToast = showToast;
 window.exportData = exportData;
+
+export { showToast, initApp, exportData, applyHighlightFromURL };

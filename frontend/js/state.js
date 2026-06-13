@@ -2,9 +2,23 @@
 // All mutable application state lives here as a single object.
 // Access via AppState.xxx; mutate directly: AppState.xxx = yyy.
 
+function _isTokenValid(token) {
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+const _rawToken = localStorage.getItem("infolinks_token");
+const _validToken = _isTokenValid(_rawToken) ? _rawToken : null;
+if (_rawToken && !_validToken) localStorage.removeItem("infolinks_token");
+
 const AppState = {
-  sbToken: localStorage.getItem("infolinks_token"),
-  adminLoggedIn: !!localStorage.getItem("infolinks_token"),
+  sbToken: _validToken,
+  adminLoggedIn: !!_validToken,
   currentAdminTab: "courses",
   adminSearch: "",
   adminFilterProg: "all",
@@ -78,3 +92,4 @@ Object.defineProperties(window, {
 });
 
 window.AppState = AppState;
+export { AppState, saveFavorites, toggleFavorite };

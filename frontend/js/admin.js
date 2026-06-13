@@ -1,3 +1,12 @@
+import { AppState } from "./state.js";
+import { sb, sbAuth, sbLogout } from "./supabase.js";
+import { esc, setBtnLoading, getLinkBadge, getContentTypeChip, _findSharedCourses } from "./ui.js";
+import { getAdminTableSkeleton, getAdminAnalyticsSkeleton } from "./skeleton.js";
+import { loadAll, loadReportsBadges } from "./data.js";
+import { _clearCache } from "./cache.js";
+import { showToast } from "./export.js";
+import { renderAdminFeedback } from "./feedback.js";
+import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder } from "./modals.js";
 
 // ===================== ADMIN AUTH =====================
 async function checkLogin() {
@@ -11,7 +20,7 @@ async function checkLogin() {
     localStorage.setItem("infolinks_token", AppState.sbToken);
     AppState.adminLoggedIn = true;
     document.getElementById("adminPass").value = "";
-    showView("admin");
+    window.showView("admin");
   } catch (e) {
     document.getElementById("loginErr").textContent = e.message;
   } finally {
@@ -24,11 +33,11 @@ async function logout() {
   localStorage.removeItem("infolinks_token");
   AppState.sbToken = null;
   AppState.adminLoggedIn = false;
-  showView("home");
+  window.showView("home");
 }
 
 // ===================== ADMIN TABS =====================
-const ADMIN_PAGE_SIZE = 25;
+const ADMIN_PAGE_SIZE = 10;
 const AdminPager = {
   reports: { page: 0, hasNext: false },
   contributions: { page: 0, hasNext: false },
@@ -179,7 +188,7 @@ async function renderAdminAnalytics() {
       <div class="chart-wrap">
           <div class="chart-title">Daily visits — <span style="color:var(--accent2);">■</span> today</div>
           <div class="analytics-range">${rangeButtons}</div>
-          <div class="bar-chart">${barsHtml}</div>
+          <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
       </div>
       <div class="chart-wrap" style="margin-top:20px;">
           <div class="chart-title">🔥 Top Clicked Links (in range)</div>
@@ -344,7 +353,7 @@ async function renderAdminReports() {
   const page = AdminPager.reports.page;
   const offset = page * ADMIN_PAGE_SIZE;
   try {
-    const reports = await sb(`reports?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET");
+    const reports = (await sb(`reports?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET")) || [];
     if (page > 0 && reports.length === 0) {
       _setAdminPage("reports", page - 1);
       renderAdminReports();
@@ -353,7 +362,8 @@ async function renderAdminReports() {
     AdminPager.reports.hasNext = reports.length === ADMIN_PAGE_SIZE;
     let html = `<input class="admin-search" placeholder="🔍 Search reports…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('reports',0);renderAdminReports()"/>`;
     if (!reports.length) {
-      document.getElementById("adminContent").innerHTML = html + '<div class="empty">No reports yet.</div>';
+      const emptyMsg = q ? `No report matching "${esc(q)}" found.` : "No reports yet.";
+      document.getElementById("adminContent").innerHTML = html + `<div class="empty">${emptyMsg}</div>`;
       return;
     }
     html += `<table class="admin-table"><thead><tr><th>Course</th><th>Link</th><th>Issue</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
@@ -380,7 +390,7 @@ async function renderAdminContributions() {
   const page = AdminPager.contributions.page;
   const offset = page * ADMIN_PAGE_SIZE;
   try {
-    const contribs = await sb(`contributions?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET");
+    const contribs = (await sb(`contributions?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET")) || [];
     if (page > 0 && contribs.length === 0) {
       _setAdminPage("contributions", page - 1);
       renderAdminContributions();
@@ -389,7 +399,8 @@ async function renderAdminContributions() {
     AdminPager.contributions.hasNext = contribs.length === ADMIN_PAGE_SIZE;
     let html = `<input class="admin-search" placeholder="🔍 Search contributions…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('contributions',0);renderAdminContributions()"/>`;
     if (!contribs.length) {
-      document.getElementById("adminContent").innerHTML = html + '<div class="empty">No contributions yet.</div>';
+      const emptyMsg = q ? `No contribution matching "${esc(q)}" found.` : "No contributions yet.";
+      document.getElementById("adminContent").innerHTML = html + `<div class="empty">${emptyMsg}</div>`;
       return;
     }
     html += `<table class="admin-table"><thead><tr><th>Course</th><th>Link</th><th>Note</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
@@ -397,7 +408,7 @@ async function renderAdminContributions() {
       html += `<tr><td>${esc(c.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(c.link_url)}</td><td>${esc(c.note || "—")}</td>
         <td><span class="tag ${c.status === "pending" ? "tag-open" : "tag-resolved"}">${c.status}</span></td>
         <td class="action-btns">
-          ${c.status === "pending" ? `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick='openAutoApproveContribModal(${JSON.stringify(c).replace(/'/g, "&apos;")})'>✅ Approve & Add</button>` : `<button class="action-btn" disabled>Approved</button>`}
+          ${c.status === "pending" ? `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick="openAutoApproveContribModal(${esc(JSON.stringify(c))})">✅ Approve & Add</button>` : `<button class="action-btn" disabled>Approved</button>`}
           <button class="action-btn del" onclick="confirmAction('Reject this contribution?',()=>deleteContrib(${c.id}))">🗑 Reject</button>
         </td></tr>`;
     });
@@ -435,7 +446,7 @@ function openAutoApproveContribModal(c) {
     cleanNote = match[2];
   }
 
-  openModal(`<h2>✅ Approve Contribution</h2>
+  window.openModal(`<h2>✅ Approve Contribution</h2>
   <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px;">Review and add this link directly to the database.</p>
   <label>Target Course</label><select id="acCourse">${courseOpts}</select>
   <label>Type</label><select id="acType">${_linkTypeOptions(preType)}</select>
@@ -463,7 +474,7 @@ async function applyAutoApproveContrib(contribId) {
     const list = siblings
       .map(s => `<li style="margin-bottom:4px;"><strong>${esc(s.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(s.prog)} › ${esc(s.year)} › ${esc(s.sem)}</span></li>`)
       .join("");
-    openModal(`<h2>🔁 Shared Course</h2>
+    window.openModal(`<h2>🔁 Shared Course</h2>
     <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${siblings.length}</strong> other course(s) share the same code:</p>
     <ul style="font-size:.83rem;margin-bottom:16px;padding-left:18px;list-style:disc;">${list}</ul>
     <p style="font-size:.85rem;margin-bottom:16px;">Add this link to all of them too?</p>
@@ -480,7 +491,7 @@ async function applyAutoApproveContrib(contribId) {
         course_id: courseId, type, url, label, note, content_type: contentType, display_order: _getNextDisplayOrder(courseId)
       });
       await sb(`contributions?id=eq.${contribId}`, "PATCH", { status: "approved" });
-      closeModal(); _clearCache(); loadAll(); renderAdminContributions();
+      window.closeModal(); _clearCache(); loadAll(); renderAdminContributions();
       showToast("Contribution approved and link added!");
     } catch (e) { showToast(e.message, true); }
     finally { setBtnLoading(btn, false); }
@@ -496,7 +507,7 @@ async function _applyAutoApproveWithSiblings(addToAll) {
     if (addToAll && siblingCourseIds.length)
       await Promise.all(siblingCourseIds.map(sid => sb("links", "POST", { course_id: sid, type, url, label, note, content_type: contentType, display_order: _getNextDisplayOrder(sid) })));
     await sb(`contributions?id=eq.${contribId}`, "PATCH", { status: "approved" });
-    closeModal(); _clearCache(); loadAll(); renderAdminContributions();
+    window.closeModal(); _clearCache(); loadAll(); renderAdminContributions();
     showToast(addToAll ? `Link added to all ${siblingCourseIds.length + 1} courses!` : "Contribution approved and link added!");
   } catch (e) { showToast(e.message, true); }
   finally { AppState._pendingLinkOp = null; setBtnLoading(btn, false); }
@@ -531,7 +542,7 @@ function confirmDeleteLink(linkId, courseId) {
 
   if (matchingLinks.length) {
     const list = matchingLinks.map((m) => `<li style="margin-bottom:4px;"><strong>${esc(m.sibName)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(m.prog)} › ${esc(m.year)} › ${esc(m.sem)}</span></li>`).join("");
-    openModal(`<h2>🗑 Delete Link</h2>
+    window.openModal(`<h2>🗑 Delete Link</h2>
     <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${matchingLinks.length}</strong> sibling course(s) have the same link:</p>
     <ul style="font-size:.83rem;margin-bottom:16px;padding-left:18px;list-style:disc;">${list}</ul>
     <p style="font-size:.85rem;margin-bottom:16px;">Remove from all of them too?</p>
@@ -541,7 +552,7 @@ function confirmDeleteLink(linkId, courseId) {
         <button class="btn" style="background:var(--danger);color:#fff;" onclick="applyDeleteLink(true)">All ${matchingLinks.length + 1} links</button>
     </div>`);
   } else {
-    openModal(`<h2>⚠️ Confirm</h2>
+    window.openModal(`<h2>⚠️ Confirm</h2>
     <p style="color:var(--muted);font-size:.9rem;margin-top:8px;">Remove this link?</p>
     <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -554,7 +565,7 @@ async function applyDeleteLink(deleteAll) {
   try {
     await sb(`links?id=eq.${linkId}`, "DELETE");
     if (deleteAll && matchingLinkIds.length) await Promise.all(matchingLinkIds.map((mid) => sb(`links?id=eq.${mid}`, "DELETE")));
-    closeModal();
+    window.closeModal();
     _clearCache();
     loadAll();
     renderAdminCourses();
@@ -603,17 +614,90 @@ async function deleteContrib(id) {
   } catch (e) { showToast(e.message, true); }
 }
 
-// Setup badge auto-refresh
-setInterval(() => {
-  if (AppState.adminLoggedIn) loadReportsBadges();
-}, 30000);
+// Badge auto-refresh: only fires while the tab is visible; stops on page leave.
+let _badgeIntervalId = null;
 
-window.checkLogin = checkLogin;
-window.logout = logout;
-window.adminTab = adminTab;
-window.renderAdminContent = renderAdminContent;
-window.loadReportsBadges = loadReportsBadges;
-window.adminSetPage = adminSetPage;
-window.renderAdminReports = renderAdminReports;
-window.renderAdminContributions = renderAdminContributions;
-window.ADMIN_PAGE_SIZE = ADMIN_PAGE_SIZE;
+function _checkTokenExpiry() {
+  if (!AppState.sbToken) return false;
+  try {
+    const p = JSON.parse(atob(AppState.sbToken.split('.')[1]));
+    if (p.exp * 1000 <= Date.now()) {
+      localStorage.removeItem("infolinks_token");
+      AppState.sbToken = null;
+      AppState.adminLoggedIn = false;
+      window.showView("admin-gate");
+      return true;
+    }
+  } catch {
+    localStorage.removeItem("infolinks_token");
+    AppState.sbToken = null;
+    AppState.adminLoggedIn = false;
+    window.showView("admin-gate");
+    return true;
+  }
+  return false;
+}
+
+function _startBadgePolling() {
+  if (_badgeIntervalId !== null) return;
+  _badgeIntervalId = setInterval(() => {
+    if (AppState.adminLoggedIn && !document.hidden) {
+      if (_checkTokenExpiry()) return;
+      loadReportsBadges();
+    }
+  }, 30000);
+}
+
+function _stopBadgePolling() {
+  if (_badgeIntervalId === null) return;
+  clearInterval(_badgeIntervalId);
+  _badgeIntervalId = null;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    _stopBadgePolling();
+  } else if (AppState.adminLoggedIn) {
+    _startBadgePolling();
+  }
+});
+
+window.addEventListener("pagehide", _stopBadgePolling);
+
+_startBadgePolling();
+
+Object.assign(window, {
+  checkLogin,
+  logout,
+  adminTab,
+  renderAdminContent,
+  adminSetPage,
+  _setAdminPage,
+  renderAdminReports,
+  renderAdminContributions,
+  renderAdminAnalytics,
+  renderAdminCourses,
+  renderAdminExtra,
+  toggleOptional,
+  deleteCourse,
+  confirmDeleteLink,
+  applyDeleteLink,
+  deleteExtraSection,
+  deleteExtraLink,
+  toggleReportStatus,
+  deleteReport,
+  openAutoApproveContribModal,
+  applyAutoApproveContrib,
+  _applyAutoApproveWithSiblings,
+  deleteContrib,
+  ADMIN_PAGE_SIZE,
+});
+
+export {
+  renderAdminContent,
+  renderAdminAnalytics,
+  renderAdminCourses,
+  renderAdminExtra,
+  renderAdminReports,
+  renderAdminContributions,
+};

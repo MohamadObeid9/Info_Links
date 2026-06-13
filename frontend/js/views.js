@@ -1,3 +1,10 @@
+import { AppState } from "./state.js";
+import { apiRequest } from "./supabase.js";
+import { setBtnLoading } from "./ui.js";
+import { showToast } from "./export.js";
+import { renderAdminContent } from "./admin.js";
+import { loadReportsBadges } from "./data.js";
+import { updateStarDisplay } from "./feedback.js";
 
 // ===================== VIEWS =====================
 
@@ -9,7 +16,26 @@ function _getPathView() {
   return VALID_VIEWS.includes(path) ? path : "home";
 }
 
+function _expireTokenIfNeeded() {
+  if (!AppState.sbToken) return;
+  try {
+    const p = JSON.parse(atob(AppState.sbToken.split('.')[1]));
+    if (p.exp * 1000 <= Date.now()) {
+      localStorage.removeItem("infolinks_token");
+      AppState.sbToken = null;
+      AppState.adminLoggedIn = false;
+    }
+  } catch {
+    localStorage.removeItem("infolinks_token");
+    AppState.sbToken = null;
+    AppState.adminLoggedIn = false;
+  }
+}
+
 function showView(v) {
+  // Always check token expiry before any view change
+  _expireTokenIfNeeded();
+
   // 1. Security Guard: Prevent direct access to #admin if not logged in
   if (v === "admin" && !AppState.adminLoggedIn) {
     console.warn("Unauthorized access attempt to admin dashboard.");
@@ -136,6 +162,13 @@ async function submitContribution() {
     showToast("Please fill in course and link.", true);
     return;
   }
+  try {
+    const p = new URL(link);
+    if (p.protocol !== "http:" && p.protocol !== "https:") throw new Error();
+  } catch {
+    showToast("Please enter a valid URL (https://… or http://…).", true);
+    return;
+  }
   setBtnLoading(btn, true, "Submitting…");
   try {
     const finalNote = linkType ? `[Type:${linkType}] ${note}` : note;
@@ -160,7 +193,9 @@ async function submitContribution() {
   }
 }
 
-window.showView = showView; 
-window.onReportCourseChange = onReportCourseChange; 
-window.submitReport = submitReport; 
+window.showView = showView;
+window.onReportCourseChange = onReportCourseChange;
+window.submitReport = submitReport;
 window.submitContribution = submitContribution;
+
+export { showView, onReportCourseChange, submitReport, submitContribution };

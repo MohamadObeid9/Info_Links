@@ -1,4 +1,12 @@
+import { AppState } from "./state.js";
+import { sb, apiRequest, formatApiError, logApiError } from "./supabase.js";
+import { showToast } from "./export.js";
+import { esc, setBtnLoading } from "./ui.js";
+import { loadReportsBadges } from "./data.js";
+import { getAdminTableSkeleton } from "./skeleton.js";
+
 // Feedback management
+const FEEDBACK_PAGE_SIZE = 10;
 let currentRating = 0;
 let feedbackPage = 0;
 let feedbackHasNext = false;
@@ -48,7 +56,6 @@ async function submitFeedback() {
         document.getElementById('feedbackCategory').value = '';
         document.getElementById('feedbackMessage').value = '';
         updateStarDisplay();
-        showView('home');
     } catch (err) {
         logApiError(err, 'submitFeedback');
         showToast(formatApiError(err, 'Failed to submit feedback'), true);
@@ -95,23 +102,23 @@ function updateStarDisplay() {
 async function renderAdminFeedback() {
     const contentDiv = document.getElementById('adminContent');
     contentDiv.innerHTML = getAdminTableSkeleton();
-    const pageSize = window.ADMIN_PAGE_SIZE || 25;
     const q = (AppState.adminSearch || "").trim();
-    const offset = feedbackPage * pageSize;
+    const offset = feedbackPage * FEEDBACK_PAGE_SIZE;
 
     try {
-        const response = await sb(`feedback?limit=${pageSize}&offset=${offset}&q=${encodeURIComponent(q)}`, 'GET');
-        const feedback = Array.isArray(response) ? response : response.data || [];
+        const response = await sb(`feedback?limit=${FEEDBACK_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, 'GET');
+        const feedback = Array.isArray(response) ? response : (response && response.data) || [];
         if (feedbackPage > 0 && feedback.length === 0) {
             feedbackPage -= 1;
             renderAdminFeedback();
             return;
         }
-        feedbackHasNext = feedback.length === pageSize;
+        feedbackHasNext = feedback.length === FEEDBACK_PAGE_SIZE;
 
         let html = `<input class="admin-search" placeholder="🔍 Search feedback…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;resetAdminFeedbackPage();renderAdminFeedback()"/>`;
         if (feedback.length === 0) {
-            contentDiv.innerHTML = html + '<div style="padding: 20px; text-align: center; color: var(--muted);">No feedback yet</div>';
+            const emptyMsg = q ? `No feedback matching "${esc(q)}" found.` : "No feedback yet.";
+            contentDiv.innerHTML = html + `<div style="padding: 20px; text-align: center; color: var(--muted);">${emptyMsg}</div>`;
             return;
         }
         html += `
@@ -193,7 +200,16 @@ async function deleteFeedback(id) {
         showToast(formatApiError(err, 'Failed to delete feedback'), true);
     }
 }
-window.submitFeedback = submitFeedback; window.setRating = setRating; window.handleStarHover = handleStarHover; window.clearStarHover = clearStarHover;
-window.renderAdminFeedback = renderAdminFeedback;
-window.setAdminFeedbackPage = setAdminFeedbackPage;
-window.resetAdminFeedbackPage = resetAdminFeedbackPage;
+Object.assign(window, {
+  submitFeedback,
+  setRating,
+  handleStarHover,
+  clearStarHover,
+  renderAdminFeedback,
+  setAdminFeedbackPage,
+  resetAdminFeedbackPage,
+  toggleFeedbackStatus,
+  deleteFeedback,
+});
+
+export { updateStarDisplay, renderAdminFeedback };

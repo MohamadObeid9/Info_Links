@@ -1,4 +1,6 @@
 // ===================== API CORE =====================
+import { AppState } from "./state.js";
+
 const API_TIMEOUT_MS = 12000;
 
 function _appendRequestRef(message, status, requestId) {
@@ -179,3 +181,14 @@ window.trackLinkClick = trackLinkClick;
 window.apiRequest = apiRequest;
 window.formatApiError = formatApiError;
 window.logApiError = logApiError;
+
+export {
+  sb,
+  sbAuth,
+  sbLogout,
+  trackVisit,
+  trackLinkClick,
+  apiRequest,
+  formatApiError,
+  logApiError,
+};

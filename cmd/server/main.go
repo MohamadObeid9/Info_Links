@@ -36,7 +36,6 @@ func main() {
 
 	services := handleServices(dbClient.DB)
 	apiHandler, err := api.NewHandler(api.Dependencies{
-		Logger:              logger.With("component", "api"),
 		DB:                  dbClient,
 		JWTSecret:           []byte(cfg.JWTSecret),
 		LinkService:         services.LinkService,
@@ -46,9 +45,10 @@ func main() {
 		FeedbackService:     services.FeedbackService,
 		PageViewService:     services.PageViewService,
 		LinkClickService:    services.LinkClickService,
+		ExtraLinkService:    services.ExtraLinkService,
 		ContributionService: services.ContributionService,
 		ExtraSectionService: services.ExtraSectionService,
-		ExtraLinkService:    services.ExtraLinkService,
+		Logger:              logger.With("component", "api"),
 	})
 	if err != nil {
 		logger.Error("api handler initialization failed", "error", err)
@@ -60,6 +60,7 @@ func main() {
 		service.NewSEOService(repository.NewPostgresSEORepository(dbClient.DB)),
 		cfg.SiteBaseURL,
 	)
+
 	handler := api.NewRouter(
 		cfg,
 		logger.With("component", "http"),

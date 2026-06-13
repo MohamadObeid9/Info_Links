@@ -134,3 +134,4 @@ function getAdminAnalyticsSkeleton() {
   `;
 }
 window.showSkeleton = showSkeleton;
+export { showSkeleton, getAdminTableSkeleton, getAdminAnalyticsSkeleton };

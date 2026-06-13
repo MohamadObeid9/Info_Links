@@ -1,3 +1,15 @@
+import { AppState } from "./state.js";
+import { _loadCache, _saveCache } from "./cache.js";
+import { apiRequest, formatApiError, sb } from "./supabase.js";
+import { showSkeleton } from "./skeleton.js";
+import { esc } from "./ui.js";
+import {
+  renderProgTabs,
+  renderYearFilters,
+  renderSemFilters,
+  renderCourses,
+  renderExtra,
+} from "./home.js";
 
 // ===================== LOAD DATA =====================
 function _buildTree(
@@ -188,3 +200,6 @@ function onSearch() {
 }
 window.loadAll = loadAll;
 window.onSearch = onSearch;
+window.loadReportsBadges = loadReportsBadges;
+
+export { loadAll, onSearch, loadReportsBadges };

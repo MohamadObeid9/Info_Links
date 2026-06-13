@@ -29,3 +29,5 @@ function _clearCache() {
     localStorage.removeItem(_CACHE_TS_KEY);
   } catch (e) {}
 }
+
+export { _saveCache, _loadCache, _clearCache };

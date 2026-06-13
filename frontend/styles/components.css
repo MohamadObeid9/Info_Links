@@ -476,25 +476,6 @@ select.inp {
     transform: scale(1.1);
 }
 
-.note-title-wrap {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.note-langs {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    margin-left: auto;
-    margin-right: 12px;
-}
-
-.note-lang-btn {
-    padding: 2px 6px;
-    font-size: 0.7rem;
-}
-
 .extra-section-offset {
     margin-top: 10px;
 }

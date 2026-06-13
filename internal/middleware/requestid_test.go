@@ -81,7 +81,7 @@ func TestRequestIDWithLogging_recordsStatus(t *testing.T) {
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 
-	RequestIDWithLogging(slog.New(slog.NewTextHandler(io.Discard, nil)), next).ServeHTTP(rr, req)
+	RequestIDWithLogging(slog.New(slog.NewTextHandler(io.Discard, nil)), "development", next).ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusTeapot {
 		t.Fatalf("status: got %d want %d", rr.Code, http.StatusTeapot)

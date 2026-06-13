@@ -101,4 +101,15 @@
         font-size: 0.65rem;
         padding: 1px 4px;
     }
+
+    /* Tables in admin panels scroll horizontally on small screens */
+    .admin-table {
+        min-width: 540px;
+    }
+
+    #adminContent {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
 }

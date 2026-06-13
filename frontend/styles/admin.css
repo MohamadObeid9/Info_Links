@@ -229,12 +229,23 @@
     font-size: 0.95rem;
 }
 
+.bar-chart-scroll {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    /* padding lets edge bar labels breathe; negative margin compensates inside the card */
+    padding: 0 8px;
+    margin: 0 -8px;
+}
+
 .bar-chart {
     display: flex;
     align-items: flex-end;
     gap: 4px;
     height: 180px;
     margin-bottom: 12px;
+    /* minimum width so bars never compress below readable size */
+    min-width: 480px;
 }
 
 .bar-col {

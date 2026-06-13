@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      APP_ENV: development
+      PORT: "8080"
+      SITE_BASE_URL: http://localhost:8080
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          ignore:
+            - frontend/node_modules/
+            - .git/
+            - frontend/dist/
