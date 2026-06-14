@@ -38,6 +38,8 @@ func main() {
 	apiHandler, err := api.NewHandler(api.Dependencies{
 		DB:                  dbClient,
 		JWTSecret:           []byte(cfg.JWTSecret),
+		SupabaseURL:         cfg.SupabaseURL,
+		SupabaseAnonKey:     cfg.SupabaseAnonKey,
 		LinkService:         services.LinkService,
 		CourseService:       services.CourseService,
 		ReportService:       services.ReportService,

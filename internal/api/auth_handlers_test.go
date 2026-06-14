@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"infolinks-backend/internal/middleware"
 )
 
 func signTestToken(t *testing.T, secret []byte, claims jwt.MapClaims) string {
@@ -21,22 +22,54 @@ func signTestToken(t *testing.T, secret []byte, claims jwt.MapClaims) string {
 	return s
 }
 
+// fakeSupabaseToken builds a JWT that isAdmin() will accept (app_metadata.role=admin).
+// The signature key doesn't matter since isAdmin uses ParseUnverified.
+func fakeSupabaseToken(t *testing.T, role string) string {
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":          "test-user-uuid",
+		"app_metadata": map[string]any{"role": role},
+	})
+	s, err := token.SignedString([]byte("fake-supabase-secret"))
+	if err != nil {
+		t.Fatalf("fakeSupabaseToken: %v", err)
+	}
+	return s
+}
+
+// supabaseServer spins up a test server simulating the Supabase password grant endpoint.
+// It returns the given status and body for every request.
+func supabaseServer(t *testing.T, status int, body string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		w.Write([]byte(body))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
 func TestHandleLogin(t *testing.T) {
-	t.Setenv("ADMIN_EMAIL", "admin@test.com")
-	t.Setenv("ADMIN_PASSWORD", "secret")
+	adminToken := fakeSupabaseToken(t, "admin")
+	userToken := fakeSupabaseToken(t, "user")
 
 	tests := []struct {
-		name         string
-		body         string
-		statusWanted int
-		errMsg       string
-		wantToken    bool
+		name            string
+		body            string
+		supabaseStatus  int
+		supabaseBody    string
+		statusWanted    int
+		errMsg          string
+		wantToken       bool
 	}{
 		{
-			name:         "200 returns token for valid credentials",
-			body:         `{"email":"admin@test.com","password":"secret"}`,
-			statusWanted: http.StatusOK,
-			wantToken:    true,
+			name:           "200 returns token for valid admin credentials",
+			body:           `{"email":"admin@test.com","password":"secret"}`,
+			supabaseStatus: http.StatusOK,
+			supabaseBody:   `{"access_token":"` + adminToken + `"}`,
+			statusWanted:   http.StatusOK,
+			wantToken:      true,
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -45,21 +78,33 @@ func TestHandleLogin(t *testing.T) {
 			errMsg:       "Invalid request body",
 		},
 		{
-			name:         "401 for invalid email",
-			body:         `{"email":"wrong@test.com","password":"secret"}`,
-			statusWanted: http.StatusUnauthorized,
-			errMsg:       "Invalid credentials",
+			name:           "401 when supabase rejects credentials",
+			body:           `{"email":"wrong@test.com","password":"wrong"}`,
+			supabaseStatus: http.StatusBadRequest,
+			supabaseBody:   `{"error":"invalid_grant","error_description":"Invalid login credentials"}`,
+			statusWanted:   http.StatusUnauthorized,
+			errMsg:         "Invalid credentials",
 		},
 		{
-			name:         "401 for invalid password",
-			body:         `{"email":"admin@test.com","password":"wrong"}`,
-			statusWanted: http.StatusUnauthorized,
-			errMsg:       "Invalid credentials",
+			name:           "403 when authenticated user is not admin",
+			body:           `{"email":"user@test.com","password":"secret"}`,
+			supabaseStatus: http.StatusOK,
+			supabaseBody:   `{"access_token":"` + userToken + `"}`,
+			statusWanted:   http.StatusForbidden,
+			errMsg:         "Forbidden: Admin access required",
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := testHandler(t)
+
+			if tt.supabaseStatus != 0 {
+				srv := supabaseServer(t, tt.supabaseStatus, tt.supabaseBody)
+				h.supabaseURL = srv.URL
+				h.httpClient = srv.Client()
+			}
+
 			req := httptest.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 			rr := httptest.NewRecorder()
@@ -112,6 +157,8 @@ func TestHandleLogin(t *testing.T) {
 
 func TestRequireAdmin(t *testing.T) {
 	h := testHandler(t)
+	secret := string(h.jwtSecret)
+
 	validToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
 		"admin": true,
 		"exp":   time.Now().Add(time.Hour).Unix(),
@@ -123,6 +170,10 @@ func TestRequireAdmin(t *testing.T) {
 	wrongSecretToken := signTestToken(t, []byte("other-secret"), jwt.MapClaims{
 		"admin": true,
 		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
+	expiredToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": true,
+		"exp":   time.Now().Add(-time.Hour).Unix(),
 	})
 
 	tests := []struct {
@@ -151,28 +202,35 @@ func TestRequireAdmin(t *testing.T) {
 			errMsg:       "Unauthorized: Invalid token",
 		},
 		{
+			name:         "401 when token is expired",
+			authHeader:   "Bearer " + expiredToken,
+			statusWanted: http.StatusUnauthorized,
+			errMsg:       "Unauthorized: Invalid token",
+		},
+		{
 			name:         "403 when admin claim is false",
 			authHeader:   "Bearer " + nonAdminToken,
 			statusWanted: http.StatusForbidden,
 			errMsg:       "Forbidden: Admin access required",
 		},
 		{
-			name:         "accept bearer admin token",
+			name:         "200 accept bearer admin token",
 			authHeader:   "Bearer " + validToken,
 			statusWanted: http.StatusOK,
 			wantNext:     true,
 		},
 		{
-			name:         "accept raw admin token",
+			name:         "200 accept raw admin token without Bearer prefix",
 			authHeader:   validToken,
 			statusWanted: http.StatusOK,
 			wantNext:     true,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			nextCalled := false
-			wrapped := h.requireAdmin(func(w http.ResponseWriter, r *http.Request) {
+			wrapped := middleware.RequireAdmin(secret, func(w http.ResponseWriter, r *http.Request) {
 				nextCalled = true
 				w.WriteHeader(http.StatusOK)
 			})

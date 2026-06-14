@@ -1,4 +1,4 @@
-package api
+package middleware
 
 import (
 	"errors"
@@ -8,11 +8,11 @@ import (
 )
 
 // RequireAdmin middleware verifies the JWT token in the Authorization header.
-func (h *Handler) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
+func RequireAdmin(jwtSecret string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
-			writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: No token provided")
+			writeJSONErr(w, http.StatusUnauthorized, "Unauthorized: No token provided")
 			return
 		}
 
@@ -25,24 +25,30 @@ func (h *Handler) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("unexpected signing method")
 			}
-			return h.jwtSecret, nil
+			return []byte(jwtSecret), nil
 		})
 
 		if err != nil || !token.Valid {
-			writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: Invalid token")
+			writeJSONErr(w, http.StatusUnauthorized, "Unauthorized: Invalid token")
 			return
 		}
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: Invalid token claims")
+			writeJSONErr(w, http.StatusUnauthorized, "Unauthorized: Invalid token claims")
 			return
 		}
 		adminClaim, ok := claims["admin"].(bool)
 		if !ok || !adminClaim {
-			writeJSONError(w, r, http.StatusForbidden, "Forbidden: Admin access required")
+			writeJSONErr(w, http.StatusForbidden, "Forbidden: Admin access required")
 			return
 		}
 
 		next.ServeHTTP(w, r)
 	}
+}
+
+func writeJSONErr(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write([]byte(`{"error":"` + msg + `"}`))
 }

@@ -14,6 +14,9 @@ import (
 type Handler struct {
 	logger              *slog.Logger
 	jwtSecret           []byte
+	supabaseURL         string
+	supbaseAnonKey      string
+	httpClient          *http.Client
 	db                  dbPinger
 	linkService         linkService
 	reportService       reportService
@@ -30,6 +33,8 @@ type Handler struct {
 type Dependencies struct {
 	Logger              *slog.Logger
 	JWTSecret           []byte
+	SupabaseURL         string
+	SupabaseAnonKey     string
 	DB                  dbPinger
 	LinkService         linkService
 	ReportService       reportService
@@ -118,6 +123,14 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("jwt secret is required")
 	}
 
+	if deps.SupabaseURL == "" {
+		return nil, fmt.Errorf("supabase url is required")
+	}
+
+	if deps.SupabaseAnonKey == "" {
+		return nil, fmt.Errorf("supabase anon key is required")
+	}
+
 	if deps.DB == nil {
 		return nil, fmt.Errorf("db pinger is required")
 	}
@@ -159,19 +172,22 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 	}
 
 	newHandler := Handler{
+		db:                  deps.DB,
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
-		db:                  deps.DB,
 		linkService:         deps.LinkService,
+		supabaseURL:         deps.SupabaseURL,
 		courseService:       deps.CourseService,
 		reportService:       deps.ReportService,
 		contentService:      deps.ContentService,
 		feedbackService:     deps.FeedbackService,
 		pageViewService:     deps.PageViewService,
+		supbaseAnonKey:      deps.SupabaseAnonKey,
 		linkClickService:    deps.LinkClickService,
+		extraLinkService:    deps.ExtraLinkService,
 		contributionService: deps.ContributionService,
 		extraSectionService: deps.ExtraSectionService,
-		extraLinkService:    deps.ExtraLinkService,
+		httpClient:          http.DefaultClient,
 	}
 
 	return &newHandler, nil

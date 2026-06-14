@@ -95,6 +95,8 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 	h, err := NewHandler(Dependencies{
 		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 		JWTSecret:           []byte("test-jwt-secret"),
+		SupabaseURL:         "https://random.supabase.co",
+		SupabaseAnonKey:     "a-random-generated-key",
 		DB:                  deps.db,
 		LinkService:         deps.link,
 		ReportService:       deps.report,

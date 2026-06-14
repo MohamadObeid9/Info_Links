@@ -19,7 +19,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	mux := http.NewServeMux()
 
 	registerPublicRoutes(mux, h, cfg)
-	registerAdminRoutes(mux, h)
+	registerAdminRoutes(cfg.JWTSecret, mux, h)
 	registerSEORoutes(mux, seoH)
 	mux.Handle("/", newStaticFileHandler(resolveStaticDir()))
 
@@ -71,42 +71,40 @@ func metricsHandler(cfg config.Config) http.Handler {
 	}
 }
 
-func registerAdminRoutes(mux *http.ServeMux, h *Handler) {
-	handleAdminFunc := func(pattern string, handler http.HandlerFunc) {
-		mux.HandleFunc(pattern, h.requireAdmin(handler))
-	}
-	handleAdminFunc("GET /api/admin/page_views", h.handleAdminGetPageViews)
-	handleAdminFunc("GET /api/admin/link_clicks", h.handleAdminGetLinkClicks)
+func registerAdminRoutes(jwtSecret string, mux *http.ServeMux, h *Handler) {
 
-	handleAdminFunc("POST /api/admin/links", h.handleAdminPostLink)
-	handleAdminFunc("PATCH /api/admin/links/{id}", h.handleAdminPatchLink)
-	handleAdminFunc("DELETE /api/admin/links/{id}", h.handleAdminDeleteLink)
+	mux.HandleFunc("GET /api/admin/page_views", middleware.RequireAdmin(jwtSecret, h.handleAdminGetPageViews))
+	mux.HandleFunc("GET /api/admin/link_clicks", middleware.RequireAdmin(jwtSecret, h.handleAdminGetLinkClicks))
 
-	handleAdminFunc("POST /api/admin/courses", h.handleAdminPostCourse)
-	handleAdminFunc("PATCH /api/admin/courses/{id}", h.handleAdminPatchCourse)
-	handleAdminFunc("DELETE /api/admin/courses/{id}", h.handleAdminDeleteCourse)
+	mux.HandleFunc("POST /api/admin/links", middleware.RequireAdmin(jwtSecret, h.handleAdminPostLink))
+	mux.HandleFunc("PATCH /api/admin/links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchLink))
+	mux.HandleFunc("DELETE /api/admin/links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteLink))
 
-	handleAdminFunc("GET /api/admin/reports", h.handleAdminGetReports)
-	handleAdminFunc("PATCH /api/admin/reports/{id}", h.handleAdminUpdateReport)
-	handleAdminFunc("DELETE /api/admin/reports/{id}", h.handleAdminDeleteReport)
+	mux.HandleFunc("POST /api/admin/courses", middleware.RequireAdmin(jwtSecret, h.handleAdminPostCourse))
+	mux.HandleFunc("PATCH /api/admin/courses/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchCourse))
+	mux.HandleFunc("DELETE /api/admin/courses/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteCourse))
 
-	handleAdminFunc("GET /api/admin/feedback", h.handleAdminGetFeedback)
-	handleAdminFunc("PATCH /api/admin/feedback/{id}", h.handleAdminPatchFeedback)
-	handleAdminFunc("DELETE /api/admin/feedback/{id}", h.handleAdminDeleteFeedback)
+	mux.HandleFunc("GET /api/admin/reports", middleware.RequireAdmin(jwtSecret, h.handleAdminGetReports))
+	mux.HandleFunc("PATCH /api/admin/reports/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminUpdateReport))
+	mux.HandleFunc("DELETE /api/admin/reports/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteReport))
 
-	handleAdminFunc("GET /api/admin/contributions", h.handleAdminGetContributions)
-	handleAdminFunc("PATCH /api/admin/contributions/{id}", h.handleAdminUpdateContribution)
-	handleAdminFunc("DELETE /api/admin/contributions/{id}", h.handleAdminDeleteContribution)
+	mux.HandleFunc("GET /api/admin/feedback", middleware.RequireAdmin(jwtSecret, h.handleAdminGetFeedback))
+	mux.HandleFunc("PATCH /api/admin/feedback/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchFeedback))
+	mux.HandleFunc("DELETE /api/admin/feedback/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteFeedback))
 
-	handleAdminFunc("GET /api/admin/extra_sections", h.handleAdminGetExtraSections)
-	handleAdminFunc("POST /api/admin/extra_sections", h.handleAdminPostExtraSection)
-	handleAdminFunc("PATCH /api/admin/extra_sections/{id}", h.handleAdminPatchExtraSection)
-	handleAdminFunc("DELETE /api/admin/extra_sections/{id}", h.handleAdminDeleteExtraSection)
+	mux.HandleFunc("GET /api/admin/contributions", middleware.RequireAdmin(jwtSecret, h.handleAdminGetContributions))
+	mux.HandleFunc("PATCH /api/admin/contributions/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminUpdateContribution))
+	mux.HandleFunc("DELETE /api/admin/contributions/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteContribution))
 
-	handleAdminFunc("GET /api/admin/extra_links", h.handleAdminGetExtraLinks)
-	handleAdminFunc("POST /api/admin/extra_links", h.handleAdminPostExtraLink)
-	handleAdminFunc("PATCH /api/admin/extra_links/{id}", h.handleAdminPatchExtraLink)
-	handleAdminFunc("DELETE /api/admin/extra_links/{id}", h.handleAdminDeleteExtraLink)
+	mux.HandleFunc("GET /api/admin/extra_sections", middleware.RequireAdmin(jwtSecret, h.handleAdminGetExtraSections))
+	mux.HandleFunc("POST /api/admin/extra_sections", middleware.RequireAdmin(jwtSecret, h.handleAdminPostExtraSection))
+	mux.HandleFunc("PATCH /api/admin/extra_sections/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchExtraSection))
+	mux.HandleFunc("DELETE /api/admin/extra_sections/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteExtraSection))
+
+	mux.HandleFunc("GET /api/admin/extra_links", middleware.RequireAdmin(jwtSecret, h.handleAdminGetExtraLinks))
+	mux.HandleFunc("POST /api/admin/extra_links", middleware.RequireAdmin(jwtSecret, h.handleAdminPostExtraLink))
+	mux.HandleFunc("PATCH /api/admin/extra_links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchExtraLink))
+	mux.HandleFunc("DELETE /api/admin/extra_links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteExtraLink))
 }
 
 func registerSEORoutes(mux *http.ServeMux, seoH *seo.Handler) {

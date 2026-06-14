@@ -11,10 +11,12 @@ import (
 type Config struct {
 	Port                 string
 	AppEnv               string
-	DatabaseURL          string
 	JWTSecret            string
-	CorsAllowedOrigins   string
+	DatabaseURL          string
 	SiteBaseURL          string
+	SupabaseURL          string
+	SupabaseAnonKey      string
+	CorsAllowedOrigins   string
 	MetricsBasicAuthUser string
 	MetricsBasicAuthPass string
 }
@@ -29,16 +31,26 @@ func Load() (Config, error) {
 		SiteBaseURL:          getenv("SITE_BASE_URL", "http://localhost:8080"),
 		DatabaseURL:          getenv("DATABASE_URL"),
 		JWTSecret:            getenv("JWT_SECRET"),
+		SupabaseURL:          getenv("SUPABASE_URL"),
+		SupabaseAnonKey:      getenv("SUPABASE_ANON_KEY"),
 		MetricsBasicAuthUser: getenv("METRICS_BASIC_AUTH_USER"),
 		MetricsBasicAuthPass: getenv("METRICS_BASIC_AUTH_PASSWORD"),
 	}
 
 	if cfg.DatabaseURL == "" {
-		return Config{}, fmt.Errorf("database_url is required")
+		return Config{}, fmt.Errorf("database url is required")
+	}
+
+	if cfg.SupabaseURL == "" {
+		return Config{}, fmt.Errorf("supabase url is required")
+	}
+
+	if cfg.SupabaseAnonKey == "" {
+		return Config{}, fmt.Errorf("supabase anon key is required")
 	}
 
 	if cfg.JWTSecret == "" {
-		return Config{}, fmt.Errorf("jwt_secret is required")
+		return Config{}, fmt.Errorf("jwt secret is required")
 	}
 
 	if err := cfg.validateMetricsAuth(); err != nil {

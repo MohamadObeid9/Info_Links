@@ -7,8 +7,10 @@ import (
 
 func TestLoad(t *testing.T) {
 	const (
-		dbURL  = "postgres://user:pass@localhost:5432/testdb"
-		secret = "test-jwt-secret"
+		dbURL           = "postgres://user:pass@localhost:5432/testdb"
+		secret          = "test-jwt-secret"
+		supabseURL      = "https://random.supabase.co"
+		supabaseAnonKey = "a-random-generated-key"
 	)
 
 	defaultCORS := "http://localhost:8080,http://localhost:5173"
@@ -25,6 +27,8 @@ func TestLoad(t *testing.T) {
 			env: map[string]string{
 				"DATABASE_URL":         dbURL,
 				"JWT_SECRET":           secret,
+				"SUPABASE_URL":         supabseURL,
+				"SUPABASE_ANON_KEY":    supabaseAnonKey,
 				"PORT":                 "",
 				"APP_ENV":              "",
 				"CORS_ALLOWED_ORIGINS": "",
@@ -34,6 +38,8 @@ func TestLoad(t *testing.T) {
 				AppEnv:             "development",
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
+				SupabaseURL:        supabseURL,
+				SupabaseAnonKey:    supabaseAnonKey,
 				CorsAllowedOrigins: defaultCORS,
 				SiteBaseURL:        defaultSiteBaseURL,
 			},
@@ -43,6 +49,8 @@ func TestLoad(t *testing.T) {
 			env: map[string]string{
 				"DATABASE_URL":                dbURL,
 				"JWT_SECRET":                  secret,
+				"SUPABASE_URL":                supabseURL,
+				"SUPABASE_ANON_KEY":           supabaseAnonKey,
 				"PORT":                        "3000",
 				"APP_ENV":                     "production",
 				"CORS_ALLOWED_ORIGINS":        "https://example.com",
@@ -54,6 +62,8 @@ func TestLoad(t *testing.T) {
 				AppEnv:               "production",
 				DatabaseURL:          dbURL,
 				JWTSecret:            secret,
+				SupabaseURL:          supabseURL,
+				SupabaseAnonKey:      supabaseAnonKey,
 				CorsAllowedOrigins:   "https://example.com",
 				SiteBaseURL:          defaultSiteBaseURL,
 				MetricsBasicAuthUser: "grafana-scraper",
@@ -63,15 +73,19 @@ func TestLoad(t *testing.T) {
 		{
 			name: "trims whitespace from env values",
 			env: map[string]string{
-				"DATABASE_URL": "  " + dbURL + "  ",
-				"JWT_SECRET":   "  " + secret + "  ",
-				"PORT":         " 9090 ",
+				"DATABASE_URL":      "  " + dbURL + "  ",
+				"JWT_SECRET":        "  " + secret + "  ",
+				"SUPABASE_URL":      "  " + supabseURL + "  ",
+				"SUPABASE_ANON_KEY": "  " + supabaseAnonKey + "  ",
+				"PORT":              " 9090 ",
 			},
 			want: Config{
 				Port:               "9090",
 				AppEnv:             "development",
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
+				SupabaseURL:        supabseURL,
+				SupabaseAnonKey:    supabaseAnonKey,
 				CorsAllowedOrigins: defaultCORS,
 				SiteBaseURL:        defaultSiteBaseURL,
 			},
@@ -79,56 +93,111 @@ func TestLoad(t *testing.T) {
 		{
 			name: "loads custom site base url",
 			env: map[string]string{
-				"DATABASE_URL":  dbURL,
-				"JWT_SECRET":    secret,
-				"SITE_BASE_URL": "https://infolinks.example.com",
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
+				"SITE_BASE_URL":     "https://infolinks.example.com",
 			},
 			want: Config{
 				Port:               "8080",
 				AppEnv:             "development",
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
+				SupabaseURL:        supabseURL,
+				SupabaseAnonKey:    supabaseAnonKey,
 				CorsAllowedOrigins: defaultCORS,
 				SiteBaseURL:        "https://infolinks.example.com",
 			},
 		},
 		{
+			name: "missing database url",
 			env: map[string]string{
-				"DATABASE_URL": "",
-				"JWT_SECRET":   secret,
+				"DATABASE_URL":      "",
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
 			},
-			wantErr: "database_url is required",
+			wantErr: "database url is required",
 		},
 		{
 			name: "missing jwt secret",
 			env: map[string]string{
-				"DATABASE_URL": dbURL,
-				"JWT_SECRET":   "",
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        "",
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
 			},
-			wantErr: "jwt_secret is required",
+			wantErr: "jwt secret is required",
+		},
+		{
+			name: "missing supabase url secret",
+			env: map[string]string{
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      "",
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
+			},
+			wantErr: "supabase url is required",
+		},
+		{
+			name: "missing supabase anon key secret",
+			env: map[string]string{
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": "",
+			},
+			wantErr: "supabase anon key is required",
 		},
 		{
 			name: "database url whitespace only",
 			env: map[string]string{
-				"DATABASE_URL": "   ",
-				"JWT_SECRET":   secret,
+				"DATABASE_URL":      "   ",
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
 			},
-			wantErr: "database_url is required",
+			wantErr: "database url is required",
 		},
 		{
 			name: "jwt secret whitespace only",
 			env: map[string]string{
-				"DATABASE_URL": dbURL,
-				"JWT_SECRET":   "   ",
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        "   ",
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
 			},
-			wantErr: "jwt_secret is required",
+			wantErr: "jwt secret is required",
+		},
+		{
+			name: "supabase url whitespace only",
+			env: map[string]string{
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      "   ",
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
+			},
+			wantErr: "supabase url is required",
+		},
+		{
+			name: "supabase anon key whitespace only",
+			env: map[string]string{
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": "   ",
+			},
+			wantErr: "supabase anon key is required",
 		},
 		{
 			name: "production requires metrics basic auth",
 			env: map[string]string{
-				"DATABASE_URL": dbURL,
-				"JWT_SECRET":   secret,
-				"APP_ENV":      "production",
+				"DATABASE_URL":      dbURL,
+				"JWT_SECRET":        secret,
+				"SUPABASE_URL":      supabseURL,
+				"SUPABASE_ANON_KEY": supabaseAnonKey,
+				"APP_ENV":           "production",
 			},
 			wantErr: "metrics basic auth is required in production",
 		},
@@ -137,6 +206,8 @@ func TestLoad(t *testing.T) {
 			env: map[string]string{
 				"DATABASE_URL":            dbURL,
 				"JWT_SECRET":              secret,
+				"SUPABASE_URL":            supabseURL,
+				"SUPABASE_ANON_KEY":       supabaseAnonKey,
 				"METRICS_BASIC_AUTH_USER": "grafana-scraper",
 			},
 			wantErr: "metrics basic auth user and password must both be set",
