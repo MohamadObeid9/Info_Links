@@ -22,7 +22,7 @@ func (r *postgresExtraSectionRepository) List(ctx context.Context) ([]models.Ext
 	if err != nil {
 		return nil, fmt.Errorf("list extra sections: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var sections []models.ExtraSection
 	for rows.Next() {

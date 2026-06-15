@@ -17,11 +17,12 @@ func Recover(logger *slog.Logger, next http.Handler) http.Handler {
 		defer func() {
 			if rec := recover(); rec != nil {
 				id := RequestIDFromContext(r.Context())
+				log := logger
 				if id != "" {
-					logger = logger.With("request_id", id)
+					log = logger.With("request_id", id)
 				}
 
-				logger.Error(
+				log.Error(
 					"panic recovered",
 					"panic", rec,
 					"method", r.Method,

@@ -30,7 +30,7 @@ func main() {
 		logger.Error("database initialization failed", "error", err)
 		os.Exit(1)
 	}
-	defer dbClient.Close()
+	defer func() { _ = dbClient.Close() }()
 
 	middleware.RegisterDBMetrics(dbClient.DB)
 

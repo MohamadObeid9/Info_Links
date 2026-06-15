@@ -27,7 +27,7 @@ func (r *postgresSEORepository) GetCoursePageByCode(ctx context.Context, code st
 	if err != nil {
 		return nil, fmt.Errorf("query seo course placements: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var placements []CoursePlacement
 	var courseIDs []int
@@ -86,7 +86,7 @@ func (r *postgresSEORepository) fetchLinksForCourses(ctx context.Context, course
 	if err != nil {
 		return nil, fmt.Errorf("query seo links: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var links []SEOLink
 	seen := make(map[string]bool)
@@ -113,7 +113,7 @@ func (r *postgresSEORepository) ListCourseCodesForSitemap(ctx context.Context) (
 	if err != nil {
 		return nil, fmt.Errorf("list seo course codes: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var codes []string
 	for rows.Next() {
@@ -134,7 +134,7 @@ func (r *postgresSEORepository) ListProgramsForSitemap(ctx context.Context, slug
 	if err != nil {
 		return nil, fmt.Errorf("list seo programs: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []ProgramSitemapEntry
 	for rows.Next() {
@@ -156,7 +156,7 @@ func (r *postgresSEORepository) ListCoursesIndex(ctx context.Context) ([]CourseI
 	if err != nil {
 		return nil, fmt.Errorf("list seo courses index: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []CourseIndexEntry
 	for rows.Next() {
@@ -182,7 +182,7 @@ func (r *postgresSEORepository) GetProgramBySlug(ctx context.Context, slug strin
 	if err != nil {
 		return nil, fmt.Errorf("list seo programs for slug: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var prog *ProgramPageData
 	for rows.Next() {
@@ -207,7 +207,7 @@ func (r *postgresSEORepository) GetProgramBySlug(ctx context.Context, slug strin
 	if err != nil {
 		return nil, fmt.Errorf("list seo program courses: %w", err)
 	}
-	defer crows.Close()
+	defer func() { _ = crows.Close() }()
 
 	for crows.Next() {
 		var e ProgramCourseEntry

@@ -64,7 +64,7 @@ func (h *Handler) verifyWithSupabase(r *http.Request, email, password string) (s
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("response status code: %d", resp.StatusCode)

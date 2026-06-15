@@ -22,7 +22,7 @@ func (r *postgresPageViewRepository) List(ctx context.Context) ([]models.PageVie
 		return nil, fmt.Errorf("get page views: %w", err)
 	}
 
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var views []models.PageView
 	for rows.Next() {
 		var v models.PageView

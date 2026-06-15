@@ -66,7 +66,7 @@ func (r *postgresFeedbackRepository) List(ctx context.Context, limit int, offset
 	if err != nil {
 		return nil, fmt.Errorf("list feedbacks query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var feedbacks []models.Feedback
 	for rows.Next() {

@@ -22,7 +22,7 @@ func (r *postgresExtraLinkRepository) List(ctx context.Context) ([]models.ExtraL
 	if err != nil {
 		return nil, fmt.Errorf("list extra links: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var links []models.ExtraLink
 	for rows.Next() {

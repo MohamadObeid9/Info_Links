@@ -66,7 +66,7 @@ func (r *postgresReportRepository) List(ctx context.Context, limit int, offset i
 	if err != nil {
 		return nil, fmt.Errorf("list reports query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var reps []models.Report
 	for rows.Next() {

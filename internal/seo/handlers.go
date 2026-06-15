@@ -155,7 +155,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`</urlset>`)
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	w.Write([]byte(b.String()))
+	_, _ = w.Write([]byte(b.String()))
 }
 
 func writeSitemapURL(b *strings.Builder, loc string) {
@@ -184,7 +184,7 @@ func (h *Handler) HandleRobots(w http.ResponseWriter, r *http.Request) {
 		"",
 	}, "\n")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Write([]byte(body))
+	_, _ = w.Write([]byte(body))
 }
 
 func (h *Handler) serve404(w http.ResponseWriter) {

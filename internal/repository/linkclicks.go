@@ -21,7 +21,7 @@ func (r *postgresLinkClickRepository) List(ctx context.Context) ([]models.LinkCl
 	if err != nil {
 		return nil, fmt.Errorf("get link clicks: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var clicks []models.LinkClick
 	for rows.Next() {

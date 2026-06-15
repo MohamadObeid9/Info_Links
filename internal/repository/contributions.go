@@ -66,7 +66,7 @@ func (c *postgresContributionRepository) List(ctx context.Context, limit int, of
 	if err != nil {
 		return nil, fmt.Errorf("list contributions query: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var contributions []models.Contribution
 	for rows.Next() {
