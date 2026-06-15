@@ -141,7 +141,11 @@ func newStaticFileHandler(staticDir string) http.Handler {
 		info, err := os.Stat(path)
 		if err != nil {
 			if os.IsNotExist(err) {
-				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+				if isSPAPath(r.URL.Path) {
+					http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+					return
+				}
+				http.NotFound(w, r)
 				return
 			}
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -149,12 +153,25 @@ func newStaticFileHandler(staticDir string) http.Handler {
 		}
 
 		if info.IsDir() && r.URL.Path != "/" {
-			http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+			if isSPAPath(r.URL.Path) {
+				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+				return
+			}
+			http.NotFound(w, r)
 			return
 		}
 
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func isSPAPath(path string) bool {
+	switch path {
+	case "/", "/report-submit", "/feedback", "/admin-gate", "/admin":
+		return true
+	default:
+		return false
+	}
 }
 
 func isSEOPath(path string) bool {
