@@ -10,7 +10,6 @@ import (
 	"infolinks-backend/internal/api"
 	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/database"
-	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/repository"
 	"infolinks-backend/internal/seo"
 	"infolinks-backend/internal/service"
@@ -31,8 +30,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = dbClient.Close() }()
-
-	middleware.RegisterDBMetrics(dbClient.DB)
 
 	services := handleServices(dbClient.DB)
 	apiHandler, err := api.NewHandler(api.Dependencies{

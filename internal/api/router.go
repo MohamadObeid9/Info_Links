@@ -55,22 +55,6 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 	mux.HandleFunc("POST /api/contributions", h.handlePostContribution)
 }
 
-func metricsHandler(cfg config.Config) http.Handler {
-	handler := promhttp.Handler()
-	switch {
-	case cfg.MetricsAuthEnabled():
-		return middleware.MetricsBasicAuth(
-			cfg.MetricsBasicAuthUser,
-			cfg.MetricsBasicAuthPass,
-			handler,
-		)
-	case cfg.AppEnv == "production":
-		return middleware.MetricsDenied()
-	default:
-		return handler
-	}
-}
-
 func registerAdminRoutes(jwtSecret string, mux *http.ServeMux, h *Handler) {
 
 	mux.HandleFunc("GET /api/admin/page_views", middleware.RequireAdmin(jwtSecret, h.handleAdminGetPageViews))
@@ -105,6 +89,22 @@ func registerAdminRoutes(jwtSecret string, mux *http.ServeMux, h *Handler) {
 	mux.HandleFunc("POST /api/admin/extra_links", middleware.RequireAdmin(jwtSecret, h.handleAdminPostExtraLink))
 	mux.HandleFunc("PATCH /api/admin/extra_links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchExtraLink))
 	mux.HandleFunc("DELETE /api/admin/extra_links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteExtraLink))
+}
+
+func metricsHandler(cfg config.Config) http.Handler {
+	handler := promhttp.Handler()
+	switch {
+	case cfg.MetricsAuthEnabled():
+		return middleware.MetricsBasicAuth(
+			cfg.MetricsBasicAuthUser,
+			cfg.MetricsBasicAuthPass,
+			handler,
+		)
+	case cfg.AppEnv == "production":
+		return middleware.MetricsDenied()
+	default:
+		return handler
+	}
 }
 
 func registerSEORoutes(mux *http.ServeMux, seoH *seo.Handler) {
