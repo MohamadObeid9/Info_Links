@@ -1,9 +1,5 @@
 # ADR 002: Supabase for Auth and Hosted Postgres
 
-## Status
-
-Accepted
-
 ## Context
 
 Info Links needs:
@@ -31,23 +27,7 @@ The Go backend remains the **API authority**. Supabase is identity + database ho
 
 ## Consequences
 
-### Positive
-
 - No database server to operate; Supabase handles backups and availability
 - Admin passwords managed through Supabase dashboard / Auth, not stored in our schema
 - Standard Postgres connection string — portable if we migrate off Supabase later
-- Free tier sufficient for 300+ daily users at current scale
-
-### Negative
-
-- Two auth tokens in play (Supabase session token at login, app JWT afterward) — must explain clearly in interviews
-- Tight coupling to Supabase Auth REST API in `auth_handlers.go` — switching providers requires rewriting login
-- `DATABASE_URL` and Supabase env vars are required at startup — local dev needs a Supabase project or compatible Postgres + auth setup
-- Row Level Security (RLS) on Supabase is available but **not** the primary access control — the Go backend connects with a service role connection string and enforces auth in middleware
-
-## References
-
-- `internal/api/auth_handlers.go` — Supabase login + app JWT issuance
-- `internal/middleware/auth_middleware.go` — app JWT validation
-- `internal/config/config.go` — `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-- `docs/learnings/api.md` — auth flow section
+- Free tier sufficient for 300+ monthly users at current scale

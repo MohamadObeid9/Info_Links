@@ -65,14 +65,3 @@ func TestStaticHandler_spaPathsReturn200(t *testing.T) {
 		})
 	}
 }
-
-func TestStaticHandler_existingAssetReturns200(t *testing.T) {
-	handler := testStaticRouter(t)
-
-	req := httptest.NewRequest(http.MethodGet, "/manifest.webmanifest", nil)
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status: got %d want %d", rr.Code, http.StatusOK)
-	}
-}

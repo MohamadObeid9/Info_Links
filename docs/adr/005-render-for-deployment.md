@@ -1,9 +1,5 @@
 # ADR 005: Render for Deployment
 
-## Status
-
-Accepted
-
 ## Context
 
 Info Links is a single Go binary that:
@@ -14,7 +10,7 @@ Info Links is a single Go binary that:
 
 Deployment constraints for a student-maintained production app:
 
-- **Free or low cost** at current traffic (~300+ daily users, spikes during finals)
+- **Free or low cost** at current traffic (~300+ monthly users, spikes during finals)
 - **Simple CI/CD** — push to GitHub, auto-deploy
 - **Health checks** — platform must detect unhealthy instances
 - **No separate frontend CDN required** initially — one service is easier to operate
@@ -42,23 +38,7 @@ Database stays on **Supabase** (separate service) — not in the same Render ser
 
 ## Consequences
 
-### Positive
-
 - One deploy unit matches one binary — mental model stays simple
 - GitHub integration for automatic deploys on push
 - `/readyz` integrates with Render health checks out of the box
 - Distroless Docker image option for minimal attack surface (`Dockerfile`)
-
-### Negative
-
-- Single instance — no horizontal scaling story until we add multiple Render instances + shared rate-limit state (current limiter is in-memory per instance)
-- Render free tier sleeps on inactivity — cold starts affect first request after idle period
-- Static assets served by Go process, not a CDN — acceptable now, may move to CDN later
-- `X-Forwarded-For` trusted for rate limiting because traffic arrives via Render proxy — would need different logic on raw public deployment (documented in `docs/load-test.md`)
-
-## References
-
-- `internal/api/system_handlers.go` — `/healthz`, `/readyz`
-- `Dockerfile` — multi-stage build with frontend + distroless runtime
-- `README.md` — deployment section
-- `docs/learnings/database.md`, `docs/learnings/middleware.md`

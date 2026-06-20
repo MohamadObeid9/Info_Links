@@ -1,9 +1,5 @@
 # ADR 004: Service and Repository Layers
 
-## Status
-
-Accepted (refactored from monolithic handlers, 2026)
-
 ## Context
 
 The original backend had ~6 files with SQL and validation embedded in HTTP handlers and a global `var DB *sql.DB` singleton. That worked for a fast MVP but caused:
@@ -51,23 +47,8 @@ Introduce two internal layers:
 
 ## Consequences
 
-### Positive
-
 - `internal/api` at ~93% and `internal/service` at ~96% test coverage with table-driven tests and mocks
 - Each layer has a single reason to change
 - Interview story: clear request flow from router → handler → service → repo → Postgres
 - Companion worker or CLI can reuse services without duplicating validation
 
-### Negative
-
-- More files and interfaces for a small app — some services are thin pass-throughs
-- Wiring in `main` is repetitive (10 repo/service pairs)
-- Must maintain parallel interfaces in `handler.go` and `repositories.go`
-- Refactor cost already paid; new domains still require three touch points (handler, service, repo)
-
-## References
-
-- `cmd/server/main.go` — `handleServices`, `NewHandler`
-- `internal/api/handler.go` — service interfaces
-- `internal/repository/repositories.go` — repository interfaces
-- `docs/learnings/service.md`, `docs/learnings/repository.md`, `docs/learnings/errs.md`

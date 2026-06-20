@@ -1,9 +1,5 @@
 # ADR 006: Server-Side SEO Pages
 
-## Status
-
-Accepted
-
 ## Context
 
 Info Links is primarily a **client-rendered SPA** (Vanilla JS + Vite build). Students load course data via `GET /api/content` and navigate in the browser. That works for users but is weak for:
@@ -43,25 +39,8 @@ Static file handler in `router.go` **excludes** SEO paths (`isSEOPath`) so they 
 
 ## Consequences
 
-### Positive
-
 - Crawlers receive full HTML without executing JavaScript
 - JSON-LD (`Course`, `ItemList`) improves rich search results
 - Sitemap drives indexation of 50+ course pages
 - Same deployment as API — no extra service to operate
 - Demonstrates full-stack thinking in interviews (API + SEO + SPA coexistence)
-
-### Negative
-
-- Two ways to "view" a course — SPA hash routing vs `/course/{code}` SEO URLs — must keep UX consistent manually
-- SEO templates and meta copy are maintained separately from frontend UI strings
-- Heavier DB queries per SEO page — mitigated with context timeouts (10–20s)
-- French/Arabic content in meta strings — localization not unified with frontend i18n notes
-
-## References
-
-- `internal/seo/` — handlers, render, meta, jsonld, slug
-- `internal/repository/seo.go`, `seo_models.go`
-- `internal/api/router.go` — `registerSEORoutes`, `isSEOPath`
-- `docs/learnings/seo.md`
-- `docs/seo-deploy-checklist.md`

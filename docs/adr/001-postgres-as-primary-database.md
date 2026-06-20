@@ -1,9 +1,5 @@
 # ADR 001: Postgres as Primary Database
 
-## Status
-
-Accepted
-
 ## Context
 
 Info Links stores a hierarchical navigation tree (programs → years → semesters → courses → links), user submissions (reports, feedback, contributions), and analytics (page views, link clicks). The app serves:
@@ -28,22 +24,9 @@ Schema is normalized: separate tables for programs, years, semesters, courses, l
 
 ## Consequences
 
-### Positive
-
 - Foreign keys and constraints keep the course tree consistent
 - Powerful SQL for admin filters (`ILIKE`, status filters, pagination) and SEO joins
 - JSON aggregation gives one fast read for the frontend bootstrap
 - Postgres is the default choice for Go backend roles — good portfolio signal
 - Hosted Postgres available cheaply via Supabase (see ADR 002)
 
-### Negative
-
-- Schema changes require migrations (manual or tooling) — no schemaless flexibility
-- Complex SEO queries are harder to read than ORM-generated SQL
-- Connection pool tuning matters under load (configured in `internal/database`)
-
-## References
-
-- `internal/repository/queries.go` — `getContentQuery` JSON aggregation
-- `docs/learnings/database.md`
-- `docs/learnings/repository.md`
