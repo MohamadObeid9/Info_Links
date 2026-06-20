@@ -532,3 +532,126 @@ select.inp {
     gap: 8px;
     flex-wrap: wrap;
 }
+
+.about-content {
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+.about-block {
+    margin-bottom: 28px;
+}
+
+.about-block h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text);
+}
+
+.about-block p {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.65;
+    margin-bottom: 10px;
+}
+
+.about-block p strong {
+    color: var(--text);
+}
+
+.about-list {
+    list-style: none;
+    margin: 12px 0 20px;
+    padding: 0;
+}
+
+.about-list li {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    margin-bottom: 10px;
+    padding-left: 1.2em;
+    position: relative;
+}
+
+.about-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+}
+
+.about-inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--accent);
+    cursor: pointer;
+    font: inherit;
+    text-decoration: underline;
+}
+
+.about-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.about-cta {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+}
+
+.site-footer {
+    text-align: center;
+    padding: 32px 24px 40px;
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.footer-tagline {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+.footer-links {
+    margin-bottom: 8px;
+}
+
+.footer-links a,
+.footer-link-btn {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+
+.footer-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+}
+
+.footer-links a:hover,
+.footer-link-btn:hover {
+    text-decoration: underline;
+}
+
+.footer-sep {
+    color: var(--muted);
+    margin: 0 8px;
+}
+
+.footer-copy {
+    font-size: 0.75rem;
+    color: var(--muted);
+}

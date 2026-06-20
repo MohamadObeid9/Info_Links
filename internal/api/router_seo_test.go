@@ -76,6 +76,9 @@ func TestRouterSitemapXml(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), "<urlset") {
 		t.Errorf("sitemap body: %s", rr.Body.String()[:min(200, rr.Body.Len())])
 	}
+	if !strings.Contains(rr.Body.String(), "/about") {
+		t.Errorf("sitemap missing /about: %s", rr.Body.String()[:min(200, rr.Body.Len())])
+	}
 }
 
 func min(a, b int) int {

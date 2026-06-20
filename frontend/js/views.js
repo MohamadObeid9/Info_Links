@@ -9,7 +9,7 @@ import { updateStarDisplay } from "./feedback.js";
 // ===================== VIEWS =====================
 
 // ── Clean URLs (History API) ────────────────────────────────────────────────
-const VALID_VIEWS = ["home", "report-submit", "feedback", "admin-gate", "admin"];
+const VALID_VIEWS = ["home", "report-submit", "feedback", "about", "admin-gate", "admin"];
 
 function _getPathView() {
   const path = window.location.pathname.replace("/", "");

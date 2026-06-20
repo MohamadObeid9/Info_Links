@@ -48,6 +48,7 @@ func TestStaticHandler_spaPathsReturn200(t *testing.T) {
 	for _, path := range []string{
 		"/",
 		"/feedback",
+		"/about",
 		"/report-submit",
 		"/admin-gate",
 		"/admin",

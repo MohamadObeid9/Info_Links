@@ -167,7 +167,7 @@ func newStaticFileHandler(staticDir string) http.Handler {
 
 func isSPAPath(path string) bool {
 	switch path {
-	case "/", "/report-submit", "/feedback", "/admin-gate", "/admin":
+	case "/", "/report-submit", "/feedback", "/about", "/admin-gate", "/admin":
 		return true
 	default:
 		return false

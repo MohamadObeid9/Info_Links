@@ -52,6 +52,7 @@
             </button>
             <div class="nav-links" id="navLinks">
                 <button class="nav-btn active" data-view="home">Home</button>
+                <button class="nav-btn" data-view="about">About</button>
                 <button class="nav-btn" data-view="report-submit">Report / Contribute</button>
                 <button class="nav-btn" data-view="feedback">Feedback</button>
                 <button class="nav-btn admin-btn" data-view="admin-gate">Admin</button>
@@ -131,6 +132,52 @@
             <datalist id="courseDatalist"></datalist>
         </div>
 
+        <!-- ABOUT -->
+        <div class="view" id="view-about">
+            <div class="about-content">
+                <h2 class="view-title">About Info Links</h2>
+                <p class="view-subtitle">Born in a group chat. Built by students, for students.</p>
+
+                <section class="about-block">
+                    <h3>The problem</h3>
+                    <p>Every semester, the same question in random group chats: <em>"Does anyone have the link for X?"</em> No central place. No organization. Just noise.</p>
+                </section>
+
+                <section class="about-block">
+                    <h3>How it started</h3>
+                    <p>In February 2025 I started a Telegram channel — <strong>Info Links</strong> — manually organizing course links, Drive folders, Classroom pages, and Telegram groups by program, year, and semester.</p>
+                    <p>What began as one person with a simple idea grew to <strong>300+ students</strong> in under a year. The problem was real — and bigger than I thought.</p>
+                </section>
+
+                <section class="about-block">
+                    <h3>What it is today</h3>
+                    <p>Info Links is a free hub for <strong>50+ courses</strong> at Le CNAM Lebanon — from foundational subjects through License and partial Master's in Computer Science. Search by name or code, filter by program/year/semester, and find Drive, Classroom, Telegram, and other links in one place.</p>
+                    <p>Behind the scenes, the platform now runs on a <strong>Go REST API</strong> with the same Postgres database — same product students already use, with engineering that can grow with the community.</p>
+                </section>
+
+                <section class="about-block">
+                    <h3>Free, always</h3>
+                    <p>If I was a broke student looking for course materials, I wouldn't pay. So this stays free. It exists because of the community — and it belongs to the community.</p>
+                </section>
+
+                <section class="about-block about-cta">
+                    <h3>Help it reach more people</h3>
+                    <p>If this project helps you, here's how you can support it:</p>
+                    <ul class="about-list">
+                        <li><strong>⭐ Star the repo</strong> on GitHub — it helps more students discover the project.</li>
+                        <li><strong>📎 Share a link</strong> — use <button type="button" class="about-inline-link" data-view="report-submit">Report / Contribute</button> to submit materials we don't have yet.</li>
+                        <li><strong>💻 Contribute code</strong> — the project is open source; issues and PRs are welcome.</li>
+                        <li><strong>📢 Spread the word</strong> — share with classmates or join the Telegram channel for updates.</li>
+                    </ul>
+                    <div class="about-actions">
+                        <a class="btn btn-primary" href="https://github.com/MohamadObeid9/Info_Links" target="_blank" rel="noopener noreferrer">⭐ Star on GitHub</a>
+                        <a class="btn btn-ghost" href="https://t.me/Info_Links9" target="_blank" rel="noopener noreferrer">📢 Telegram</a>
+                        <button type="button" class="btn btn-ghost" data-view="report-submit">➕ Contribute a link</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+
         <!-- FEEDBACK -->
         <div class="view" id="view-feedback">
             <h2 class="view-title">Share Your Feedback</h2>
@@ -198,6 +245,20 @@
             </div>
             <div id="adminContent"></div>
         </div>
+
+        <footer class="site-footer">
+            <p class="footer-tagline">Built by students, for students.</p>
+            <div class="footer-links">
+                <button type="button" class="footer-link-btn" data-view="about">About</button>
+                <span class="footer-sep">·</span>
+                <a href="https://t.me/Info_Links9" target="_blank" rel="noopener noreferrer">Telegram</a>
+                <span class="footer-sep">·</span>
+                <a href="https://github.com/MohamadObeid9/Info_Links" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <span class="footer-sep">·</span>
+                <a href="https://www.linkedin.com/in/mohamadobeid9/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            </div>
+            <p class="footer-copy">© 2026 Info Links · </p>
+        </footer>
 
         <div class="modal-overlay" id="modal">
             <div class="modal" id="modalBox"></div>

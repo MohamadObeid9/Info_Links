@@ -130,6 +130,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 	b.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`)
 	writeSitemapURL(&b, h.baseURL+"/")
 	writeSitemapURL(&b, h.baseURL+"/courses")
+	writeSitemapURL(&b, h.baseURL+"/about")
 
 	codes, err := h.service.ListCourseCodesForSitemap(ctx)
 	if err != nil {

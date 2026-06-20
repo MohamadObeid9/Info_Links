@@ -95,6 +95,9 @@ func TestHandleSitemap(t *testing.T) {
 	if !strings.Contains(body, "https://example.com/courses") {
 		t.Error("sitemap missing /courses")
 	}
+	if !strings.Contains(body, "https://example.com/about") {
+		t.Error("sitemap missing /about")
+	}
 	if !strings.Contains(body, "https://example.com/course/nfa008") {
 		t.Error("sitemap missing course url")
 	}
