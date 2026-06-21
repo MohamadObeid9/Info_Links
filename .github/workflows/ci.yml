@@ -48,3 +48,12 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+
+  docker-build:
+    name: docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build production Docker image
+        run: docker build -t infolinks:ci .
