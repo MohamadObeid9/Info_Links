@@ -1,127 +1,46 @@
-# 📚 Info Links
+# Info Links
 
-A modern, open-source platform designed to help students at Le CNAM Lebanon's Computer Science Department discover and organize course materials and learning resources in one centralized, user-friendly hub.
+Centralized course resource hub for CNAM Lebanon CS students — **50+ courses**, **300+ active users**, served by a **production Go API** .
 
-**Live site:** [infolinks.app](https://infolinks.app/)
+[![CI](https://github.com/MohamadObeid9/Info_Links/actions/workflows/ci.yml/badge.svg)](https://github.com/MohamadObeid9/Info_Links/actions/workflows/ci.yml)
+![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+**[infolinks.app](https://infolinks.app)** · [User guide](docs/user-guide.md) · [ADRs](docs/adr/) · [Contributing](CONTRIBUTING.md)
 
-## Table of contents
+## Quick start
 
-- [What is Info Links?](#-what-is-info-links)
-- [Features](#-features)
-- [Tech stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Project structure](#-project-structure)
-- [Getting started](#-getting-started)
-- [Development workflows](#-development-workflows)
-- [Testing & CI](#-testing--ci)
-- [Deployment](#-deployment)
-- [How to use](#-how-to-use)
-- [Contributing](#-contributing)
-- [Documentation](#-documentation)
-- [Connect](#-connect-with-us)
-- [License & acknowledgments](#-license)
+```bash
+git clone https://github.com/MohamadObeid9/Info_Links.git && cd Info_Links
+cp .env.example .env   # fill DATABASE_URL, JWT_SECRET, Supabase keys
+go run ./cmd/server    # → http://localhost:8080
+```
 
----
+## Overview
 
-## 🌟 What is Info Links?
+Info Links centralizes course materials (Google Drive, Classroom, Telegram, and more) by program, year, and semester. The backend is Go (`net/http`, layered architecture, ~88% test coverage); the frontend is vanilla JS with Vite. Production runs as Docker on Render with CI-gated deploys.
 
-**Info Links** started as a simple idea to help students find course materials more easily. Today, it's evolved into a comprehensive platform covering **50+ courses** with hundreds of curated links — making it an essential resource for students pursuing their License and Master's degrees in Computer Science at Le CNAM Lebanon.
-
-### The Growth Story
-
-📈 **From Humble Beginnings to Impact**
-
-- Started with just **4 courses** covering basic materials
-- Grew to **50+ courses** with hundreds of curated resources
-- Serving **300+ students** in under a year
-- **Open-sourced** to empower the community and encourage contributions
-- **Phase 8:** migrated from Supabase-direct + GitHub Pages to a **production Go backend** on Render
-
-### The Impact
-
-- **50+ Courses Covered** — From foundational to advanced subjects
-- **Multi-disciplinary Resources** — Supports both License and partial Master's program courses
-- **Growing Community** — Trusted by 300+ students across semesters
-- **Regularly Updated** — New resources added consistently
-- **Telegram Channel** — Parallel channel at [@Info_Links9](https://t.me/Info_Links9) for real-time updates
+Using the app? See the [user guide](docs/user-guide.md).
 
 ---
 
-## ✨ Features
-
-### For Students
-
-- 🔍 **Smart Search** — Find courses by name or code instantly with keyboard shortcut (`/` or `Ctrl+K`)
-- 📋 **Organized by Program** — Sorted by year, semester, and specialization
-- 🏷️ **Easy Navigation** — Filter courses and identify optional vs. mandatory classes
-- 🔗 **Multiple Resource Types** — Google Drive, Google Classroom, Telegram, and more — each with a color-coded badge
-- ⭐ **My Courses (Favorites)** — Star courses to save them locally in your browser for quick access
-- 🏷️ **Content Type Labels** — See what each link contains at a glance: TD, Cours, Videos, Sessions, Exams
-- 🔗 **Multiple Content Types** — Links can have multiple content categories (e.g., TD + Cours + Videos)
-- 🌓 **Light/Dark Mode** — Comfortable viewing in any lighting, with automatic system detection and persistence
-- 📱 **Fully Responsive** — Works seamlessly on desktop, tablet, and mobile
-- 💬 **Report & Contribute** — Report broken links or submit new resources with link type identification
-- ⭐ **Feedback System** — Rate the platform (1–5 stars) by category and share suggestions
-- 🔍 **Deep Linking** — Hash-based routing for direct view access (e.g., `#report-submit`)
-- 🌐 **Multi-language Notes** — Important announcements available in English, French, and Arabic
-- ⌨️ **Keyboard Shortcuts** — `/` or `Ctrl+K` to search, `Esc` to close modals
-- 📱 **PWA Support** — Installable as a Progressive Web App with service worker
-- 🔎 **SEO pages** — Server-rendered course/program pages for search engines
-
-### For Admins
-
-- ➕ **Full Course Management** — Add, edit, delete, and organize courses with program/year/semester placement
-- 🏷️ **Advanced Labeling** — Mark courses as optional or mandatory
-- 🔁 **Sibling Course Detection** — Courses shared across programs auto-sync names, codes, and links
-- 🔗 **Multi-Content Link Management** — Assign multiple content types per link (TD, Cours, Videos, Sessions, Exams)
-- 📊 **Analytics Dashboard** — Daily visitors, 7/30/90-day ranges, top clicked links, JSON export
-- ✅ **Smart Contribution Review** — Approve user-submitted links with grouped course selector and sibling detection
-- 🚨 **Report Management** — Handle user reports and improve content quality
-- 💬 **Feedback Management** — View and manage user feedback with star ratings by category
-- 🔐 **Secure Admin Panel** — JWT auth via the Go API (Supabase credentials at login)
-- 📦 **Extra Resources** — Manage additional resource sections beyond regular courses
-
-### Content Type Legend
-
-| Badge | Meaning |
-|-------|---------|
-| ✏️ TD | Travaux Dirigés (exercises/tutorials) |
-| 📄 Cours | Course materials/lectures |
-| 🎬 Videos | Video recordings |
-| 📝 Exams | Exam papers and solutions |
-| 📦 Other | Other types of content |
-
-### Link Type Legend
-
-| Badge | Meaning |
-|-------|---------|
-| **TG** | Telegram |
-| **GD** | Google Drive |
-| **GC** | Google Classroom |
-| **OT** | Other / External |
-
----
-
-## 🛠️ Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | HTML5, CSS3, Vanilla JavaScript, Vite (build/dev) |
+| **Frontend** | HTML5, CSS3, Vanilla JavaScript, Vite |
 | **Backend** | Go 1.25 (`net/http`, no web framework) |
 | **Database** | PostgreSQL via Supabase |
 | **Auth** | Supabase Auth at login → app-issued JWT for admin routes |
 | **Observability** | `slog`, Prometheus `/metrics`, `/healthz`, `/readyz` |
-| **Deployment** | Render (Go web service) + Supabase |
-| **Containers** | Multi-stage Docker, Docker Compose with file watch |
-| **CI** | GitHub Actions — `go test -race`, golangci-lint, govulncheck, frontend build |
+| **Deployment** | Render (Docker) + Supabase |
+| **CI** | GitHub Actions — test, lint, govulncheck, frontend build, `docker build` |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-The backend follows a layered design: HTTP handlers stay thin; business rules live in services; SQL lives in repositories.
+Layered backend: HTTP handlers stay thin; business rules live in services; SQL lives in repositories.
 
 ```text
 HTTP request
@@ -134,15 +53,21 @@ HTTP request
 
 The Go server also:
 
-- Serves the built frontend from `frontend/dist` (or `frontend/` source files in local dev when `dist/` is absent)
-- Renders server-side SEO HTML for `/course/{code}`, `/program/{slug}`, `/courses`, sitemap, and robots.txt
+- Serves the built frontend from `frontend/dist` (or `frontend/` source in local dev when `dist/` is absent)
+- Renders SSR SEO pages for `/course/{code}`, `/program/{slug}`, `/courses`, sitemap, and robots.txt
 - Exposes a JSON API under `/api/*` — see `GET /api` for a live endpoint directory
 
-For deeper detail, see [`docs/adr/`](docs/adr/) and [`docs/learnings/`](docs/learnings/).
+**Deploy pipeline:**
+
+```text
+PR → GitHub Actions (test, lint, govulncheck, docker build) → merge main → Render (checksPass) → infolinks.app
+```
+
+Deep dives: [`docs/adr/`](docs/adr/) · [`docs/learnings/`](docs/learnings/)
 
 ---
 
-## 📁 Project structure
+## Project structure
 
 ```text
 info_links/
@@ -161,8 +86,9 @@ info_links/
 ├── docs/
 │   ├── adr/              # Architecture Decision Records
 │   ├── learnings/        # Per-package engineering notes
-│   └── blog/             # Dev.to post drafts
+│   └── user-guide.md     # Student and admin walkthrough
 ├── Dockerfile            # Multi-stage: Node build → Go build → distroless
+├── render.yaml           # Render Blueprint (Docker runtime, CI-gated deploy)
 ├── docker-compose.yml    # Local container + file watch
 ├── .air.toml             # Go hot-reload config
 └── .env.example          # Required environment variables
@@ -170,26 +96,20 @@ info_links/
 
 ---
 
-## 🚀 Getting started
+## Getting started
 
 ### Prerequisites
 
 - **Git**
 - **Go 1.25+** ([go.mod](go.mod))
 - **Node.js 20+** (frontend build and Vite dev server)
-- **Supabase project** with a Postgres connection string (or compatible Postgres)
-- **Docker & Docker Compose** (optional, for containerized dev)
+- **Supabase project** with a Postgres connection string
+- **Docker & Docker Compose v2.22+** (optional, for containerized dev)
 - **[Air](https://github.com/air-verse/air)** (optional, for Go hot reload)
 
-### 1. Clone and configure
+### Environment
 
-```bash
-git clone https://github.com/MohamadObeid9/Info_Links.git
-cd Info_Links
-cp .env.example .env
-```
-
-Edit `.env` with your values:
+Copy [`.env.example`](.env.example) to `.env` and fill in:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -199,51 +119,45 @@ Edit `.env` with your values:
 | `SUPABASE_ANON_KEY` | Yes | Supabase anon/public key (admin login) |
 | `PORT` | No | Default `8080` |
 | `APP_ENV` | No | `development` or `production` |
-| `SITE_BASE_URL` | No | Canonical URL for SEO/sitemap (default `http://localhost:8080`) |
+| `SITE_BASE_URL` | No | Canonical URL for SEO/sitemap |
 | `CORS_ALLOWED_ORIGINS` | No | Comma-separated origins for local Vite dev |
 | `METRICS_BASIC_AUTH_*` | Prod only | Required when `APP_ENV=production` |
 
-### 2. Run locally (simplest)
+### Run locally
 
-**Option A — source frontend (no Node build needed)**
-
-The server serves files from `frontend/` when `frontend/dist/` does not exist:
+**Fastest path** — no frontend build needed (serves `frontend/` source):
 
 ```bash
 go run ./cmd/server
 ```
 
-Open [http://localhost:8080](http://localhost:8080).
-
-**Option B — production-like static assets**
-
-Build the frontend first, then start the server:
+**Production-like assets** — includes PWA manifest and service worker:
 
 ```bash
 cd frontend && npm ci && npm run build && cd ..
 go run ./cmd/server
 ```
 
-The server prefers `frontend/dist/` when present (includes PWA manifest and service worker from Vite).
+Open [http://localhost:8080](http://localhost:8080).
 
 ---
 
-## 💻 Development workflows
+## Development
 
 Pick the workflow that matches what you're changing.
 
-### Full stack, single port (backend + static files)
+| Goal | Command |
+|------|---------|
+| Fastest dev loop | `air` + `npm run dev` (see below) |
+| API work, single port | `go run ./cmd/server` |
+| Full stack in Docker, auto-rebuild | `docker compose up --build --watch` |
+| Verify container builds once | `docker compose up --build` |
+| Match CI image build | `docker build -t infolinks:local .` |
+| Restart existing container | `docker compose up` |
 
-```bash
-go run ./cmd/server
-# → http://localhost:8080
-```
+### Native (recommended for daily coding)
 
-Good for API work and quick frontend checks without Vite.
-
-### Frontend hot reload (Vite) + backend API
-
-Terminal 1 — Go API on port 8080:
+**Terminal 1** — Go API on port 8080:
 
 ```bash
 go run ./cmd/server
@@ -251,198 +165,108 @@ go run ./cmd/server
 air
 ```
 
-Terminal 2 — Vite dev server on port 5173 (proxies `/api`, SEO routes to 8080):
+**Terminal 2** — Vite dev server on port 5173 (proxies `/api` and SEO routes to 8080):
 
 ```bash
-cd frontend
-npm ci
-npm run dev
+cd frontend && npm ci && npm run dev
 # → http://localhost:5173
 ```
 
-Use **5173** while editing HTML/CSS/JS. API and SEO requests are proxied to the backend.
+Use **5173** while editing HTML/CSS/JS. Fastest feedback loop.
 
-### Go hot reload with Air
+### Docker (production-like)
 
-From the repo root (requires [Air](https://github.com/air-verse/air) installed):
+Requires Docker Compose v2.22+ (for `watch`).
 
-```bash
-air
-```
-
-Rebuilds the Go binary on `.go` file changes. Does not rebuild the frontend — pair with `npm run dev` or rebuild `frontend/dist` when needed.
-
-### Docker Compose with live rebuild
-
-Builds the full image (frontend + Go) and rebuilds the container when project files change:
+**Active development in a container** — rebuilds the image when project files change (`develop.watch` in `docker-compose.yml`):
 
 ```bash
 docker compose up --build --watch
 # → http://localhost:8080
 ```
 
-Uses `.env` from the repo root. Slower feedback loop than Air + Vite, but matches production layout without installing Go/Node locally.
+Slower than Air + Vite, but matches the production Docker layout without installing Go/Node locally.
 
----
-
-## 🧪 Testing & CI
+**One-shot verify:**
 
 ```bash
-# All backend tests (race detector)
-go test -race ./...
-
-# Lint (requires golangci-lint)
-golangci-lint run ./...
-
-# Frontend production build
-cd frontend && npm ci && npm run build
+docker compose up --build
 ```
 
-CI runs on every push/PR: Go build, `go test -race` with coverage, golangci-lint, govulncheck, and frontend `npm run build`. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+**Build image only (same as CI):**
+
+```bash
+docker build -t infolinks:local .
+docker run --rm -p 8080:8080 --env-file .env infolinks:local
+```
 
 ---
 
-## 🚢 Deployment
+## Testing & CI
 
-Info Links runs as a **single Go web service** on [Render](https://render.com):
+```bash
+go test -race ./...
+golangci-lint run ./...
+cd frontend && npm ci && npm run build
+docker build -t infolinks:local .
+```
+
+CI runs on every push/PR: Go build, `go test -race` with coverage, golangci-lint, govulncheck, frontend `npm run build`, and `docker build`. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
+`main` is branch-protected — all CI jobs must pass before merge. Render deploys only after checks pass (`autoDeployTrigger: checksPass` in [`render.yaml`](render.yaml)).
+
+---
+
+## Deployment
+
+Single Docker web service on [Render](https://render.com), configured in [`render.yaml`](render.yaml):
 
 | Setting | Value |
 |---------|-------|
-| **Build command** | `go build -o server ./cmd/server` |
-| **Start command** | `./server` |
+| **Runtime** | Docker (`dockerfilePath: ./Dockerfile`) |
+| **Start** | `ENTRYPOINT ["/server"]` |
 | **Health check** | `GET /readyz` |
+| **Auto-deploy** | On merge to `main`, only when CI checks pass |
+| **Domains** | [infolinks.app](https://infolinks.app), www.infolinks.app |
 
-Set all required environment variables from `.env.example`. In production, `METRICS_BASIC_AUTH_USER` and `METRICS_BASIC_AUTH_PASSWORD` are required for the `/metrics` endpoint.
+The [Dockerfile](Dockerfile) is multi-stage: Node builds `frontend/dist`, Go compiles the server, final image runs on distroless as non-root. CI runs the same `docker build` before Render deploys — what is tested is what ships.
 
-The [Dockerfile](Dockerfile) builds the frontend with Node, compiles Go, and runs on distroless — suitable for any container host.
-
----
-
-## 📖 How to Use
-
-### For Students
-
-1. **Browse Courses** — Start on the home page to see all available courses
-2. **Search** — Use the search bar (or press `/`) to find specific courses
-3. **Filter** — Use program tabs and year/semester filters to narrow down
-4. **Access Resources** — Click on resource links (Google Drive, Telegram, Classroom, etc.)
-5. **Save Favorites** — Click the ★ star on any course to save it to "My Courses"
-6. **Report Issues** — Use the "Report" section to report broken links
-7. **Contribute** — Submit new links with URL, link type, and notes
-8. **Toggle Theme** — Switch between light and dark mode
-9. **Provide Feedback** — Rate the platform by category and share suggestions
-
-### For Admins
-
-1. **Log In** — Access the admin panel via the "Admin" button
-2. **Manage Courses** — Add, edit, or remove courses and resources
-3. **Add Links** — Assign multiple content types to each link
-4. **Sibling Sync** — When editing shared courses, choose to update all occurrences
-5. **Review Contributions** — Approve user-submitted links
-6. **View Analytics** — Track visitor data and top clicked links
-7. **Export Data** — Download analytics as JSON
-8. **Manage Feedback** — Review user feedback and ratings
+Set environment variables in the Render dashboard (see [`.env.example`](.env.example)). Secrets use `sync: false` in `render.yaml`. In production, `APP_ENV=production` and metrics basic auth are required for `/metrics`.
 
 ---
 
-## 🤝 Contributing
-
-We welcome contributions — course resources, bug fixes, and backend improvements.
-
-### Contribute resources (no code)
-
-Use **Report / Contribute** in the live app at [infolinks.app](https://infolinks.app/).
-
-### Contribute code
-
-1. **Fork** the repository and create a branch:
-   ```bash
-   git checkout -b fix/your-change
-   ```
-2. **Set up** locally (see [Getting started](#-getting-started))
-3. **Make your changes** and run tests:
-   ```bash
-   go test -race ./...
-   ```
-4. **Open a pull request** with:
-   - What changed and why
-   - How you tested it
-   - Screenshots for UI changes
-
-**Guidelines:**
-
-- Match existing code style and layering (`api` → `service` → `repository`)
-- Add or update tests for backend logic changes
-- For architectural choices, add or update an ADR in [`docs/adr/`](docs/adr/)
-- Keep PRs focused — one concern per PR when possible
-- Do not commit `.env` or secrets
-
----
-
-## 📚 Documentation
+## Documentation
 
 | Resource | Description |
 |----------|-------------|
-| [`docs/adr/`](docs/adr/) | Why Postgres, Supabase, `net/http`, Render, SEO pages, etc. |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records |
 | [`docs/learnings/`](docs/learnings/) | Engineering notes per package |
 | [`docs/load-test.md`](docs/load-test.md) | k6 load test results |
+| [`docs/user-guide.md`](docs/user-guide.md) | Student and admin walkthrough |
+| [`docs/roadmap.md`](docs/roadmap.md) | Milestones and planned work |
 | [`frontend/README.md`](frontend/README.md) | Frontend layout |
-| [DEV post — Part 1](https://dev.to/mohamadobeid9/i-built-a-free-course-resource-platform-for-my-university-heres-the-real-story-1645) | Origin story |
-| [DEV post — Month 1 Go rebuild](https://dev.to/mohamadobeid9/from-supabase-only-to-production-go-month-1-of-rebuilding-info-links-3a4p) | Backend migration write-up |
+| [DEV — origin story](https://dev.to/mohamadobeid9/i-built-a-free-course-resource-platform-for-my-university-heres-the-real-story-1645) | How Info Links started |
+| [DEV — Go rebuild](https://dev.to/mohamadobeid9/from-supabase-only-to-production-go-month-1-of-rebuilding-info-links-3a4p) | Backend migration write-up |
 
 ---
 
-## 📞 Connect With Us
+## Contributing
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Security issues: [SECURITY.md](SECURITY.md).
+
+---
+
+## Connect
 
 - **Live site** — [infolinks.app](https://infolinks.app/)
 - **GitHub** — [MohamadObeid9/Info_Links](https://github.com/MohamadObeid9/Info_Links)
 - **Telegram** — [@Info_Links9](https://t.me/Info_Links9)
+- **LinkedIn** — [MohamadObeid9](https://www.linkedin.com/in/mohamadobeid9/)
 
 ---
 
-## 📜 License
+## License
 
-This project is **open source** under the [MIT License](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
----
-
-## 🙏 Acknowledgments
-
-- **Supabase** — Managed Postgres infrastructure for free
-- **Render** — Hosted the whole project on their free version tier
-- **All Contributors** — Thank you for making this project a success!
-- **The Student Community** — For the feedback, support, and belief in this project
-
----
-
-## 📊 Project Milestones
-
-| Phase | Achievement |
-|-------|-------------|
-| **Phase 1** | Started with 4 courses covering basics |
-| **Phase 2** | Expanded to 25+ courses |
-| **Phase 3** | Reached 50+ courses with multiple resources per course |
-| **Phase 4** | Serving 300+ students in under a year |
-| **Phase 5** | Launched new website for better UX |
-| **Phase 6** | Open-sourced project for community contributions |
-| **Phase 7** | Favorites, content types, analytics, and PWA support |
-| **Phase 8** | Go backend with layered architecture, observability, CI, and SEO |
-
----
-
-## 💡 Future Roadmap
-
-- [x] Advanced filtering and categorization
-- [x] Personalized bookmarks (My Courses / Favorites)
-- [x] Multi-language support (EN/FR/AR notes)
-- [x] Community rating system for resources (Feedback)
-- [x] Offline mode support (PWA / Service Worker)
-- [x] Production Go backend with tests and observability
-- [ ] Link health checker worker (companion Go service)
-- [ ] Mobile app (iOS/Android)
-- [ ] Push notifications for new resources
-- [ ] Course schedule integration
-
----
-
-**Made with ❤️ for Le CNAM Lebanon Computer Science Students**
+Built by students, for students.
