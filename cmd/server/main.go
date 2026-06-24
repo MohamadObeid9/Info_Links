@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger := newLogger(cfg.AppEnv)
+	logger := newLogger(cfg.AppEnv, cfg.LogLevel)
 
 	dbClient, err := database.New(cfg.DatabaseURL, logger.With("component", "database"))
 	if err != nil {
@@ -75,12 +75,14 @@ func main() {
 	}
 }
 
-func newLogger(env string) *slog.Logger {
+func newLogger(env, logLevel string) *slog.Logger {
 	var logHandler slog.Handler
 	if env == "development" {
 		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
-	} else {
+	} else if logLevel == "info" {
 		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	} else {
+		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	}
 	logger := slog.New(logHandler).With("env", env)
 	return logger

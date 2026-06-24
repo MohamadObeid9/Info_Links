@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Port                 string
 	AppEnv               string
+	LogLevel             string
 	JWTSecret            string
 	DatabaseURL          string
 	SiteBaseURL          string
@@ -27,6 +28,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Port:                 getenv("PORT", "8080"),
 		AppEnv:               getenv("APP_ENV", "development"),
+		LogLevel:             getenv("LOG_LEVEL", "debug"),
 		CorsAllowedOrigins:   getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://localhost:5173"),
 		SiteBaseURL:          getenv("SITE_BASE_URL", "http://localhost:8080"),
 		DatabaseURL:          getenv("DATABASE_URL"),

@@ -78,19 +78,23 @@ func RequestIDWithLogging(logger *slog.Logger, appEnv string, next http.Handler)
 
 		next.ServeHTTP(ww, r.WithContext(ctx))
 
-		path := r.URL.Path
-		if !strings.Contains(path, "js") && !strings.Contains(path, "styles") && !strings.Contains(path, "assets") && !strings.Contains(path, "html") {
-			if (appEnv == "production" && path != "/metrics") || appEnv == "development" {
-				if path != "/readyz" && r.Method != "HEAD" {
-					logger.Info("request completed",
-						"request_id", id,
-						"method", r.Method,
-						"path", path,
-						"status", ww.status,
-						"duration_ms", time.Since(start).Milliseconds(),
-					)
-				}
-			}
+		path := NormalizePath(r.URL.Path)
+		action := accessLogDecision(r.Method, r.URL.Path, appEnv, ww.status)
+		attrs := []any{
+			"request_id", id,
+			"method", r.Method,
+			"path", path,
+			"status", ww.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+		}
+		switch action {
+		case accessLogSkip:
+		case accessLogDebug:
+			logger.Debug("request completed", attrs...)
+		case accessLogWarn:
+			logger.Warn("request completed", attrs...)
+		default:
+			logger.Info("request completed", attrs...)
 		}
 	})
 }
