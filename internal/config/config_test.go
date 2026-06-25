@@ -31,11 +31,13 @@ func TestLoad(t *testing.T) {
 				"SUPABASE_ANON_KEY":    supabaseAnonKey,
 				"PORT":                 "",
 				"APP_ENV":              "",
+				"LOG_LEVEL":            "",
 				"CORS_ALLOWED_ORIGINS": "",
 			},
 			want: Config{
 				Port:               "8080",
 				AppEnv:             "development",
+				LogLevel:           "debug",
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
 				SupabaseURL:        supabseURL,
@@ -53,6 +55,7 @@ func TestLoad(t *testing.T) {
 				"SUPABASE_ANON_KEY":           supabaseAnonKey,
 				"PORT":                        "3000",
 				"APP_ENV":                     "production",
+				"LOG_LEVEL":                   "info",
 				"CORS_ALLOWED_ORIGINS":        "https://example.com",
 				"METRICS_BASIC_AUTH_USER":     "grafana-scraper",
 				"METRICS_BASIC_AUTH_PASSWORD": "metrics-secret",
@@ -60,6 +63,7 @@ func TestLoad(t *testing.T) {
 			want: Config{
 				Port:                 "3000",
 				AppEnv:               "production",
+				LogLevel:             "info",
 				DatabaseURL:          dbURL,
 				JWTSecret:            secret,
 				SupabaseURL:          supabseURL,
@@ -82,6 +86,7 @@ func TestLoad(t *testing.T) {
 			want: Config{
 				Port:               "9090",
 				AppEnv:             "development",
+				LogLevel:           "debug",
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
 				SupabaseURL:        supabseURL,
@@ -102,6 +107,7 @@ func TestLoad(t *testing.T) {
 			want: Config{
 				Port:               "8080",
 				AppEnv:             "development",
+				LogLevel:           "debug",
 				DatabaseURL:        dbURL,
 				JWTSecret:          secret,
 				SupabaseURL:        supabseURL,

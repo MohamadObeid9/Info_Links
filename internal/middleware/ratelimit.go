@@ -64,7 +64,7 @@ func RateLimit(next http.Handler) http.Handler {
 func isExempt(r *http.Request) bool {
 	p := r.URL.Path
 	switch p {
-	case "/healthz", "/readyz", "/metrics", "/robots.txt":
+	case "/healthz", "/readyz", "/metrics", "/robots.txt", "sitemap.xml":
 		return true
 	}
 	if strings.HasPrefix(p, "/assets/") {
