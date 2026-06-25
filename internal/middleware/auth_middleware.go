@@ -47,6 +47,37 @@ func RequireAdmin(jwtSecret string, next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func IsAuthenticatedAdmin(jwtSecret, tokenString string) bool {
+	if tokenString == "" {
+		return false
+	}
+
+	// Handle "Bearer <token>" format
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+		tokenString = tokenString[7:]
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		return false
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+	adminClaim, ok := claims["admin"].(bool)
+	if !ok || !adminClaim {
+		return false
+	}
+	return true
+}
+
 func writeJSONErr(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

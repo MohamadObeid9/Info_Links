@@ -154,6 +154,7 @@ async function sbLogout() {
 }
 
 async function trackVisit() {
+  if (AppState.adminLoggedIn) return;
   if (sessionStorage.getItem("pv_tracked")) return;
   try {
     await apiRequest(`/api/page_views`, {
@@ -165,7 +166,7 @@ async function trackVisit() {
 }
 
 function trackLinkClick(linkId) {
-  if (!linkId) return;
+  if (!linkId || AppState.adminLoggedIn) return;
   apiRequest(`/api/link_clicks`, {
     method: "POST",
     body: { link_id: linkId },

@@ -8,7 +8,9 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
@@ -38,9 +40,24 @@ func (f *fakeLinkClickService) List(ctx context.Context) ([]models.LinkClick, er
 }
 
 func TestHandlePostLinkClick(t *testing.T) {
+	h := testHandler(t)
+	validAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": true,
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
+	nonAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": false,
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
+	expiredAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": true,
+		"exp":   time.Now().Add(-time.Hour).Unix(),
+	})
+
 	tests := []struct {
 		name         string
 		body         string
+		authHeader   string
 		createErr    error
 		statusWanted int
 		errMsg       string
@@ -50,6 +67,37 @@ func TestHandlePostLinkClick(t *testing.T) {
 		{
 			name:         "201 when service accepts the link click",
 			body:         `{"link_id":42}`,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.LinkClick{LinkID: 42},
+		},
+		{
+			name:         "204 skips insert for valid admin bearer token",
+			body:         `{"link_id":42}`,
+			authHeader:   "Bearer " + validAdminToken,
+			statusWanted: http.StatusNoContent,
+			wantCalls:    0,
+		},
+		{
+			name:         "201 records click when admin token is expired",
+			body:         `{"link_id":42}`,
+			authHeader:   "Bearer " + expiredAdminToken,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.LinkClick{LinkID: 42},
+		},
+		{
+			name:         "201 records click when token is not admin",
+			body:         `{"link_id":42}`,
+			authHeader:   "Bearer " + nonAdminToken,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.LinkClick{LinkID: 42},
+		},
+		{
+			name:         "201 records click when bearer token is invalid",
+			body:         `{"link_id":42}`,
+			authHeader:   "Bearer not-a-jwt",
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
 			resultWanted: &models.LinkClick{LinkID: 42},
@@ -76,12 +124,25 @@ func TestHandlePostLinkClick(t *testing.T) {
 			h := testHandler(t, withlinkClick(fake))
 			req := httptest.NewRequest(http.MethodPost, "/api/link_clicks", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
 			rr := httptest.NewRecorder()
 
 			h.handlePostLinkClick(rr, req)
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
+			}
+
+			if tt.statusWanted == http.StatusNoContent {
+				if fake.createCalls != tt.wantCalls {
+					t.Fatalf("service.Create calls: got %d want %d", fake.createCalls, tt.wantCalls)
+				}
+				if rr.Body.Len() != 0 {
+					t.Fatalf("expected empty body, got %q", rr.Body.String())
+				}
+				return
 			}
 
 			if tt.statusWanted != http.StatusCreated {
