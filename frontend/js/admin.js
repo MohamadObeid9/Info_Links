@@ -162,7 +162,7 @@ async function renderAdminAnalytics() {
 
     const topLinks = Object.entries(clickMap)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
+      .slice(0, 10)
       .map(([linkId, count]) => {
         // Resolve link label and course
         let info = { label: "Unknown Link", courseName: "Unknown Course" };

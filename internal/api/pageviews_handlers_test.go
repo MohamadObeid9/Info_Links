@@ -8,7 +8,9 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
@@ -38,9 +40,24 @@ func (f *fakePageViewService) List(ctx context.Context) ([]models.PageView, erro
 }
 
 func TestHandlePostPageView(t *testing.T) {
+	h := testHandler(t)
+	validAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": true,
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
+	nonAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": false,
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
+	expiredAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": true,
+		"exp":   time.Now().Add(-time.Hour).Unix(),
+	})
+
 	tests := []struct {
 		name         string
 		body         string
+		authHeader   string
 		createErr    error
 		statusWanted int
 		errMsg       string
@@ -50,6 +67,37 @@ func TestHandlePostPageView(t *testing.T) {
 		{
 			name:         "201 when service accepts the page view",
 			body:         `{"page":"home"}`,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.PageView{Page: "home"},
+		},
+		{
+			name:         "204 skips insert for valid admin bearer token",
+			body:         `{"page":"home"}`,
+			authHeader:   "Bearer " + validAdminToken,
+			statusWanted: http.StatusNoContent,
+			wantCalls:    0,
+		},
+		{
+			name:         "201 records visit when admin token is expired",
+			body:         `{"page":"home"}`,
+			authHeader:   "Bearer " + expiredAdminToken,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.PageView{Page: "home"},
+		},
+		{
+			name:         "201 records visit when token is not admin",
+			body:         `{"page":"home"}`,
+			authHeader:   "Bearer " + nonAdminToken,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.PageView{Page: "home"},
+		},
+		{
+			name:         "201 records visit when bearer token is invalid",
+			body:         `{"page":"home"}`,
+			authHeader:   "Bearer not-a-jwt",
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
 			resultWanted: &models.PageView{Page: "home"},
@@ -76,12 +124,25 @@ func TestHandlePostPageView(t *testing.T) {
 			h := testHandler(t, withPageView(fake))
 			req := httptest.NewRequest(http.MethodPost, "/api/page_views", bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
 			rr := httptest.NewRecorder()
 
 			h.handlePostPageView(rr, req)
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
+			}
+
+			if tt.statusWanted == http.StatusNoContent {
+				if fake.createCalls != tt.wantCalls {
+					t.Fatalf("service.Create calls: got %d want %d", fake.createCalls, tt.wantCalls)
+				}
+				if rr.Body.Len() != 0 {
+					t.Fatalf("expected empty body, got %q", rr.Body.String())
+				}
+				return
 			}
 
 			if tt.statusWanted != http.StatusCreated {

@@ -80,6 +80,11 @@ func Test_accessLogDecision(t *testing.T) {
 			want:   accessLogSkip,
 		},
 		{
+			name:   "skip 204 status",
+			status: http.StatusNoContent,
+			want:   accessLogSkip,
+		},
+		{
 			name: "debug /api/admin paths",
 			path: "/api/admin/reports",
 			want: accessLogSkip,
