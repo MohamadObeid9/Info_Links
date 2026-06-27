@@ -16,7 +16,7 @@ const (
 
 func accessLogDecision(method, path, appEnv string, status int) accessLogAction {
 	switch {
-	case isNoisyPath(path, method), status == http.StatusNoContent:
+	case isNoisyPath(path, method), status == http.StatusNoContent, status == http.StatusNotFound:
 		return accessLogSkip
 	case status >= 400:
 		return accessLogWarn

@@ -85,6 +85,11 @@ func Test_accessLogDecision(t *testing.T) {
 			want:   accessLogSkip,
 		},
 		{
+			name:   "skip 404 status",
+			status: http.StatusNotFound,
+			want:   accessLogSkip,
+		},
+		{
 			name: "debug /api/admin paths",
 			path: "/api/admin/reports",
 			want: accessLogSkip,
@@ -117,11 +122,6 @@ func Test_accessLogDecision(t *testing.T) {
 		{
 			name:   "warn status > 400",
 			status: http.StatusUnauthorized,
-			want:   accessLogWarn,
-		},
-		{
-			name:   "warn status not found",
-			status: http.StatusNotFound,
 			want:   accessLogWarn,
 		},
 		{

@@ -1,0 +1,23 @@
+DROP TABLE IF EXISTS public.link_clicks;
+DROP TABLE IF EXISTS public.feedback;
+DROP TABLE IF EXISTS public.page_views;
+DROP TABLE IF EXISTS public.contributions;
+DROP TABLE IF EXISTS public.reports;
+DROP TABLE IF EXISTS public.extra_links;
+DROP TABLE IF EXISTS public.extra_sections;
+DROP TABLE IF EXISTS public.links;
+DROP TABLE IF EXISTS public.courses;
+DROP TABLE IF EXISTS public.semesters;
+DROP TABLE IF EXISTS public.years;
+DROP TABLE IF EXISTS public.programs;
+
+DROP SEQUENCE IF EXISTS public.page_views_id_seq;
+DROP SEQUENCE IF EXISTS public.contributions_id_seq;
+DROP SEQUENCE IF EXISTS public.reports_id_seq;
+DROP SEQUENCE IF EXISTS public.extra_links_id_seq;
+DROP SEQUENCE IF EXISTS public.extra_sections_id_seq;
+DROP SEQUENCE IF EXISTS public.links_id_seq;
+DROP SEQUENCE IF EXISTS public.courses_id_seq;
+DROP SEQUENCE IF EXISTS public.semesters_id_seq;
+DROP SEQUENCE IF EXISTS public.years_id_seq;
+DROP SEQUENCE IF EXISTS public.programs_id_seq;
