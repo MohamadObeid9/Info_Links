@@ -32,6 +32,8 @@ const AppState = {
   currentSem: "all",
   dbPrograms: [],
   analyticsRange: "30",
+  analyticsTopLinksExpanded: false,
+  analyticsTopLinksTodayExpanded: false,
   dbExtra: [],
   courseById: new Map(),
   linkById: new Map(),

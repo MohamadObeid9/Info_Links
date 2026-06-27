@@ -101,6 +101,66 @@ function _refocusSearch() {
 }
 
 // ===================== ANALYTICS =====================
+function resolveLinkInfo(linkId) {
+  let info = { label: "Unknown Link", courseName: "Unknown Course" };
+  AppState.dbPrograms.forEach((p) =>
+    p.years.forEach((y) =>
+      y.sems.forEach((s) =>
+        s.courses.forEach((c) =>
+          c.links.forEach((l) => {
+            if (l.id == linkId) info = { label: l.label, courseName: c.name };
+          }),
+        ),
+      ),
+    ),
+  );
+  AppState.dbExtra.forEach((r) =>
+    r.links.forEach((l) => {
+      if (l.id == linkId) info = { label: l.label, courseName: r.title };
+    }),
+  );
+  return info;
+}
+
+function buildTopLinksSection(title, clickEvents, expandedKey) {
+  const clickMap = {};
+  clickEvents.forEach((c) => {
+    if (c.link_id) clickMap[c.link_id] = (clickMap[c.link_id] || 0) + 1;
+  });
+  const sorted = Object.entries(clickMap).sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) {
+    return `<div class="chart-wrap" style="margin-top:20px;">
+      <div class="chart-title">${title}</div>
+      <div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">No click data.</div>
+    </div>`;
+  }
+
+  const expanded = AppState[expandedKey];
+  const limit = expanded ? 10 : 5;
+  const items = sorted
+    .slice(0, limit)
+    .map(([linkId, count]) => {
+      const info = resolveLinkInfo(linkId);
+      return `<li><strong>${count}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
+    })
+    .join("");
+
+  const toggleFn =
+    expandedKey === "analyticsTopLinksTodayExpanded"
+      ? "AppState.analyticsTopLinksTodayExpanded=!AppState.analyticsTopLinksTodayExpanded"
+      : "AppState.analyticsTopLinksExpanded=!AppState.analyticsTopLinksExpanded";
+  const expandBtn =
+    sorted.length > 5
+      ? `<button class="filter-btn" style="margin-top:12px;" onclick="${toggleFn};renderAdminAnalytics()">${expanded ? "Show top 5" : "Show top 10"}</button>`
+      : "";
+
+  return `<div class="chart-wrap" style="margin-top:20px;">
+    <div class="chart-title">${title}</div>
+    <ul style="list-style:none;padding:0;margin-top:16px;">${items}</ul>
+    ${expandBtn}
+  </div>`;
+}
+
 async function renderAdminAnalytics() {
   document.getElementById("adminContent").innerHTML = getAdminAnalyticsSkeleton();
   try {
@@ -153,30 +213,10 @@ async function renderAdminAnalytics() {
       .map((r) => `<button class="filter-btn ${AppState.analyticsRange === r ? "active" : ""}" onclick="AppState.analyticsRange='${r}';renderAdminAnalytics()">${r} days</button>`)
       .join("");
 
-    // Calculate top clicked links
     const clicksInRange = clicks.filter((c) => new Date(c.clicked_at) >= cutoff);
-    const clickMap = {};
-    clicksInRange.forEach((c) => {
-      if (c.link_id) clickMap[c.link_id] = (clickMap[c.link_id] || 0) + 1;
-    });
-
-    const topLinks = Object.entries(clickMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([linkId, count]) => {
-        // Resolve link label and course
-        let info = { label: "Unknown Link", courseName: "Unknown Course" };
-        AppState.dbPrograms.forEach(p => p.years.forEach(y => y.sems.forEach(s => s.courses.forEach(c => c.links.forEach(l => {
-          if (l.id == linkId) info = { label: l.label, courseName: c.name };
-        })))));
-        AppState.dbExtra.forEach(r => r.links.forEach(l => {
-          if (l.id == linkId) info = { label: l.label, courseName: r.title };
-        }));
-        return `<li><strong>${count}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
-      })
-      .join("");
-
-    const topLinksHtml = topLinks ? `<ul style="list-style:none;padding:0;margin-top:16px;">${topLinks}</ul>` : `<div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">No click data in range.</div>`;
+    const clicksToday = clicks.filter((c) => c.clicked_at.slice(0, 10) === todayStr);
+    const topLinksTodayHtml = buildTopLinksSection("🔥 Top Clicked Links (today)", clicksToday, "analyticsTopLinksTodayExpanded");
+    const topLinksHtml = buildTopLinksSection("🔥 Top Clicked Links (in range)", clicksInRange, "analyticsTopLinksExpanded");
 
     document.getElementById("adminContent").innerHTML = `
       <div class="stat-grid">
@@ -190,10 +230,8 @@ async function renderAdminAnalytics() {
           <div class="analytics-range">${rangeButtons}</div>
           <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
       </div>
-      <div class="chart-wrap" style="margin-top:20px;">
-          <div class="chart-title">🔥 Top Clicked Links (in range)</div>
-          ${topLinksHtml}
-      </div>
+      ${topLinksTodayHtml}
+      ${topLinksHtml}
       <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Each visit counted once per browser session.</p>`;
   } catch (e) {
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ Could not load analytics: ${e.message}</div>`;
