@@ -83,6 +83,9 @@ info_links/
 │   ├── models/           # Shared domain types
 │   └── errs/             # Sentinel errors
 ├── frontend/             # Vanilla JS SPA (Vite for dev/build)
+├── db/
+│   ├── migrations/       # Versioned Postgres schema (golang-migrate + schema.sql snapshot)
+│   └── README.md         # How to apply migrations locally and in CI
 ├── docs/
 │   ├── adr/              # Architecture Decision Records
 │   ├── learnings/        # Per-package engineering notes
