@@ -2,6 +2,12 @@ package errs
 
 import "errors"
 
+// Link clicks errors
+var (
+	ErrLinkClickLinkIDAndExtraLinkIDRequired = errors.New("link id and extra link id are required")
+	ErrLinkClickLinkIDAndExtraLinkIDSet      = errors.New("link id and extra link id cannot be set at the same time")
+)
+
 // Reports Errors
 var (
 	ErrReportNotFound      = errors.New("report not found")

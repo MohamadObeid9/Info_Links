@@ -31,7 +31,8 @@ document.addEventListener("click", (e) => {
     e.preventDefault();
     const idAttr = linkItem.dataset.linkId;
     const linkId = idAttr ? parseInt(idAttr, 10) : null;
-    window.confirmLink(linkId, linkItem.dataset.url || null);
+    const linkKind = linkItem.dataset.linkKind || "link";
+    window.confirmLink(linkId, linkItem.dataset.url || null, linkKind);
     return;
   }
 

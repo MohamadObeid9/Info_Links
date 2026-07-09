@@ -101,8 +101,16 @@ function _refocusSearch() {
 }
 
 // ===================== ANALYTICS =====================
-function resolveLinkInfo(linkId) {
+function resolveLinkInfo(kind, linkId) {
   let info = { label: "Unknown Link", courseName: "Unknown Course" };
+  if (kind === "extra_link") {
+    AppState.dbExtra.forEach((r) =>
+      r.links.forEach((l) => {
+        if (l.id == linkId) info = { label: l.label, courseName: r.title };
+      }),
+    );
+    return info;
+  }
   AppState.dbPrograms.forEach((p) =>
     p.years.forEach((y) =>
       y.sems.forEach((s) =>
@@ -114,18 +122,20 @@ function resolveLinkInfo(linkId) {
       ),
     ),
   );
-  AppState.dbExtra.forEach((r) =>
-    r.links.forEach((l) => {
-      if (l.id == linkId) info = { label: l.label, courseName: r.title };
-    }),
-  );
   return info;
 }
 
 function buildTopLinksSection(title, clickEvents, expandedKey) {
   const clickMap = {};
   clickEvents.forEach((c) => {
-    if (c.link_id) clickMap[c.link_id] = (clickMap[c.link_id] || 0) + 1;
+    if (c.link_id) {
+      const key = `link:${c.link_id}`;
+      clickMap[key] = (clickMap[key] || 0) + 1;
+    }
+    if (c.extra_link_id) {
+      const key = `extra_link:${c.extra_link_id}`;
+      clickMap[key] = (clickMap[key] || 0) + 1;
+    }
   });
   const sorted = Object.entries(clickMap).sort((a, b) => b[1] - a[1]);
   if (!sorted.length) {
@@ -139,8 +149,9 @@ function buildTopLinksSection(title, clickEvents, expandedKey) {
   const limit = expanded ? 10 : 5;
   const items = sorted
     .slice(0, limit)
-    .map(([linkId, count]) => {
-      const info = resolveLinkInfo(linkId);
+    .map(([key, count]) => {
+      const [kind, linkId] = key.split(":");
+      const info = resolveLinkInfo(kind, linkId);
       return `<li><strong>${count}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
     })
     .join("");
@@ -166,7 +177,7 @@ async function renderAdminAnalytics() {
   try {
     const [views, clicks] = await Promise.all([
       sb("page_views", "GET", null, null, "id,visited_at"),
-      sb("link_clicks", "GET", null, null, "id,link_id,clicked_at").catch(() => []),
+      sb("link_clicks", "GET", null, null, "id,link_id,extra_link_id,clicked_at").catch(() => []),
     ]);
 
     const now = new Date();

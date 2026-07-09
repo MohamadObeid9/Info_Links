@@ -26,19 +26,31 @@ function executeModalAction() {
 }
 
 // ── confirmLink: Fixed XSS — URL stored in dataset, not inline onclick ─────
-function confirmLink(linkId, rawUrl) {
+function confirmLink(linkId, rawUrl, linkKind = "link") {
   // Resolve URL safely from dataset rather than injecting into onclick attr
   let url = rawUrl;
   if (!url && linkId) {
-    // Look up url from the in-memory tree
-    outer: for (const p of AppState.dbPrograms) {
-      for (const y of p.years) {
-        for (const s of y.sems) {
-          for (const c of s.courses) {
-            for (const l of c.links) {
-              if (l.id === linkId) {
-                url = l.url;
-                break outer;
+    if (linkKind === "extra_link") {
+      // Look up url from extra links
+      outerExtra: for (const section of AppState.dbExtra) {
+        for (const link of section.links) {
+          if (link.id === linkId) {
+            url = link.url;
+            break outerExtra;
+          }
+        }
+      }
+    } else {
+      // Look up url from course links
+      outer: for (const p of AppState.dbPrograms) {
+        for (const y of p.years) {
+          for (const s of y.sems) {
+            for (const c of s.courses) {
+              for (const l of c.links) {
+                if (l.id === linkId) {
+                  url = l.url;
+                  break outer;
+                }
               }
             }
           }
@@ -75,7 +87,7 @@ function confirmLink(linkId, rawUrl) {
   // Attach click handler safely — no inline eval
   // Track click only after the user confirms they want to open the link
   document.getElementById("openLinkBtn").addEventListener("click", () => {
-    if (linkId) trackLinkClick(linkId);
+    if (linkId) trackLinkClick(linkId, linkKind);
     closeModal();
     window.open(parsed.href, "_blank", "noopener,noreferrer");
   });

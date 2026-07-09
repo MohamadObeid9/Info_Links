@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 	"infolinks-backend/internal/repository"
 )
@@ -17,6 +18,12 @@ func NewLinkClickService(repo repository.LinkClickRepository) *LinkClickService 
 }
 
 func (s *LinkClickService) Create(ctx context.Context, lc models.LinkClick) error {
+	if lc.LinkID == nil && lc.ExtraLinkID == nil {
+		return errs.ErrLinkClickLinkIDAndExtraLinkIDRequired
+	}
+	if lc.LinkID != nil && lc.ExtraLinkID != nil {
+		return errs.ErrLinkClickLinkIDAndExtraLinkIDSet
+	}
 	if err := s.repo.Create(ctx, lc); err != nil {
 		return fmt.Errorf("create link click: %w", err)
 	}

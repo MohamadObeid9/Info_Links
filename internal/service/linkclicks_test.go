@@ -44,12 +44,27 @@ func TestLinkClickService_Create(t *testing.T) {
 	}{
 		{
 			name:         "persists link click",
-			lc:           models.LinkClick{LinkID: 42},
-			resultWanted: &models.LinkClick{LinkID: 42},
+			lc:           models.LinkClick{LinkID: &[]int{42}[0]},
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
+		},
+		{
+			name:         "persists extra link click",
+			lc:           models.LinkClick{ExtraLinkID: &[]int{42}[0]},
+			resultWanted: &models.LinkClick{ExtraLinkID: &[]int{42}[0]},
+		},
+		{
+			name: "persists both link and extra link clicks",
+			lc:   models.LinkClick{LinkID: &[]int{42}[0], ExtraLinkID: &[]int{42}[0]},
+			err:  errs.ErrLinkClickLinkIDAndExtraLinkIDSet,
+		},
+		{
+			name: "link id and extra link id are required",
+			lc:   models.LinkClick{LinkID: nil, ExtraLinkID: nil},
+			err:  errs.ErrLinkClickLinkIDAndExtraLinkIDRequired,
 		},
 		{
 			name:      "repo create error",
-			lc:        models.LinkClick{LinkID: 42},
+			lc:        models.LinkClick{LinkID: &[]int{42}[0]},
 			createErr: errs.ErrDatabaseDown,
 			err:       errs.ErrDatabaseDown,
 		},
@@ -90,8 +105,10 @@ func TestLinkClickService_Create(t *testing.T) {
 
 func TestLinkClickService_List(t *testing.T) {
 	sample := []models.LinkClick{
-		{ID: 1, LinkID: 42, ClickedAt: "2024-01-01T00:00:00Z"},
-		{ID: 2, LinkID: 99, ClickedAt: "2024-02-01T00:00:00Z"},
+		{ID: 1, LinkID: &[]int{42}[0], ExtraLinkID: nil, ClickedAt: "2024-01-01T00:00:00Z"},
+		{ID: 2, LinkID: &[]int{99}[0], ExtraLinkID: nil, ClickedAt: "2024-02-01T00:00:00Z"},
+		{ID: 3, ExtraLinkID: &[]int{42}[0], LinkID: nil, ClickedAt: "2024-01-01T00:00:00Z"},
+		{ID: 4, ExtraLinkID: &[]int{99}[0], LinkID: nil, ClickedAt: "2024-02-01T00:00:00Z"},
 	}
 
 	tests := []struct {

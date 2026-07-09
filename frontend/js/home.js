@@ -222,6 +222,7 @@ function renderExtra() {
               <a class="link-item"
                  data-url="${esc(l.url)}"
                  data-link-id="${l.id}"
+                 data-link-kind="extra_link"
                  href="${esc(l.url)}">
                 <span class="link-item-main">
                   ${getLinkBadge(l.type)}

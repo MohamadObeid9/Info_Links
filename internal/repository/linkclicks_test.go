@@ -29,12 +29,16 @@ func TestLinkClickRepository_Create(t *testing.T) {
 		lc      models.LinkClick
 	}{
 		{
-			name: "insert link click",
-			lc:   models.LinkClick{LinkID: 1},
+			name: "insert normal link click",
+			lc:   models.LinkClick{LinkID: &[]int{1}[0]},
+		},
+		{
+			name: "insert extra link click",
+			lc:   models.LinkClick{ExtraLinkID: &[]int{1}[0]},
 		},
 		{
 			name:    "insert exec error",
-			lc:      models.LinkClick{LinkID: 1},
+			lc:      models.LinkClick{LinkID: &[]int{1}[0]},
 			execErr: errs.ErrDatabaseDown,
 			err:     errs.ErrDatabaseDown,
 		},
@@ -43,7 +47,7 @@ func TestLinkClickRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestLinkClickRepo(t)
 			exp := mock.ExpectExec(insertLinkClickQuery).
-				WithArgs(tt.lc.LinkID)
+				WithArgs(tt.lc.LinkID, tt.lc.ExtraLinkID)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {
@@ -68,7 +72,7 @@ func TestLinkClickRepository_Create(t *testing.T) {
 }
 
 func TestLinkClickRepository_List(t *testing.T) {
-	columns := []string{"id", "link_id", "clicked_at"}
+	columns := []string{"id", "link_id", "extra_link_id", "clicked_at"}
 
 	tests := []struct {
 		name     string
@@ -80,17 +84,27 @@ func TestLinkClickRepository_List(t *testing.T) {
 		{
 			name: "returns link clicks",
 			rows: sqlmock.NewRows(columns).
-				AddRow(1, 42, "2024-01-01T00:00:00Z").
-				AddRow(2, 99, "2024-02-01T00:00:00Z"),
+				AddRow(1, 42, nil, "2024-01-01T00:00:00Z").
+				AddRow(2, 99, nil, "2024-02-01T00:00:00Z"),
 			want: []models.LinkClick{
-				{ID: 1, LinkID: 42, ClickedAt: "2024-01-01T00:00:00Z"},
-				{ID: 2, LinkID: 99, ClickedAt: "2024-02-01T00:00:00Z"},
+				{ID: 1, LinkID: &[]int{42}[0], ExtraLinkID: nil, ClickedAt: "2024-01-01T00:00:00Z"},
+				{ID: 2, LinkID: &[]int{99}[0], ExtraLinkID: nil, ClickedAt: "2024-02-01T00:00:00Z"},
+			},
+		},
+		{
+			name: "returns extra link clicks",
+			rows: sqlmock.NewRows(columns).
+				AddRow(1, nil, 42, "2024-01-01T00:00:00Z").
+				AddRow(2, nil, 99, "2024-02-01T00:00:00Z"),
+			want: []models.LinkClick{
+				{ID: 1, ExtraLinkID: &[]int{42}[0], LinkID: nil, ClickedAt: "2024-01-01T00:00:00Z"},
+				{ID: 2, ExtraLinkID: &[]int{99}[0], LinkID: nil, ClickedAt: "2024-02-01T00:00:00Z"},
 			},
 		},
 		{
 			name: "returns empty list",
 			rows: sqlmock.NewRows(columns),
-			want: nil, // append on empty slice returns nil
+			want: nil,
 		},
 		{
 			name:     "query error",

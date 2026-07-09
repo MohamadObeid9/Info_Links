@@ -5,6 +5,7 @@ Centralized course resource hub for CNAM Lebanon CS students — **50+ courses**
 [![CI](https://github.com/MohamadObeid9/Info_Links/actions/workflows/ci.yml/badge.svg)](https://github.com/MohamadObeid9/Info_Links/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/MohamadObeid9/Info_Links)
 
 **[infolinks.app](https://infolinks.app)** · [User guide](docs/user-guide.md) · [ADRs](docs/adr/) · [Contributing](CONTRIBUTING.md)
 
