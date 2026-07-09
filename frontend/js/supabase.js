@@ -165,11 +165,15 @@ async function trackVisit() {
   } catch (e) {}
 }
 
-function trackLinkClick(linkId) {
+function trackLinkClick(linkId, linkKind = "link") {
   if (!linkId || AppState.adminLoggedIn) return;
+  const payload =
+    linkKind === "extra_link"
+      ? { extra_link_id: linkId }
+      : { link_id: linkId };
   apiRequest(`/api/link_clicks`, {
     method: "POST",
-    body: { link_id: linkId },
+    body: payload,
   }).catch(() => {});
 }
 

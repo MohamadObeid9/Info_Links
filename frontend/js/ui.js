@@ -167,6 +167,7 @@ function _buildCourseCard(c) {
             <a class="link-item"
                data-url="${esc(l.url)}"
                data-link-id="${l.id}"
+               data-link-kind="link"
                href="${esc(l.url)}">
               <span class="link-item-main">
                 ${getLinkBadge(l.type)}

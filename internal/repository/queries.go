@@ -8,8 +8,8 @@ const (
 
 // Link Clicks Queries
 const (
-	insertLinkClickQuery = `INSERT INTO link_clicks (link_id) VALUES ($1)`
-	GetLinkClickQuery    = `SELECT id, link_id, clicked_at FROM link_clicks WHERE link_id IS NOT NULL ORDER BY clicked_at DESC`
+	insertLinkClickQuery = `INSERT INTO link_clicks (link_id,extra_link_id) VALUES ($1,$2)`
+	GetLinkClickQuery    = `SELECT id, link_id, extra_link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC`
 )
 
 // Courses Queries
@@ -29,10 +29,10 @@ const (
 
 // Extra sections queries
 const (
-	listExtraSectionsQuery       = `SELECT id, title, icon, display_order FROM extra_sections ORDER BY display_order ASC`
-	insertExtraSectionQuery      = `INSERT INTO extra_sections (title, icon, display_order) VALUES ($1, $2, $3)`
-	updateExtraSectionQuery      = `UPDATE extra_sections SET title = $1, icon = $2 WHERE id = $3`
-	deleteExtraSectionQuery      = `DELETE FROM extra_sections WHERE id = $1`
+	listExtraSectionsQuery         = `SELECT id, title, icon, display_order FROM extra_sections ORDER BY display_order ASC`
+	insertExtraSectionQuery        = `INSERT INTO extra_sections (title, icon, display_order) VALUES ($1, $2, $3)`
+	updateExtraSectionQuery        = `UPDATE extra_sections SET title = $1, icon = $2 WHERE id = $3`
+	deleteExtraSectionQuery        = `DELETE FROM extra_sections WHERE id = $1`
 	deleteExtraLinksBySectionQuery = `DELETE FROM extra_links WHERE section_id = $1`
 )
 

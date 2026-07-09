@@ -114,9 +114,10 @@ type PageView struct {
 
 // LinkClick tracks clicks on specific links
 type LinkClick struct {
-	ID        int    `json:"id"`
-	LinkID    int    `json:"link_id"`
-	ClickedAt string `json:"clicked_at"`
+	ID          int    `json:"id"`
+	LinkID      *int   `json:"link_id,omitempty"`
+	ExtraLinkID *int   `json:"extra_link_id,omitempty"`
+	ClickedAt   string `json:"clicked_at"`
 }
 
 // ContentResponse is the big JSON object we send to the frontend.

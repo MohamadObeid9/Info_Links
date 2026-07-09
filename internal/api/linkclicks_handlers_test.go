@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type fakeLinkClickService struct {
@@ -69,7 +70,14 @@ func TestHandlePostLinkClick(t *testing.T) {
 			body:         `{"link_id":42}`,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: 42},
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
+		},
+		{
+			name:         "201 when service accepts the extra link click",
+			body:         `{"extra_link_id":42}`,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.LinkClick{ExtraLinkID: &[]int{42}[0]},
 		},
 		{
 			name:         "204 skips insert for valid admin bearer token",
@@ -84,7 +92,7 @@ func TestHandlePostLinkClick(t *testing.T) {
 			authHeader:   "Bearer " + expiredAdminToken,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: 42},
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
 		},
 		{
 			name:         "201 records click when token is not admin",
@@ -92,7 +100,7 @@ func TestHandlePostLinkClick(t *testing.T) {
 			authHeader:   "Bearer " + nonAdminToken,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: 42},
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
 		},
 		{
 			name:         "201 records click when bearer token is invalid",
@@ -100,7 +108,7 @@ func TestHandlePostLinkClick(t *testing.T) {
 			authHeader:   "Bearer not-a-jwt",
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: 42},
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -108,6 +116,22 @@ func TestHandlePostLinkClick(t *testing.T) {
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Invalid request body",
 			wantCalls:    0,
+		},
+		{
+			name:         "400 when link id and extra link id are set",
+			body:         `{"link_id":42, "extra_link_id":42}`,
+			statusWanted: http.StatusBadRequest,
+			createErr:    errs.ErrLinkClickLinkIDAndExtraLinkIDSet,
+			errMsg:       "Link id and extra link id cannot be set at the same time",
+			wantCalls:    1,
+		},
+		{
+			name:         "400 when link id and extra link id are not set",
+			body:         `{}`,
+			statusWanted: http.StatusBadRequest,
+			createErr:    errs.ErrLinkClickLinkIDAndExtraLinkIDRequired,
+			errMsg:       "Link id and extra link id are required",
+			wantCalls:    1,
 		},
 		{
 			name:         "500 when service fails",
@@ -177,8 +201,10 @@ func TestHandlePostLinkClick(t *testing.T) {
 
 func TestHandleAdminGetLinkClicks(t *testing.T) {
 	sample := []models.LinkClick{
-		{ID: 1, LinkID: 42, ClickedAt: "2024-01-01T00:00:00Z"},
-		{ID: 2, LinkID: 99, ClickedAt: "2024-02-01T00:00:00Z"},
+		{ID: 1, LinkID: &[]int{42}[0], ExtraLinkID: nil, ClickedAt: "2024-01-01T00:00:00Z"},
+		{ID: 2, LinkID: &[]int{99}[0], ExtraLinkID: nil, ClickedAt: "2024-02-01T00:00:00Z"},
+		{ID: 3, ExtraLinkID: &[]int{42}[0], LinkID: nil, ClickedAt: "2024-01-01T00:00:00Z"},
+		{ID: 4, ExtraLinkID: &[]int{99}[0], LinkID: nil, ClickedAt: "2024-02-01T00:00:00Z"},
 	}
 
 	tests := []struct {
