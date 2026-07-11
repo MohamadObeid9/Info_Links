@@ -7,7 +7,7 @@ This directory contains the user interface for InfoLinks, built with plain HTML,
 - `main.js`: Frontend event wiring and app bootstrap.
 - `js/`: Contains feature logic modules (`views.js`, `data.js`, etc.).
 - `styles/`: Contains all CSS files for styling the application.
-- `assets/`: Contains images, icons, and static assets.
+- `public/`: Static assets copied as-is into the build (`favicon`, PWA icons under `public/assets/`).
 
 ## Deployment & Running
 The frontend is designed to be served statically by the Go backend. All API requests are made using relative paths (`/api/...`). 

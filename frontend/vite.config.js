@@ -23,24 +23,34 @@ export default defineConfig({
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: [
+        'favicon.ico',
+        'assets/favicon.ico',
+        'assets/favicon-16x16.png',
+        'assets/favicon-32x32.png',
+        'assets/apple-touch-icon.png',
+        'assets/android-chrome-192x192.png',
+        'assets/android-chrome-512x512.png',
+      ],
       manifest: {
         name: 'Info Links',
         short_name: 'InfoLinks',
         description: 'All courses, materials & links organized.',
         theme_color: '#0f172a',
+        background_color: '#0f0f13',
         icons: [
           {
-            src: 'assets/android-chrome-192x192.png',
+            src: '/assets/android-chrome-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
-            src: 'assets/android-chrome-512x512.png',
+            src: '/assets/android-chrome-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      }
-    })
-  ]
+            type: 'image/png',
+          },
+        ],
+      },
+    }),
+  ],
 });

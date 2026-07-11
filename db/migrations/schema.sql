@@ -8,7 +8,6 @@ CREATE TABLE public.programs (
   display_order integer DEFAULT 0,
   CONSTRAINT programs_pkey PRIMARY KEY (id)
 );
-
 CREATE TABLE public.years (
   id integer NOT NULL DEFAULT nextval('years_id_seq'::regclass),
   program_id integer,
@@ -17,7 +16,6 @@ CREATE TABLE public.years (
   CONSTRAINT years_pkey PRIMARY KEY (id),
   CONSTRAINT years_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
 );
-
 CREATE TABLE public.semesters (
   id integer NOT NULL DEFAULT nextval('semesters_id_seq'::regclass),
   year_id integer,
@@ -26,7 +24,6 @@ CREATE TABLE public.semesters (
   CONSTRAINT semesters_pkey PRIMARY KEY (id),
   CONSTRAINT semesters_year_id_fkey FOREIGN KEY (year_id) REFERENCES public.years(id)
 );
-
 CREATE TABLE public.courses (
   id integer NOT NULL DEFAULT nextval('courses_id_seq'::regclass),
   semester_id integer,
@@ -37,7 +34,6 @@ CREATE TABLE public.courses (
   CONSTRAINT courses_pkey PRIMARY KEY (id),
   CONSTRAINT courses_semester_id_fkey FOREIGN KEY (semester_id) REFERENCES public.semesters(id)
 );
-
 CREATE TABLE public.links (
   id integer NOT NULL DEFAULT nextval('links_id_seq'::regclass),
   course_id integer,
@@ -50,7 +46,6 @@ CREATE TABLE public.links (
   CONSTRAINT links_pkey PRIMARY KEY (id),
   CONSTRAINT links_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id)
 );
-
 CREATE TABLE public.extra_sections (
   id integer NOT NULL DEFAULT nextval('extra_sections_id_seq'::regclass),
   title text NOT NULL,
@@ -58,7 +53,6 @@ CREATE TABLE public.extra_sections (
   display_order integer DEFAULT 0,
   CONSTRAINT extra_sections_pkey PRIMARY KEY (id)
 );
-
 CREATE TABLE public.extra_links (
   id integer NOT NULL DEFAULT nextval('extra_links_id_seq'::regclass),
   section_id integer,
@@ -71,7 +65,6 @@ CREATE TABLE public.extra_links (
   CONSTRAINT extra_links_pkey PRIMARY KEY (id),
   CONSTRAINT extra_links_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.extra_sections(id)
 );
-
 CREATE TABLE public.reports (
   id integer NOT NULL DEFAULT nextval('reports_id_seq'::regclass),
   course_name text NOT NULL,
@@ -81,7 +74,6 @@ CREATE TABLE public.reports (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT reports_pkey PRIMARY KEY (id)
 );
-
 CREATE TABLE public.contributions (
   id integer NOT NULL DEFAULT nextval('contributions_id_seq'::regclass),
   course_name text NOT NULL,
@@ -91,14 +83,12 @@ CREATE TABLE public.contributions (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT contributions_pkey PRIMARY KEY (id)
 );
-
 CREATE TABLE public.page_views (
   id bigint NOT NULL DEFAULT nextval('page_views_id_seq'::regclass),
   visited_at timestamp with time zone DEFAULT now(),
   page text DEFAULT 'home'::text,
   CONSTRAINT page_views_pkey PRIMARY KEY (id)
 );
-
 CREATE TABLE public.feedback (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   category character varying NOT NULL,
@@ -109,11 +99,12 @@ CREATE TABLE public.feedback (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT feedback_pkey PRIMARY KEY (id)
 );
-
 CREATE TABLE public.link_clicks (
   id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
   link_id bigint,
   clicked_at timestamp with time zone DEFAULT now(),
+  extra_link_id bigint,
   CONSTRAINT link_clicks_pkey PRIMARY KEY (id),
-  CONSTRAINT link_clicks_link_id_fkey FOREIGN KEY (link_id) REFERENCES public.links(id)
+  CONSTRAINT link_clicks_link_id_fkey FOREIGN KEY (link_id) REFERENCES public.links(id),
+  CONSTRAINT link_clicks_extra_link_id_fkey FOREIGN KEY (extra_link_id) REFERENCES public.extra_links(id)
 );
