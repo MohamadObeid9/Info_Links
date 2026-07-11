@@ -663,58 +663,6 @@ async function deleteContrib(id) {
   } catch (e) { showToast(e.message, true); }
 }
 
-// Badge auto-refresh: only fires while the tab is visible; stops on page leave.
-let _badgeIntervalId = null;
-
-function _checkTokenExpiry() {
-  if (!AppState.sbToken) return false;
-  try {
-    const p = JSON.parse(atob(AppState.sbToken.split('.')[1]));
-    if (p.exp * 1000 <= Date.now()) {
-      localStorage.removeItem("infolinks_token");
-      AppState.sbToken = null;
-      AppState.adminLoggedIn = false;
-      window.showView("admin-gate");
-      return true;
-    }
-  } catch {
-    localStorage.removeItem("infolinks_token");
-    AppState.sbToken = null;
-    AppState.adminLoggedIn = false;
-    window.showView("admin-gate");
-    return true;
-  }
-  return false;
-}
-
-function _startBadgePolling() {
-  if (_badgeIntervalId !== null) return;
-  _badgeIntervalId = setInterval(() => {
-    if (AppState.adminLoggedIn && !document.hidden) {
-      if (_checkTokenExpiry()) return;
-      loadReportsBadges();
-    }
-  }, 30000);
-}
-
-function _stopBadgePolling() {
-  if (_badgeIntervalId === null) return;
-  clearInterval(_badgeIntervalId);
-  _badgeIntervalId = null;
-}
-
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) {
-    _stopBadgePolling();
-  } else if (AppState.adminLoggedIn) {
-    _startBadgePolling();
-  }
-});
-
-window.addEventListener("pagehide", _stopBadgePolling);
-
-_startBadgePolling();
-
 Object.assign(window, {
   checkLogin,
   logout,
