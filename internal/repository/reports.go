@@ -33,7 +33,7 @@ func (r *postgresReportRepository) Delete(ctx context.Context, id int) error {
 }
 
 func (r *postgresReportRepository) Create(ctx context.Context, report models.Report) error {
-	if _, err := r.db.ExecContext(ctx, insertReportQuery, report.CourseName, report.LinkURL, report.Description); err != nil {
+	if _, err := r.db.ExecContext(ctx, insertReportQuery, report.CourseName, report.LinkURL, report.Description, report.UserID); err != nil {
 		return fmt.Errorf("insert report: %w", err)
 	}
 	return nil
@@ -71,8 +71,12 @@ func (r *postgresReportRepository) List(ctx context.Context, limit int, offset i
 	var reps []models.Report
 	for rows.Next() {
 		var rep models.Report
-		if err := rows.Scan(&rep.ID, &rep.CourseName, &rep.LinkURL, &rep.Description, &rep.Status, &rep.CreatedAt); err != nil {
+		var userID sql.NullInt64
+		if err := rows.Scan(&rep.ID, &rep.CourseName, &rep.LinkURL, &rep.Description, &rep.Status, &rep.CreatedAt, &userID); err != nil {
 			return nil, fmt.Errorf("list reports rows scan: %w", err)
+		}
+		if userID.Valid {
+			rep.UserID = int(userID.Int64)
 		}
 		reps = append(reps, rep)
 	}

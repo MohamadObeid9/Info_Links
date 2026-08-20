@@ -10,10 +10,16 @@ import (
 )
 
 func (h *Handler) handlePostFeedback(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	var feedback models.Feedback
 	if !decodeJSONBody(w, r, &feedback) {
 		return
 	}
+	feedback.UserID = userID
 	if err := h.feedbackService.Create(r.Context(), feedback); err != nil {
 		mapPostFeedbackErr(h, w, r, err)
 		return

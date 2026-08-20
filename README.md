@@ -73,6 +73,7 @@ Deep dives: [`docs/adr/`](docs/adr/) · [`docs/learnings/`](docs/learnings/)
 ```text
 info_links/
 ├── cmd/server/           # Application entry point
+├── cmd/seed/             # Load an admin backup JSON into local Postgres
 ├── internal/
 │   ├── api/              # Router, handlers, JSON helpers
 │   ├── service/          # Validation and business logic

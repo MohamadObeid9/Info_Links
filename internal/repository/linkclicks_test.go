@@ -30,15 +30,15 @@ func TestLinkClickRepository_Create(t *testing.T) {
 	}{
 		{
 			name: "insert normal link click",
-			lc:   models.LinkClick{LinkID: &[]int{1}[0]},
+			lc:   models.LinkClick{LinkID: &[]int{1}[0], UserID: 7},
 		},
 		{
 			name: "insert extra link click",
-			lc:   models.LinkClick{ExtraLinkID: &[]int{1}[0]},
+			lc:   models.LinkClick{ExtraLinkID: &[]int{1}[0], UserID: 7},
 		},
 		{
 			name:    "insert exec error",
-			lc:      models.LinkClick{LinkID: &[]int{1}[0]},
+			lc:      models.LinkClick{LinkID: &[]int{1}[0], UserID: 7},
 			execErr: errs.ErrDatabaseDown,
 			err:     errs.ErrDatabaseDown,
 		},
@@ -47,7 +47,7 @@ func TestLinkClickRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestLinkClickRepo(t)
 			exp := mock.ExpectExec(insertLinkClickQuery).
-				WithArgs(tt.lc.LinkID, tt.lc.ExtraLinkID)
+				WithArgs(tt.lc.LinkID, tt.lc.ExtraLinkID, tt.lc.UserID)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {

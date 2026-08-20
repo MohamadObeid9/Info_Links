@@ -10,6 +10,7 @@ import "./js/export.js";
 import "./js/admin.js";
 import "./js/views.js";
 import "./js/modals.js";
+import "./js/session.js";
 
 // --- EVENT ROUTER (Professional Event Delegation) ---
 document.addEventListener("click", (e) => {
@@ -21,18 +22,25 @@ document.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     const copyUrl = copyBtn.closest("[data-url]")?.dataset.url;
-    if (copyUrl) window.copyLink(copyUrl);
+    const copy = () => {
+      if (copyUrl) window.copyLink(copyUrl);
+    };
+    if (window.requireStudent(copy)) copy();
     return;
   }
 
   // External link item → confirmation modal (URL read from dataset, never inline JS)
+  // Opening a link is gated: the signup modal replaces the confirmation popup
+  // until the visitor is a registered student.
   const linkItem = target.closest(".link-item");
   if (linkItem) {
     e.preventDefault();
     const idAttr = linkItem.dataset.linkId;
     const linkId = idAttr ? parseInt(idAttr, 10) : null;
     const linkKind = linkItem.dataset.linkKind || "link";
-    window.confirmLink(linkId, linkItem.dataset.url || null, linkKind);
+    const url = linkItem.dataset.url || null;
+    const openLink = () => window.confirmLink(linkId, url, linkKind);
+    if (window.requireStudent(openLink)) openLink();
     return;
   }
 
@@ -75,6 +83,12 @@ document.addEventListener("click", (e) => {
         break;
       case "exportData":
         window.exportData();
+        break;
+      case "studentSignIn":
+        window.promptStudentAuth();
+        break;
+      case "studentSignOut":
+        window.signOutStudent();
         break;
     }
     return;

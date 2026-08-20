@@ -12,6 +12,15 @@ function esc(str) {
     .replace(/'/g, "&#039;");
 }
 
+function _isRegisteredStudent() {
+  return !!AppState.studentUser && AppState.studentUser.is_guest === false;
+}
+
+/** Real href only for signed-in students, so guests cannot read the URL from the browser status bar. */
+function _linkHref(url) {
+  return _isRegisteredStudent() ? esc(url) : "#";
+}
+
 // ===================== THEME =====================
 function getSystemDark() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -168,7 +177,7 @@ function _buildCourseCard(c) {
                data-url="${esc(l.url)}"
                data-link-id="${l.id}"
                data-link-kind="link"
-               href="${esc(l.url)}">
+               href="${_linkHref(l.url)}">
               <span class="link-item-main">
                 ${getLinkBadge(l.type)}
                 <span class="link-label">${esc(l.label)}</span>
@@ -200,17 +209,40 @@ function _buildCourseCard(c) {
 }
 
 // ===================== FAVORITES =====================
-function handleFavoriteToggle(courseId) {
-  toggleFavorite(courseId);
+function _paintFavorite(courseId) {
   if (AppState.currentProg === "favorites") {
     window.renderCourses();
-  } else {
-    const btn = document.querySelector(`#course-card-${courseId} .fav-btn`);
-    if (btn) {
-      const isFav = AppState.favorites.has(String(courseId));
-      btn.classList.toggle("active", isFav);
-      btn.title = isFav ? "Remove from My Courses" : "Add to My Courses";
-    }
+    return;
+  }
+  const btn = document.querySelector(`#course-card-${courseId} .fav-btn`);
+  if (btn) {
+    const isFav = AppState.favorites.has(String(courseId));
+    btn.classList.toggle("active", isFav);
+    btn.title = isFav ? "Remove from My Courses" : "Add to My Courses";
+  }
+}
+
+/** Optimistic star toggle; the server is the source of truth so failures roll back. */
+async function handleFavoriteToggle(courseId) {
+  const retry = () => handleFavoriteToggle(courseId);
+  if (!window.requireStudent(retry)) return;
+
+  const added = !AppState.favorites.has(String(courseId));
+  toggleFavorite(courseId);
+  _paintFavorite(courseId);
+
+  try {
+    await window.syncFavorite(courseId, added);
+  } catch (err) {
+    toggleFavorite(courseId);
+    _paintFavorite(courseId);
+    if (window.handleStudentAuthError?.(err, retry)) return;
+    window.logApiError?.(err, "syncFavorite");
+    window.showToast(
+      window.formatApiError?.(err, "Could not save your favorites.") ||
+      "Could not save your favorites.",
+      true,
+    );
   }
 }
 
@@ -269,4 +301,5 @@ export {
   toggleFilters,
   copyLink,
   handleFavoriteToggle,
+  _linkHref,
 };

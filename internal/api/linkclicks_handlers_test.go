@@ -1,19 +1,15 @@
 package api
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
 	"testing"
-	"time"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type fakeLinkClickService struct {
@@ -41,24 +37,10 @@ func (f *fakeLinkClickService) List(ctx context.Context) ([]models.LinkClick, er
 }
 
 func TestHandlePostLinkClick(t *testing.T) {
-	h := testHandler(t)
-	validAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
-		"admin": true,
-		"exp":   time.Now().Add(time.Hour).Unix(),
-	})
-	nonAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
-		"admin": false,
-		"exp":   time.Now().Add(time.Hour).Unix(),
-	})
-	expiredAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
-		"admin": true,
-		"exp":   time.Now().Add(-time.Hour).Unix(),
-	})
-
 	tests := []struct {
 		name         string
 		body         string
-		authHeader   string
+		noStudent    bool
 		createErr    error
 		statusWanted int
 		errMsg       string
@@ -70,45 +52,29 @@ func TestHandlePostLinkClick(t *testing.T) {
 			body:         `{"link_id":42}`,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0], UserID: testStudentID},
 		},
 		{
 			name:         "201 when service accepts the extra link click",
 			body:         `{"extra_link_id":42}`,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.LinkClick{ExtraLinkID: &[]int{42}[0]},
+			resultWanted: &models.LinkClick{ExtraLinkID: &[]int{42}[0], UserID: testStudentID},
 		},
 		{
-			name:         "204 skips insert for valid admin bearer token",
+			name:         "201 takes the user id from the token, not the body",
+			body:         `{"link_id":42,"user_id":999}`,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0], UserID: testStudentID},
+		},
+		{
+			name:         "401 when the student token is missing",
 			body:         `{"link_id":42}`,
-			authHeader:   "Bearer " + validAdminToken,
-			statusWanted: http.StatusNoContent,
+			noStudent:    true,
+			statusWanted: http.StatusUnauthorized,
+			errMsg:       "Unauthorized: No token provided",
 			wantCalls:    0,
-		},
-		{
-			name:         "201 records click when admin token is expired",
-			body:         `{"link_id":42}`,
-			authHeader:   "Bearer " + expiredAdminToken,
-			statusWanted: http.StatusCreated,
-			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
-		},
-		{
-			name:         "201 records click when token is not admin",
-			body:         `{"link_id":42}`,
-			authHeader:   "Bearer " + nonAdminToken,
-			statusWanted: http.StatusCreated,
-			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
-		},
-		{
-			name:         "201 records click when bearer token is invalid",
-			body:         `{"link_id":42}`,
-			authHeader:   "Bearer not-a-jwt",
-			statusWanted: http.StatusCreated,
-			wantCalls:    1,
-			resultWanted: &models.LinkClick{LinkID: &[]int{42}[0]},
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -146,10 +112,9 @@ func TestHandlePostLinkClick(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fake := &fakeLinkClickService{createErr: tt.createErr}
 			h := testHandler(t, withlinkClick(fake))
-			req := httptest.NewRequest(http.MethodPost, "/api/link_clicks", bytes.NewBufferString(tt.body))
-			req.Header.Set("Content-Type", "application/json")
-			if tt.authHeader != "" {
-				req.Header.Set("Authorization", tt.authHeader)
+			req := studentRequest(http.MethodPost, "/api/link_clicks", tt.body)
+			if tt.noStudent {
+				req = jsonRequest(http.MethodPost, "/api/link_clicks", tt.body)
 			}
 			rr := httptest.NewRecorder()
 
@@ -157,16 +122,6 @@ func TestHandlePostLinkClick(t *testing.T) {
 
 			if rr.Code != tt.statusWanted {
 				t.Fatalf("status: got %d want %d body=%q", rr.Code, tt.statusWanted, rr.Body.String())
-			}
-
-			if tt.statusWanted == http.StatusNoContent {
-				if fake.createCalls != tt.wantCalls {
-					t.Fatalf("service.Create calls: got %d want %d", fake.createCalls, tt.wantCalls)
-				}
-				if rr.Body.Len() != 0 {
-					t.Fatalf("expected empty body, got %q", rr.Body.String())
-				}
-				return
 			}
 
 			if tt.statusWanted != http.StatusCreated {

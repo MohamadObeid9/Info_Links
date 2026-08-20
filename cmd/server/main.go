@@ -37,6 +37,8 @@ func main() {
 		JWTSecret:           []byte(cfg.JWTSecret),
 		SupabaseURL:         cfg.SupabaseURL,
 		SupabaseAnonKey:     cfg.SupabaseAnonKey,
+		UserService:         services.UserService,
+		AnalyticsService:    services.AnalyticsService,
 		LinkService:         services.LinkService,
 		CourseService:       services.CourseService,
 		ReportService:       services.ReportService,
@@ -75,20 +77,26 @@ func main() {
 	}
 }
 
-func newLogger(env, logLevel string) *slog.Logger {
+func newLogger(appEnv, logLevel string) *slog.Logger {
 	var logHandler slog.Handler
-	if env == "development" {
+	if appEnv == "development" {
 		logHandler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	} else if logLevel == "info" {
 		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
 	} else {
 		logHandler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	}
-	logger := slog.New(logHandler).With("env", env)
+	logger := slog.New(logHandler).With("AppEnv", appEnv)
 	return logger
 }
 
 func handleServices(db *sql.DB) *api.Dependencies {
+
+	userRepo := repository.NewPostgresUserRepository(db)
+	userService := service.NewUserService(userRepo)
+
+	analyticsRepo := repository.NewPostgresAnalyticsRepository(db)
+	analyticsService := service.NewAnalyticsService(analyticsRepo)
 
 	linkRepo := repository.NewPostgresLinkRepository(db)
 	linkService := service.NewLinkService(linkRepo)
@@ -121,6 +129,8 @@ func handleServices(db *sql.DB) *api.Dependencies {
 	extraLinkService := service.NewExtraLinkService(extraLinkRepo)
 
 	return &api.Dependencies{
+		UserService:         userService,
+		AnalyticsService:    analyticsService,
 		LinkService:         linkService,
 		CourseService:       courseService,
 		ReportService:       reportService,

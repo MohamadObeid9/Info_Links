@@ -8,6 +8,7 @@ import (
 func TestLoad(t *testing.T) {
 	const (
 		dbURL           = "postgres://user:pass@localhost:5432/testdb"
+		localDbURL      = "postgres://postgres:postgres@localhost:5432/infolinks?sslmode=disable"
 		secret          = "test-jwt-secret"
 		supabseURL      = "https://random.supabase.co"
 		supabaseAnonKey = "a-random-generated-key"
@@ -25,7 +26,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "loads required vars with defaults",
 			env: map[string]string{
-				"DATABASE_URL":         dbURL,
+				"DATABASE_URL":         localDbURL,
 				"JWT_SECRET":           secret,
 				"SUPABASE_URL":         supabseURL,
 				"SUPABASE_ANON_KEY":    supabaseAnonKey,
@@ -38,7 +39,7 @@ func TestLoad(t *testing.T) {
 				Port:               "8080",
 				AppEnv:             "development",
 				LogLevel:           "debug",
-				DatabaseURL:        dbURL,
+				DatabaseURL:        localDbURL,
 				JWTSecret:          secret,
 				SupabaseURL:        supabseURL,
 				SupabaseAnonKey:    supabaseAnonKey,
@@ -77,7 +78,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "trims whitespace from env values",
 			env: map[string]string{
-				"DATABASE_URL":      "  " + dbURL + "  ",
+				"DATABASE_URL":      "  " + localDbURL + "  ",
 				"JWT_SECRET":        "  " + secret + "  ",
 				"SUPABASE_URL":      "  " + supabseURL + "  ",
 				"SUPABASE_ANON_KEY": "  " + supabaseAnonKey + "  ",
@@ -87,7 +88,7 @@ func TestLoad(t *testing.T) {
 				Port:               "9090",
 				AppEnv:             "development",
 				LogLevel:           "debug",
-				DatabaseURL:        dbURL,
+				DatabaseURL:        localDbURL,
 				JWTSecret:          secret,
 				SupabaseURL:        supabseURL,
 				SupabaseAnonKey:    supabaseAnonKey,
@@ -98,7 +99,7 @@ func TestLoad(t *testing.T) {
 		{
 			name: "loads custom site base url",
 			env: map[string]string{
-				"DATABASE_URL":      dbURL,
+				"DATABASE_URL":      localDbURL,
 				"JWT_SECRET":        secret,
 				"SUPABASE_URL":      supabseURL,
 				"SUPABASE_ANON_KEY": supabaseAnonKey,
@@ -108,7 +109,7 @@ func TestLoad(t *testing.T) {
 				Port:               "8080",
 				AppEnv:             "development",
 				LogLevel:           "debug",
-				DatabaseURL:        dbURL,
+				DatabaseURL:        localDbURL,
 				JWTSecret:          secret,
 				SupabaseURL:        supabseURL,
 				SupabaseAnonKey:    supabaseAnonKey,
@@ -117,14 +118,24 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
-			name: "missing database url",
+			name: "missing database url falls back to local in development",
 			env: map[string]string{
 				"DATABASE_URL":      "",
 				"JWT_SECRET":        secret,
 				"SUPABASE_URL":      supabseURL,
 				"SUPABASE_ANON_KEY": supabaseAnonKey,
 			},
-			wantErr: "database url is required",
+			want: Config{
+				Port:               "8080",
+				AppEnv:             "development",
+				LogLevel:           "debug",
+				DatabaseURL:        localDbURL,
+				JWTSecret:          secret,
+				SupabaseURL:        supabseURL,
+				SupabaseAnonKey:    supabaseAnonKey,
+				CorsAllowedOrigins: defaultCORS,
+				SiteBaseURL:        defaultSiteBaseURL,
+			},
 		},
 		{
 			name: "missing jwt secret",
@@ -157,14 +168,24 @@ func TestLoad(t *testing.T) {
 			wantErr: "supabase anon key is required",
 		},
 		{
-			name: "database url whitespace only",
+			name: "database url whitespace only falls back to local in development",
 			env: map[string]string{
 				"DATABASE_URL":      "   ",
 				"JWT_SECRET":        secret,
 				"SUPABASE_URL":      supabseURL,
 				"SUPABASE_ANON_KEY": supabaseAnonKey,
 			},
-			wantErr: "database url is required",
+			want: Config{
+				Port:               "8080",
+				AppEnv:             "development",
+				LogLevel:           "debug",
+				DatabaseURL:        localDbURL,
+				JWTSecret:          secret,
+				SupabaseURL:        supabseURL,
+				SupabaseAnonKey:    supabaseAnonKey,
+				CorsAllowedOrigins: defaultCORS,
+				SiteBaseURL:        defaultSiteBaseURL,
+			},
 		},
 		{
 			name: "jwt secret whitespace only",

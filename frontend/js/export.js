@@ -1,5 +1,5 @@
 import { AppState } from "./state.js";
-import { sb, trackVisit } from "./supabase.js";
+import { trackVisit, apiRequest } from "./supabase.js";
 import { setBtnLoading } from "./ui.js";
 import { loadAll, onSearch } from "./data.js";
 import {
@@ -20,37 +20,21 @@ async function exportData() {
   const btn = document.querySelector(".admin-header .btn-ghost");
   setBtnLoading(btn, true, "Exporting…");
   try {
-    const [
-      programs,
-      years,
-      semesters,
-      courses,
-      links,
-      extraSections,
-      extraLinks,
-      linkClicks,
-    ] = await Promise.all([
-      sb("programs", "GET", null, null, "*&order=display_order.asc"),
-      sb("years", "GET", null, null, "*&order=display_order.asc"),
-      sb("semesters", "GET", null, null, "*&order=display_order.asc"),
-      sb("courses", "GET", null, null, "*&order=display_order.asc"),
-      sb("links", "GET", null, null, "*&order=display_order.asc"),
-      sb("extra_sections", "GET", null, null, "*&order=display_order.asc"),
-      sb("extra_links", "GET", null, null, "*&order=display_order.asc"),
-      sb("link_clicks", "GET", null, null, "*").catch(() => []),
-    ]);
-
+    const data = await apiRequest("/api/content");
     const payload = {
       exported_at: new Date().toISOString(),
-      programs,
-      years,
-      semesters,
-      courses,
-      links,
-      extra_sections: extraSections,
-      extra_links: extraLinks,
-      link_clicks: linkClicks,
+      programs: data.programs || [],
+      years: data.years || [],
+      semesters: data.semesters || [],
+      courses: data.courses || [],
+      links: data.links || [],
+      extra_sections: data.extra_sections || [],
+      extra_links: data.extra_links || [],
     };
+
+    if (!Array.isArray(payload.programs) || payload.programs.length === 0 || !payload.programs[0]?.slug) {
+      throw new Error("Content export did not look like the course tree");
+    }
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
@@ -136,7 +120,12 @@ function applyHighlightFromURL() {
 }
 
 async function initApp() {
-  trackVisit();
+  // Session and content load in parallel; the page view needs the student token,
+  // so it waits for the session while course data keeps streaming in.
+  const sessionReady = window.bootstrapStudentSession
+    ? window.bootstrapStudentSession().then(() => trackVisit())
+    : Promise.resolve(trackVisit());
+
   await loadAll();
 
   const highlight =
@@ -144,6 +133,7 @@ async function initApp() {
     new URLSearchParams(window.location.search).get("q");
   if (highlight && highlight.trim()) {
     applyHighlightFromURL();
+    await sessionReady;
     return;
   }
 
@@ -152,6 +142,7 @@ async function initApp() {
   if (v !== "home") {
     window.showView(v);
   }
+  await sessionReady;
 }
 
 window.applyHighlightFromURL = applyHighlightFromURL;

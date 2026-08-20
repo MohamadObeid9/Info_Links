@@ -1,5 +1,125 @@
 package models
 
+import "fmt"
+
+// User represents a user or a guest.
+// PreferedLang and PreferedTheme keep the DB spelling (single r) on purpose so
+// the column, the struct field and the JSON key never drift apart. They are
+// read-only for now: the API exposes them but has no endpoint to change them.
+type User struct {
+	ID                int    `json:"id"`
+	FirstName         string `json:"first_name"`
+	LastName          string `json:"last_name"`
+	Number            int    `json:"number"`
+	IsGuest           bool   `json:"is_guest"`
+	Handle            string `json:"handle"`
+	FavoriteCourseIDs []int  `json:"favorite_course_ids"`
+	CreatedAt         string `json:"created_at"`
+	LastSeenAt        string `json:"last_seen_at"`
+	PreferedLang      string `json:"prefered_lang"`
+	PreferedTheme     string `json:"prefered_theme"`
+}
+
+// FavoriteEvent represents the action done by the user
+type FavoriteEvent struct {
+	ID        int    `json:"id"`
+	UserID    int    `json:"user_id"`
+	CourseID  int    `json:"course_id"`
+	Action    string `json:"action"`
+	CreatedAt string `json:"created_at"`
+}
+
+// UserListItem is one row of the admin students list, with activity counters.
+type UserListItem struct {
+	ID         int    `json:"id"`
+	Handle     string `json:"handle"`
+	FirstName  string `json:"first_name"`
+	LastName   string `json:"last_name"`
+	Number     int    `json:"number"`
+	CreatedAt  string `json:"created_at"`
+	LastSeenAt string `json:"last_seen_at"`
+	VisitCount int    `json:"visit_count"`
+	ClickCount int    `json:"click_count"`
+}
+
+// UserActivityEvent is one entry of a student activity timeline.
+type UserActivityEvent struct {
+	Type    string `json:"type"` // visit, link_click, report, contribution, feedback, favorite_added, favorite_removed
+	At      string `json:"at"`
+	Summary string `json:"summary"`
+	RefID   int    `json:"ref_id"`
+}
+
+// UserDetail is a student profile plus a page of their activity timeline.
+type UserDetail struct {
+	User     User                `json:"user"`
+	Timeline []UserActivityEvent `json:"timeline"`
+}
+
+// AnalyticsSummary holds the server-side aggregated usage metrics for admins.
+type AnalyticsSummary struct {
+	TotalStudents     int                `json:"total_students"`
+	StudentsGained7d  int                `json:"students_gained_7d"`
+	StudentsGained30d int                `json:"students_gained_30d"`
+	StudentsGained90d int                `json:"students_gained_90d"`
+	ActiveToday       int                `json:"active_today"`
+	ClicksToday       int                `json:"clicks_today"`
+	DevicesToday      DeviceSplit        `json:"devices_today"`
+	DailyUniqueVisits []DailyUniqueDay   `json:"daily_unique_visits"`
+	DailyRoster       []DailyRosterDay   `json:"daily_roster"`
+	TopLinks          []LinkClickCount   `json:"top_links"`
+	TopLinksToday     []LinkClickCount   `json:"top_links_today"`
+	TopUsers          []UserClickCount   `json:"top_users"`
+	VisitorsToday     VisitorsTodayPage  `json:"visitors_today"`
+}
+
+// DeviceSplit counts today's visits by coarse device class (NULL rows omitted).
+type DeviceSplit struct {
+	Phone  int `json:"phone"`
+	Laptop int `json:"laptop"`
+}
+
+// DailyRosterDay is the cumulative registered student count at end of day.
+type DailyRosterDay struct {
+	Day   string `json:"day"`
+	Total int    `json:"total"`
+}
+
+// VisitorsTodayPage is one page of today's visitors with a pager hint.
+type VisitorsTodayPage struct {
+	Visitors []UserClickCount `json:"visitors"`
+	HasMore  bool             `json:"has_more"`
+}
+
+// DailyUniqueDay counts the distinct users who visited on a given day.
+type DailyUniqueDay struct {
+	Day   string `json:"day"`
+	Users int    `json:"users"`
+}
+
+// LinkClickCount counts clicks for a link or an extra link.
+type LinkClickCount struct {
+	LinkID      *int `json:"link_id"`
+	ExtraLinkID *int `json:"extra_link_id"`
+	Clicks      int  `json:"clicks"`
+}
+
+// UserClickCount counts link clicks for one student.
+type UserClickCount struct {
+	UserID int    `json:"user_id"`
+	Handle string `json:"handle"`
+	Clicks int    `json:"clicks"`
+}
+
+// UserHandle builds the display handle of a student, e.g. mohamad_hassan_55.
+// Guests have no name yet, so they fall back to guest_<id>.
+func UserHandle(firstName, lastName string, number, id int) string {
+	if firstName == "" || lastName == "" || number == 0 {
+		return fmt.Sprintf("guest_%d", id)
+	}
+	return fmt.Sprintf("%s_%s_%d", firstName, lastName, number)
+}
+
 // Program represents a major or field of study
 type Program struct {
 	ID           int    `json:"id"`
@@ -77,6 +197,7 @@ type ExtraLink struct {
 // Report represents a reported issue with a link
 type Report struct {
 	ID          int    `json:"id"`
+	UserID      int    `json:"user_id,omitempty"`
 	Status      string `json:"status"` // open, resolved
 	LinkURL     string `json:"link_url"`
 	CreatedAt   string `json:"created_at"`
@@ -87,8 +208,9 @@ type Report struct {
 // Contribution represents a user-submitted link
 type Contribution struct {
 	ID         int    `json:"id"`
+	UserID     int    `json:"user_id,omitempty"`
 	Note       string `json:"note"`
-	Status     string `json:"status"` // pending, approved
+	Status     string `json:"status"` // pending, approved, rejected
 	LinkURL    string `json:"link_url"`
 	LinkType   string `json:"link_type,omitempty"` // accepted on POST; stored in note as [Type:...]
 	CreatedAt  string `json:"created_at"`
@@ -98,6 +220,7 @@ type Contribution struct {
 // Feedback represents user feedback
 type Feedback struct {
 	ID        int    `json:"id"`
+	UserID    int    `json:"user_id,omitempty"`
 	Rating    int    `json:"rating"`
 	Status    string `json:"status"` // new, read
 	Message   string `json:"message"`
@@ -107,14 +230,17 @@ type Feedback struct {
 
 // PageView tracks site visits
 type PageView struct {
-	ID        int    `json:"id"`
-	Page      string `json:"page"`
-	VisitedAt string `json:"visited_at"`
+	ID         int    `json:"id"`
+	UserID     int    `json:"user_id,omitempty"`
+	Page       string `json:"page"`
+	VisitedAt  string `json:"visited_at"`
+	DeviceType string `json:"device_type,omitempty"`
 }
 
 // LinkClick tracks clicks on specific links
 type LinkClick struct {
 	ID          int    `json:"id"`
+	UserID      int    `json:"user_id,omitempty"`
 	LinkID      *int   `json:"link_id,omitempty"`
 	ExtraLinkID *int   `json:"extra_link_id,omitempty"`
 	ClickedAt   string `json:"clicked_at"`

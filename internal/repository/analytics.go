@@ -1,0 +1,224 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	"infolinks-backend/internal/models"
+)
+
+type postgresAnalyticsRepository struct {
+	db *sql.DB
+}
+
+func NewPostgresAnalyticsRepository(db *sql.DB) AnalyticsRepository {
+	return &postgresAnalyticsRepository{db: db}
+}
+
+// GetSummary aggregates usage metrics in Postgres so admins never download raw
+// page_views or link_clicks tables.
+func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error) {
+	var summary models.AnalyticsSummary
+
+	if err := r.db.QueryRowContext(ctx, analyticsCountsQuery).Scan(
+		&summary.TotalStudents,
+		&summary.StudentsGained7d,
+		&summary.StudentsGained30d,
+		&summary.StudentsGained90d,
+		&summary.ActiveToday,
+		&summary.ClicksToday,
+		&summary.DevicesToday.Phone,
+		&summary.DevicesToday.Laptop,
+	); err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics counts: %w", err)
+	}
+
+	dailyVisits, err := r.dailyUniqueVisits(ctx, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, err
+	}
+	summary.DailyUniqueVisits = dailyVisits
+
+	dailyRoster, err := r.dailyRoster(ctx, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, err
+	}
+	summary.DailyRoster = dailyRoster
+
+	topLinks, err := r.topLinks(ctx, analyticsTopLinksQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, err
+	}
+	summary.TopLinks = topLinks
+
+	topUsers, err := r.userClicks(ctx, analyticsTopUsersQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics top users: %w", err)
+	}
+	summary.TopUsers = topUsers
+
+	topLinksToday, err := r.topLinks(ctx, analyticsTopLinksTodayQuery)
+	if err != nil {
+		return models.AnalyticsSummary{}, err
+	}
+	summary.TopLinksToday = topLinksToday
+
+	visitorsToday, err := r.visitorsToday(ctx, params)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics visitors today: %w", err)
+	}
+	summary.VisitorsToday = visitorsToday
+
+	return summary, nil
+}
+
+func (r *postgresAnalyticsRepository) dailyUniqueVisits(ctx context.Context, days int) ([]models.DailyUniqueDay, error) {
+	rows, err := r.db.QueryContext(ctx, analyticsDailyUniqueVisitsQuery, days)
+	if err != nil {
+		return nil, fmt.Errorf("analytics daily unique visits query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	visits := []models.DailyUniqueDay{}
+	for rows.Next() {
+		var v models.DailyUniqueDay
+		if err := rows.Scan(&v.Day, &v.Users); err != nil {
+			return nil, fmt.Errorf("analytics daily unique visits rows scan: %w", err)
+		}
+		visits = append(visits, v)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("analytics daily unique visits rows err: %w", err)
+	}
+	return visits, nil
+}
+
+func (r *postgresAnalyticsRepository) dailyRoster(ctx context.Context, days int) ([]models.DailyRosterDay, error) {
+	rows, err := r.db.QueryContext(ctx, analyticsDailyRosterQuery, days)
+	if err != nil {
+		return nil, fmt.Errorf("analytics daily roster query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	roster := []models.DailyRosterDay{}
+	for rows.Next() {
+		var d models.DailyRosterDay
+		if err := rows.Scan(&d.Day, &d.Total); err != nil {
+			return nil, fmt.Errorf("analytics daily roster rows scan: %w", err)
+		}
+		roster = append(roster, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("analytics daily roster rows err: %w", err)
+	}
+	return roster, nil
+}
+
+func (r *postgresAnalyticsRepository) topLinks(ctx context.Context, query string, args ...any) ([]models.LinkClickCount, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("analytics top links query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	links := []models.LinkClickCount{}
+	for rows.Next() {
+		var (
+			link                models.LinkClickCount
+			linkID, extraLinkID sql.NullInt64
+		)
+		if err := rows.Scan(&linkID, &extraLinkID, &link.Clicks); err != nil {
+			return nil, fmt.Errorf("analytics top links rows scan: %w", err)
+		}
+		if linkID.Valid {
+			id := int(linkID.Int64)
+			link.LinkID = &id
+		}
+		if extraLinkID.Valid {
+			id := int(extraLinkID.Int64)
+			link.ExtraLinkID = &id
+		}
+		links = append(links, link)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("analytics top links rows err: %w", err)
+	}
+	return links, nil
+}
+
+func (r *postgresAnalyticsRepository) userClicks(ctx context.Context, query string, args ...any) ([]models.UserClickCount, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	users := []models.UserClickCount{}
+	for rows.Next() {
+		var (
+			user                models.UserClickCount
+			firstName, lastName string
+			number              int
+		)
+		if err := rows.Scan(&user.UserID, &firstName, &lastName, &number, &user.Clicks); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		user.Handle = models.UserHandle(firstName, lastName, number, user.UserID)
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return users, nil
+}
+
+func (r *postgresAnalyticsRepository) visitorsToday(ctx context.Context, params AnalyticsSummaryParams) (models.VisitorsTodayPage, error) {
+	query := analyticsVisitorsTodayByClicksQuery
+	if params.VisitorsSort == "name" {
+		query = analyticsVisitorsTodayByNameQuery
+	}
+
+	limit := params.VisitorsLimit
+	if limit <= 0 {
+		limit = 12
+	}
+	fetchLimit := limit + 1
+
+	rows, err := r.db.QueryContext(ctx, query, fetchLimit, params.VisitorsOffset)
+	if err != nil {
+		return models.VisitorsTodayPage{}, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	visitors, err := r.scanUserClickRows(rows)
+	if err != nil {
+		return models.VisitorsTodayPage{}, err
+	}
+
+	hasMore := len(visitors) > limit
+	if hasMore {
+		visitors = visitors[:limit]
+	}
+	return models.VisitorsTodayPage{Visitors: visitors, HasMore: hasMore}, nil
+}
+
+func (r *postgresAnalyticsRepository) scanUserClickRows(rows *sql.Rows) ([]models.UserClickCount, error) {
+	users := []models.UserClickCount{}
+	for rows.Next() {
+		var (
+			user                models.UserClickCount
+			firstName, lastName string
+			number              int
+		)
+		if err := rows.Scan(&user.UserID, &firstName, &lastName, &number, &user.Clicks); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		user.Handle = models.UserHandle(firstName, lastName, number, user.UserID)
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return users, nil
+}

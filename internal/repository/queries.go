@@ -1,14 +1,180 @@
 package repository
 
+// User Queries
+const (
+	// favorite_course_ids travels as JSON text so it can be decoded without an array driver.
+	userColumns = `id, COALESCE(first_name, ''), COALESCE(last_name, ''), COALESCE(number, 0), is_guest, COALESCE(array_to_json(favorite_course_ids)::text, '[]'), created_at, last_seen_at, prefered_lang, prefered_theme`
+
+	insertNewGuestQuery = `INSERT INTO users (is_guest) VALUES (true) RETURNING id`
+	insertNewUserQuery  = `INSERT INTO users (first_name,last_name,number,is_guest) VALUES ($1,$2,$3,false) RETURNING ` + userColumns
+	claimGuestQuery     = `UPDATE users SET first_name = $1, last_name = $2, number = $3, is_guest = false, last_seen_at = now() WHERE id = $4 AND is_guest = true RETURNING ` + userColumns
+
+	getUserByIDQuery          = `SELECT ` + userColumns + ` FROM users WHERE id = $1`
+	getUserByCredentialsQuery = `SELECT ` + userColumns + ` FROM users WHERE first_name = $1 AND last_name = $2 AND number = $3 AND is_guest = false`
+
+	// Sign-in cannot claim the guest row (that name already belongs to a student),
+	// so activity is moved across and the empty guest is deleted.
+	lockGuestForAdoptQuery      = `SELECT id FROM users WHERE id = $1 AND is_guest = true FOR UPDATE`
+	reassignPageViewsQuery      = `UPDATE page_views SET user_id = $2 WHERE user_id = $1`
+	reassignLinkClicksQuery     = `UPDATE link_clicks SET user_id = $2 WHERE user_id = $1`
+	reassignReportsQuery        = `UPDATE reports SET user_id = $2 WHERE user_id = $1`
+	reassignContributionsQuery  = `UPDATE contributions SET user_id = $2 WHERE user_id = $1`
+	reassignFeedbackQuery       = `UPDATE feedback SET user_id = $2 WHERE user_id = $1`
+	reassignFavoriteEventsQuery = `UPDATE favorite_events SET user_id = $2 WHERE user_id = $1`
+	deleteGuestQuery            = `DELETE FROM users WHERE id = $1 AND is_guest = true`
+	touchLastSeenQuery          = `UPDATE users SET last_seen_at = now() WHERE id = $1`
+)
+
+// Favorites Queries
+const (
+	addFavoriteQuery         = `UPDATE users SET favorite_course_ids = array_append(favorite_course_ids, $2), last_seen_at = now() WHERE id = $1 AND NOT (favorite_course_ids @> ARRAY[$2::integer])`
+	removeFavoriteQuery      = `UPDATE users SET favorite_course_ids = array_remove(favorite_course_ids, $2), last_seen_at = now() WHERE id = $1 AND favorite_course_ids @> ARRAY[$2::integer]`
+	insertFavoriteEventQuery = `INSERT INTO favorite_events (user_id,course_id,action) VALUES ($1,$2,$3)`
+)
+
+// Admin Students Queries
+const (
+	studentColumns = `u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), u.created_at, u.last_seen_at,
+		       (SELECT COUNT(*) FROM page_views pv WHERE pv.user_id = u.id),
+		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id)`
+
+	listStudentsBaseQuery  = `SELECT ` + studentColumns + ` FROM users u WHERE u.is_guest = false`
+	listStudentsOrderQuery = ` ORDER BY u.first_name ASC, u.last_name ASC LIMIT `
+
+	listStudentsQuery      = listStudentsBaseQuery + listStudentsOrderQuery + `$1 OFFSET $2`
+	listStudentsWithQQuery = listStudentsBaseQuery + ` AND (u.first_name ILIKE $1 OR u.last_name ILIKE $1)` + listStudentsOrderQuery + `$2 OFFSET $3`
+
+	// listUserTimelineQuery merges every activity table into one chronological feed.
+	listUserTimelineQuery = `
+		SELECT type, at, summary, ref_id FROM (
+			SELECT 'visit' AS type, pv.visited_at AS at,
+			       'visited ' || COALESCE(pv.page, 'home') AS summary, pv.id AS ref_id
+			FROM page_views pv WHERE pv.user_id = $1
+			UNION ALL
+			SELECT 'link_click', lc.clicked_at,
+			       'opened ' || COALESCE(l.label, el.label, 'a link')
+			           || COALESCE(' in ' || co.name, ' in ' || es.title, ''),
+			       lc.id
+			FROM link_clicks lc
+			LEFT JOIN links l ON l.id = lc.link_id
+			LEFT JOIN courses co ON co.id = l.course_id
+			LEFT JOIN extra_links el ON el.id = lc.extra_link_id
+			LEFT JOIN extra_sections es ON es.id = el.section_id
+			WHERE lc.user_id = $1
+			UNION ALL
+			SELECT 'report', r.created_at,
+			       'reported a link in ' || r.course_name, r.id
+			FROM reports r WHERE r.user_id = $1
+			UNION ALL
+			SELECT 'contribution', c.created_at,
+			       'suggested a link for ' || c.course_name, c.id
+			FROM contributions c WHERE c.user_id = $1
+			UNION ALL
+			SELECT 'feedback', f.created_at,
+			       'sent ' || f.category || ' feedback rated ' || f.rating || '/5', f.id
+			FROM feedback f WHERE f.user_id = $1
+			UNION ALL
+			SELECT CASE WHEN fe.action = 'added' THEN 'favorite_added' ELSE 'favorite_removed' END,
+			       fe.created_at,
+			       CASE WHEN fe.action = 'added'
+			            THEN 'added ' || co.name || ' to favorites'
+			            ELSE 'removed ' || co.name || ' from favorites' END,
+			       fe.id
+			FROM favorite_events fe
+			JOIN courses co ON co.id = fe.course_id
+			WHERE fe.user_id = $1
+		) timeline
+		ORDER BY at DESC
+		LIMIT $2 OFFSET $3`
+)
+
+// Admin Analytics Queries
+const (
+	analyticsCountsQuery = `
+		SELECT
+			(SELECT COUNT(*) FROM users WHERE is_guest = false),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '7 days'),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '30 days'),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '90 days'),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())),
+			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= date_trunc('day', now())),
+			(SELECT COUNT(*) FILTER (WHERE device_type = 'phone') FROM page_views WHERE visited_at >= date_trunc('day', now()) AND device_type IS NOT NULL),
+			(SELECT COUNT(*) FILTER (WHERE device_type = 'laptop') FROM page_views WHERE visited_at >= date_trunc('day', now()) AND device_type IS NOT NULL)`
+
+	analyticsDailyUniqueVisitsQuery = `
+		SELECT to_char(visited_at, 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)
+		FROM page_views
+		WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1)
+		GROUP BY day
+		ORDER BY day ASC`
+
+	analyticsTopLinksQuery = `
+		SELECT link_id, extra_link_id, COUNT(*) AS clicks
+		FROM link_clicks
+		WHERE clicked_at >= now() - make_interval(days => $1)
+		GROUP BY link_id, extra_link_id
+		ORDER BY clicks DESC
+		LIMIT 10`
+
+	analyticsTopUsersQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(lc.id) AS clicks
+		FROM link_clicks lc
+		JOIN users u ON u.id = lc.user_id
+		WHERE lc.clicked_at >= now() - make_interval(days => $1)
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY clicks DESC, u.first_name ASC
+		LIMIT 10`
+
+	analyticsTopLinksTodayQuery = `
+		SELECT link_id, extra_link_id, COUNT(*) AS clicks
+		FROM link_clicks
+		WHERE clicked_at >= date_trunc('day', now())
+		GROUP BY link_id, extra_link_id
+		ORDER BY clicks DESC
+		LIMIT 10`
+
+	analyticsDailyRosterQuery = `
+		WITH days AS (
+			SELECT generate_series(
+				date_trunc('day', now()) - make_interval(days => $1 - 1),
+				date_trunc('day', now()),
+				interval '1 day'
+			) AS day
+		)
+		SELECT to_char(d.day, 'YYYY-MM-DD'),
+		       COUNT(u.id)
+		FROM days d
+		LEFT JOIN users u ON u.is_guest = false AND u.created_at < d.day + interval '1 day'
+		GROUP BY d.day
+		ORDER BY d.day ASC`
+
+	analyticsVisitorsTodayByClicksQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
+		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())) AS clicks
+		FROM users u
+		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
+		ORDER BY clicks DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT $1 OFFSET $2`
+
+	analyticsVisitorsTodayByNameQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
+		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())) AS clicks
+		FROM users u
+		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
+		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT $1 OFFSET $2`
+)
+
 // Page Views Queries
 const (
-	insertPageViewQuery = `INSERT INTO page_views (page) VALUES ($1)`
+	// One statement keeps the visit row and the last_seen_at touch atomic.
+	insertPageViewQuery = `WITH visit AS (INSERT INTO page_views (page,user_id,device_type) VALUES ($1,$2,$3)) UPDATE users SET last_seen_at = now() WHERE id = $2`
 	GetPageViewQuery    = `SELECT id, page, visited_at FROM page_views ORDER BY visited_at DESC`
 )
 
 // Link Clicks Queries
 const (
-	insertLinkClickQuery = `INSERT INTO link_clicks (link_id,extra_link_id) VALUES ($1,$2)`
+	insertLinkClickQuery = `INSERT INTO link_clicks (link_id,extra_link_id,user_id) VALUES ($1,$2,$3)`
 	GetLinkClickQuery    = `SELECT id, link_id, extra_link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC`
 )
 
@@ -48,9 +214,9 @@ const (
 const (
 	deleteFeedbackQuery = `DELETE FROM feedback WHERE id = $1`
 	updateFeedbackQuery = `UPDATE feedback SET status = $1 WHERE id = $2`
-	insertFeedbackQuery = `INSERT INTO feedback (category, rating, message) VALUES ($1, $2, $3)`
+	insertFeedbackQuery = `INSERT INTO feedback (category, rating, message, user_id) VALUES ($1, $2, $3, $4)`
 
-	listFeedbackBaseQuery        = `SELECT id, category, rating, message, status, created_at FROM feedback`
+	listFeedbackBaseQuery        = `SELECT id, category, rating, message, status, created_at, user_id FROM feedback`
 	listFeedbackNoFilterQuery    = listFeedbackBaseQuery + ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`
 	listFeedbackWithStatusQuery  = listFeedbackBaseQuery + ` WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 	listFeedbackWithQQuery       = listFeedbackBaseQuery + ` WHERE (category ILIKE $1 OR message ILIKE $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`
@@ -61,9 +227,9 @@ const (
 const (
 	deleteReportQuery = `DELETE FROM reports WHERE id = $1`
 	updateReportQuery = `UPDATE reports SET status = $1 WHERE id = $2`
-	insertReportQuery = `INSERT INTO reports (course_name, link_url, description) VALUES ($1, $2, $3)`
+	insertReportQuery = `INSERT INTO reports (course_name, link_url, description, user_id) VALUES ($1, $2, $3, $4)`
 
-	listReportsBaseQuery        = `SELECT id, course_name, link_url, description, status, created_at FROM reports`
+	listReportsBaseQuery        = `SELECT id, course_name, link_url, description, status, created_at, user_id FROM reports`
 	listReportsNoFilterQuery    = listReportsBaseQuery + ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`
 	listReportsWithStatusQuery  = listReportsBaseQuery + ` WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 	listReportsWithQQuery       = listReportsBaseQuery + ` WHERE (course_name ILIKE $1 OR description ILIKE $1 OR link_url ILIKE $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`
@@ -74,9 +240,9 @@ const (
 const (
 	deleteContributionQuery = `DELETE FROM contributions WHERE id = $1`
 	updateContributionQuery = `UPDATE contributions SET status = $1 WHERE id = $2`
-	insertContributionQuery = `INSERT INTO contributions (course_name, link_url, note) VALUES ($1, $2, $3)`
+	insertContributionQuery = `INSERT INTO contributions (course_name, link_url, note, user_id) VALUES ($1, $2, $3, $4)`
 
-	listContributionsBaseQuery        = `SELECT id, course_name, link_url, note, status, created_at FROM contributions`
+	listContributionsBaseQuery        = `SELECT id, course_name, link_url, note, status, created_at, user_id FROM contributions`
 	listContributionsNoFilterQuery    = listContributionsBaseQuery + ` ORDER BY created_at DESC LIMIT $1 OFFSET $2`
 	listContributionsWithStatusQuery  = listContributionsBaseQuery + ` WHERE status = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`
 	listContributionsWithQQuery       = listContributionsBaseQuery + ` WHERE (course_name ILIKE $1 OR link_url ILIKE $1 OR note ILIKE $1 ) ORDER BY created_at DESC LIMIT $2 OFFSET $3`

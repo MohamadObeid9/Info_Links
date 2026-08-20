@@ -59,8 +59,8 @@ Example:
 cfg := Config{
 	Port:        getEnv("PORT", "8080"),
 	AppEnv:      getEnv("APP_ENV", "development"),
-	DatabaseURL: os.Getenv("DATABASE_URL"),
-	JWTSecret:   os.Getenv("JWT_SECRET"),
+	DatabaseURL: getEnv("DATABASE_URL"),
+	JWTSecret:   getEnv("JWT_SECRET"),
 }
 
 if cfg.DatabaseURL == "" {

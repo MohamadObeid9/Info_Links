@@ -31,11 +31,11 @@ func TestReportRepository_Create(t *testing.T) {
 	}{
 		{
 			name:   "insert report",
-			report: models.Report{CourseName: "My Course", LinkURL: "https://test.com", Description: "note"},
+			report: models.Report{CourseName: "My Course", LinkURL: "https://test.com", Description: "note", UserID: 7},
 		},
 		{
 			name:    "insert exec error",
-			report:  models.Report{CourseName: "My Course", LinkURL: "https://test.com", Description: "note"},
+			report:  models.Report{CourseName: "My Course", LinkURL: "https://test.com", Description: "note", UserID: 7},
 			execErr: errs.ErrDatabaseDown,
 			err:     errs.ErrDatabaseDown,
 		},
@@ -44,7 +44,7 @@ func TestReportRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestReportRepo(t)
 			exp := mock.ExpectExec(insertReportQuery).
-				WithArgs(tt.report.CourseName, tt.report.LinkURL, tt.report.Description)
+				WithArgs(tt.report.CourseName, tt.report.LinkURL, tt.report.Description, tt.report.UserID)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {
@@ -181,6 +181,7 @@ func TestReportRepository_Update(t *testing.T) {
 func TestReportRepository_List(t *testing.T) {
 	sampleRow := models.Report{
 		ID:          1,
+		UserID:      7,
 		CourseName:  "Linux",
 		LinkURL:     "https://example.com",
 		Description: "broken link",
@@ -208,7 +209,7 @@ func TestReportRepository_List(t *testing.T) {
 			offset:     0,
 			query:      listReportsNoFilterQuery,
 			queryArgs:  []any{25, 0},
-			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Report{sampleRow},
 		},
 		{
@@ -219,7 +220,7 @@ func TestReportRepository_List(t *testing.T) {
 			status:     "open",
 			query:      listReportsWithQStatusQuery,
 			queryArgs:  []any{"%Linux%", "open", 10, 5},
-			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Report{sampleRow},
 		},
 		{
@@ -229,7 +230,7 @@ func TestReportRepository_List(t *testing.T) {
 			status:     "resolved",
 			query:      listReportsWithStatusQuery,
 			queryArgs:  []any{"resolved", 10, 10},
-			rows:       [][]any{{2, "Go", "https://go.dev", "", "resolved", "2024-02-01T00:00:00Z"}},
+			rows:       [][]any{{2, "Go", "https://go.dev", "", "resolved", "2024-02-01T00:00:00Z", nil}},
 			wantResult: []models.Report{{ID: 2, CourseName: "Go", LinkURL: "https://go.dev", Status: "resolved", CreatedAt: "2024-02-01T00:00:00Z"}},
 		},
 		{
@@ -239,7 +240,7 @@ func TestReportRepository_List(t *testing.T) {
 			q:          "Linux",
 			query:      listReportsWithQQuery,
 			queryArgs:  []any{"%Linux%", 10, 0},
-			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Report{sampleRow},
 		},
 		{
@@ -259,7 +260,7 @@ func TestReportRepository_List(t *testing.T) {
 			status:    "open",
 			query:     listReportsWithStatusQuery,
 			queryArgs: []any{"open", 10, 0},
-			rows:      [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:      [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Description, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			rowsErr:   errs.ErrDatabaseDown,
 			err:       errs.ErrDatabaseDown,
 		},
@@ -271,7 +272,7 @@ func TestReportRepository_List(t *testing.T) {
 			if tt.queryErr != nil {
 				exp.WillReturnError(tt.queryErr)
 			} else {
-				cols := []string{"id", "course_name", "link_url", "description", "status", "created_at"}
+				cols := []string{"id", "course_name", "link_url", "description", "status", "created_at", "user_id"}
 				rows := sqlmock.NewRows(cols)
 				for _, row := range tt.rows {
 					rows.AddRow(driverValues(row)...)

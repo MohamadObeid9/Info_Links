@@ -39,6 +39,10 @@ func Load() (Config, error) {
 		MetricsBasicAuthPass: getenv("METRICS_BASIC_AUTH_PASSWORD"),
 	}
 
+	if cfg.AppEnv == "development" {
+		cfg.DatabaseURL = getenv("LOCAL_DATABASE_URL", "postgres://postgres:postgres@localhost:5432/infolinks?sslmode=disable")
+	}
+
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("database url is required")
 	}

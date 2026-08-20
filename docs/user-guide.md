@@ -18,15 +18,47 @@ How to use [infolinks.app](https://infolinks.app/) — for students and admins. 
 1. Open the site and select your **program** tab.
 2. **Search** (`/` or `Ctrl+K`) or filter by year/semester to find a course.
 3. Expand a course and open a link — badge color is the link type; label text is the content type (see legends below).
-4. **Star** courses you revisit often (stored in your browser). Use **Report** or **Contribute** when a link is broken or you have a new resource.
+4. **Star** courses you revisit often. Use **Report** or **Contribute** when a link is broken or you have a new resource.
 
 Install from the browser menu as a **PWA** for a home-screen shortcut (service worker enabled in production builds).
+
+### Signing up
+
+There is **no email and no password**. You identify yourself with three things:
+
+- your **first name**
+- your **last name**
+- a **number between 1 and 100** you pick yourself
+
+That becomes your handle — for example `mohamad_hassan_55` — and the home page greets you with it once you are signed in.
+
+- **Sign up** the first time. If someone with your exact name already picked your number, the app asks you to choose a different one (55 becomes 65).
+- **Sign in** on any other device with the same three values. If we cannot find them, the app points you to sign up instead.
+- Your session lasts a **year** on that device, so you normally type this once.
+
+Keep your number in mind — name plus number is how the app recognizes you, and there is no password to reset if you forget which number you chose.
+
+### What needs an account
+
+Browsing never does. Search, filter, and look through courses without signing up at all.
+
+| Action | Account needed |
+|--------|----------------|
+| Browse, search, and filter courses | No |
+| Open a course link | Yes |
+| Star a course (favorites) | Yes |
+| Report a broken link | Yes |
+| Contribute a new resource | Yes |
+| Send feedback | Yes |
+
+When you try one of these without an account, a short signup form appears and the action continues right after you finish.
 
 ### Student features
 
 - **Smart search** — find courses by name or code (`/` or `Ctrl+K`)
 - **Organized by program** — sorted by year, semester, and specialization
-- **Favorites** — star courses for quick access (stored locally in your browser)
+- **Account without a password** — first name, last name, and a number 1-100
+- **Favorites that follow you** — starred courses are saved to your account and appear on every device you sign in on
 - **Content type labels** — TD, Cours, Videos, Sessions, Exams at a glance
 - **Link type badges** — Google Drive, Classroom, Telegram, and more
 - **Light/dark mode** — system detection with persistence
@@ -41,8 +73,32 @@ Install from the browser menu as a **PWA** for a home-screen shortcut (service w
 
 1. **Admin** → log in with your Supabase credentials (the API issues a JWT for the session).
 2. **Courses** — manage courses and links; when prompted, confirm **sibling sync** for courses shared across programs.
-3. **Contributions**, **Reports**, and **Feedback** — review and approve or resolve user submissions.
-4. **Analytics** — check visitor counts and top clicked links; export JSON when needed.
+3. **Contributions**, **Reports**, and **Feedback** — review user submissions. Contributions can be **approved** (adds the link) or **rejected** (kept in the list, not deleted). Each row shows the **sender's handle**.
+4. **Analytics** — unique students per range alongside visit counts and top clicked links; export JSON when needed.
+5. **Students** — browse every registered student, search by name, and open one to see their full history.
+
+Admin login is unchanged and stays separate from student accounts: admins sign in with Supabase credentials, students never do.
+
+### Students tab
+
+- Alphabetical list of registered students with first seen and last seen dates
+- Search by handle
+- Detail view with a single activity timeline — visits, links opened, reports, contributions, feedback, and favorites added or removed, newest first
+
+Activity from before a student signed up is kept and appears in their timeline, because the visitor record is claimed at signup rather than replaced. If they already have an account and sign in instead, that first guest visit is moved onto their student row so it shows their handle, not `guest_<id>`.
+
+### Unique-user analytics
+
+The Analytics tab counts **people**, not just page loads:
+
+- **Overview cards** — registered students (with green signup deltas for 7/30/90 days), active today, link clicks today, and a phone/laptop split from server-classified visits
+- **Growth chart** — toggle between unique visitors per day and cumulative registered roster over the selected 7/30/90-day range
+- **Today's visitors** — paged handle chips (sort by clicks or name), replacing the old flat lists
+- **Demand** — top links today and in range, plus top students in range
+
+New visits store a coarse `device_type` (`phone` or `laptop`) derived from the User-Agent on the server; the client never sends device data. Older visits keep a NULL device and are omitted from the split until new data accumulates.
+
+Counting is done in the database rather than in the browser, so the dashboard stays fast as history grows. Two caveats when reading the numbers: visitors who never sign up are still counted as visits but cannot be attributed to a person, and admin browsing is excluded from analytics entirely.
 
 ### Admin features
 
@@ -50,7 +106,9 @@ Install from the browser menu as a **PWA** for a home-screen shortcut (service w
 - Optional vs. mandatory course labeling
 - Sibling course detection — shared courses auto-sync names, codes, and links
 - Multi-content link management (TD, Cours, Videos, Sessions, Exams)
-- Analytics dashboard — daily visitors, 7/30/90-day ranges, top links, JSON export
+- Analytics dashboard — overview cards, growth chart, paged today's visitors, top links/students, JSON export
+- Students directory with per-student activity timeline
+- Sender handle on contributions, reports, and feedback
 - Contribution, report, and feedback review workflows
 - JWT-secured admin panel via the Go API
 - Extra resources sections beyond regular courses

@@ -2,6 +2,22 @@ package errs
 
 import "errors"
 
+// Users errors
+var (
+	ErrUserGuestNotFound = errors.New("guest not found")
+	ErrUserNotFound      = errors.New("user not found")
+	ErrUserInvalidID     = errors.New("invalid user id")
+	ErrUsernameTaken     = errors.New("username already taken")
+	ErrUserNumberRange   = errors.New("number must be between 1 and 100")
+	ErrUserNameRequired  = errors.New("first and last name are required")
+)
+
+// Analytics errors
+var (
+	ErrAnalyticsInvalidRange         = errors.New("range must be 7, 30 or 90")
+	ErrAnalyticsInvalidVisitorsSort  = errors.New("visitors_sort must be clicks or name")
+)
+
 // Link clicks errors
 var (
 	ErrLinkClickLinkIDAndExtraLinkIDRequired = errors.New("link id and extra link id are required")
@@ -50,7 +66,7 @@ var (
 var (
 	ErrContributionNotFound      = errors.New("contribution not found")
 	ErrContributionInvalidID     = errors.New("invalid contribution id")
-	ErrContributionInvalidStatus = errors.New("status must be pending or approved")
+	ErrContributionInvalidStatus = errors.New("status must be pending, approved, or rejected")
 )
 
 // Common Errors

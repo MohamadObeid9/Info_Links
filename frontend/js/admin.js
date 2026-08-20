@@ -7,6 +7,7 @@ import { _clearCache } from "./cache.js";
 import { showToast } from "./export.js";
 import { renderAdminFeedback } from "./feedback.js";
 import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder } from "./modals.js";
+import { loadStudentDirectory, rememberStudents, senderCell, studentHandleOf, fmtDateTime } from "./students.js";
 
 // ===================== ADMIN AUTH =====================
 async function checkLogin() {
@@ -38,10 +39,14 @@ async function logout() {
 
 // ===================== ADMIN TABS =====================
 const ADMIN_PAGE_SIZE = 10;
+const ADMIN_PAGE_FETCH = ADMIN_PAGE_SIZE + 1;
+const ANALYTICS_VISITORS_PAGE_SIZE = 12;
 const AdminPager = {
   reports: { page: 0, hasNext: false },
   contributions: { page: 0, hasNext: false },
   feedback: { page: 0, hasNext: false },
+  students: { page: 0, hasNext: false },
+  studentTimeline: { page: 0, hasNext: false },
 };
 
 function _setAdminPage(tab, page) {
@@ -49,20 +54,36 @@ function _setAdminPage(tab, page) {
   AdminPager[tab].page = Math.max(0, page);
 }
 
+/** Ask for one extra row so a full last page does not look like there is a next one. */
+function _pageSlice(rows, pageSize = ADMIN_PAGE_SIZE) {
+  const list = Array.isArray(rows) ? rows : [];
+  return { items: list.slice(0, pageSize), hasNext: list.length > pageSize };
+}
+
+function _pagerButton(label, enabled, onclick) {
+  if (!enabled) {
+    return `<button type="button" class="action-btn pager-btn" disabled>${label}</button>`;
+  }
+  return `<button type="button" class="action-btn pager-btn" onclick="${onclick}">${label}</button>`;
+}
+
 function _renderAdminPager(tab, rerenderFnName) {
   const pager = AdminPager[tab];
   if (!pager) return "";
   const pageNum = pager.page + 1;
-  return `<div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;">
-    <button class="action-btn" ${pager.page === 0 ? "disabled" : ""} onclick="adminSetPage('${tab}', -1, '${rerenderFnName}')">← Prev</button>
-    <span style="font-size:.85rem;color:var(--muted);">Page ${pageNum}</span>
-    <button class="action-btn" ${pager.hasNext ? "" : "disabled"} onclick="adminSetPage('${tab}', 1, '${rerenderFnName}')">Next →</button>
+  return `<div class="admin-pager">
+    ${_pagerButton("← Prev", pager.page > 0, `adminSetPage('${tab}', -1, '${rerenderFnName}')`)}
+    <span>Page ${pageNum}</span>
+    ${_pagerButton("Next →", pager.hasNext, `adminSetPage('${tab}', 1, '${rerenderFnName}')`)}
   </div>`;
 }
 
 function adminSetPage(tab, delta, rerenderFnName) {
-  if (!AdminPager[tab]) return;
-  _setAdminPage(tab, AdminPager[tab].page + delta);
+  const pager = AdminPager[tab];
+  if (!pager) return;
+  if (delta < 0 && pager.page === 0) return;
+  if (delta > 0 && !pager.hasNext) return;
+  _setAdminPage(tab, pager.page + delta);
   if (typeof window[rerenderFnName] === "function") window[rerenderFnName]();
 }
 
@@ -72,6 +93,8 @@ function adminTab(t) {
   AppState.adminFilterProg = "all";
   AppState.adminFilterYear = "all";
   AppState.adminFilterSem = "all";
+  AppState.adminStudentId = null;
+  _setAdminPage("studentTimeline", 0);
   if (AdminPager[t]) _setAdminPage(t, 0);
   if (t === "feedback" && typeof window.resetAdminFeedbackPage === "function") {
     window.resetAdminFeedbackPage();
@@ -89,6 +112,7 @@ function renderAdminContent() {
   else if (AppState.currentAdminTab === "feedback") renderAdminFeedback();
   else if (AppState.currentAdminTab === "reports") renderAdminReports();
   else if (AppState.currentAdminTab === "contributions") renderAdminContributions();
+  else if (AppState.currentAdminTab === "students") renderAdminStudents();
   else renderAdminAnalytics();
 }
 
@@ -125,127 +149,317 @@ function resolveLinkInfo(kind, linkId) {
   return info;
 }
 
-function buildTopLinksSection(title, clickEvents, expandedKey) {
-  const clickMap = {};
-  clickEvents.forEach((c) => {
-    if (c.link_id) {
-      const key = `link:${c.link_id}`;
-      clickMap[key] = (clickMap[key] || 0) + 1;
-    }
-    if (c.extra_link_id) {
-      const key = `extra_link:${c.extra_link_id}`;
-      clickMap[key] = (clickMap[key] || 0) + 1;
-    }
-  });
-  const sorted = Object.entries(clickMap).sort((a, b) => b[1] - a[1]);
-  if (!sorted.length) {
-    return `<div class="chart-wrap" style="margin-top:20px;">
-      <div class="chart-title">${title}</div>
-      <div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">No click data.</div>
-    </div>`;
+function _num(value) {
+  return (Number(value) || 0).toLocaleString();
+}
+
+function buildTopLinksList(topLinks, expandKey = null) {
+  const rows = (topLinks || [])
+    .map((row) => {
+      const isExtra = row.extra_link_id != null;
+      return {
+        kind: isExtra ? "extra_link" : "link",
+        id: isExtra ? row.extra_link_id : row.link_id,
+        clicks: Number(row.clicks) || 0,
+      };
+    })
+    .filter((row) => row.id != null)
+    .sort((a, b) => b.clicks - a.clicks);
+
+  if (!rows.length) {
+    return `<div style="color:var(--muted);font-size:0.9rem;">No click data.</div>`;
   }
 
-  const expanded = AppState[expandedKey];
-  const limit = expanded ? 10 : 5;
-  const items = sorted
-    .slice(0, limit)
-    .map(([key, count]) => {
-      const [kind, linkId] = key.split(":");
-      const info = resolveLinkInfo(kind, linkId);
-      return `<li><strong>${count}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
+  const expandable = Boolean(expandKey);
+  const expanded = expandable && AppState[expandKey];
+  const items = rows
+    .slice(0, expanded || !expandable ? 10 : 5)
+    .map((row) => {
+      const info = resolveLinkInfo(row.kind, row.id);
+      return `<li><strong>${_num(row.clicks)}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
     })
     .join("");
 
-  const toggleFn =
-    expandedKey === "analyticsTopLinksTodayExpanded"
-      ? "AppState.analyticsTopLinksTodayExpanded=!AppState.analyticsTopLinksTodayExpanded"
-      : "AppState.analyticsTopLinksExpanded=!AppState.analyticsTopLinksExpanded";
   const expandBtn =
-    sorted.length > 5
-      ? `<button class="filter-btn" style="margin-top:12px;" onclick="${toggleFn};renderAdminAnalytics()">${expanded ? "Show top 5" : "Show top 10"}</button>`
+    expandable && rows.length > 5
+      ? `<button class="filter-btn" style="margin-top:12px;" onclick="AppState.${expandKey}=!AppState.${expandKey};renderAdminAnalytics()">${expanded ? "Show top 5" : "Show top 10"}</button>`
+      : "";
+
+  return `<ul style="list-style:none;padding:0;">${items}</ul>${expandBtn}`;
+}
+
+function buildTabbedTopLinksCard(summary) {
+  const tab = AppState.analyticsLinksTab === "range" ? "range" : "today";
+  const isToday = tab === "today";
+  const expandKey = isToday ? "analyticsTopLinksTodayExpanded" : "analyticsTopLinksExpanded";
+  const links = isToday ? summary.top_links_today : summary.top_links;
+
+  const tabButtons = ["today", "range"]
+    .map((t) => {
+      const label = t === "today" ? "Today" : "In range";
+      return `<button type="button" class="filter-btn ${tab === t ? "active" : ""}" onclick="AppState.analyticsLinksTab='${t}';renderAdminAnalytics()">${label}</button>`;
+    })
+    .join("");
+
+  return `<div class="chart-wrap" style="margin-top:20px;">
+    <div class="chart-title">🔥 Top clicked links</div>
+    <div class="analytics-tabs">${tabButtons}</div>
+    ${buildTopLinksList(links, expandKey)}
+  </div>`;
+}
+
+function buildTopUsersInRangeSection(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) {
+    return `<div class="chart-wrap" style="margin-top:20px;">
+      <div class="chart-title">🏆 Top students (in range)</div>
+      <div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">No clicks in this range yet.</div>
+    </div>`;
+  }
+
+  const expandKey = "analyticsTopUsersExpanded";
+  const expanded = AppState[expandKey];
+  const items = list
+    .slice(0, expanded ? 10 : 5)
+    .map((row) => {
+      const id = Number(row.user_id);
+      const handle = row.handle || (Number.isFinite(id) ? `#${id}` : "unknown");
+      const label = Number.isFinite(id)
+        ? `<button class="action-btn" onclick="openAdminStudent(${id})" title="Open student history">${esc(handle)}</button>`
+        : esc(handle);
+      return `<li style="margin-bottom:8px;"><strong>${_num(row.clicks)}</strong> clicks — ${label}</li>`;
+    })
+    .join("");
+
+  const expandBtn =
+    list.length > 5
+      ? `<button class="filter-btn" style="margin-top:12px;" onclick="AppState.${expandKey}=!AppState.${expandKey};renderAdminAnalytics()">${expanded ? "Show top 5" : "Show top 10"}</button>`
       : "";
 
   return `<div class="chart-wrap" style="margin-top:20px;">
-    <div class="chart-title">${title}</div>
+    <div class="chart-title">🏆 Top students (in range)</div>
     <ul style="list-style:none;padding:0;margin-top:16px;">${items}</ul>
     ${expandBtn}
   </div>`;
 }
 
+function _visitorsTodayPage(summary) {
+  const raw = summary?.visitors_today;
+  if (Array.isArray(raw)) {
+    return {
+      visitors: raw,
+      hasMore: Boolean(summary.visitors_has_more),
+      total: Number(summary.visitors_today_total) || Number(summary.active_today) || raw.length,
+    };
+  }
+  return {
+    visitors: Array.isArray(raw?.visitors) ? raw.visitors : [],
+    hasMore: Boolean(raw?.has_more),
+    total: Number(summary.active_today) || 0,
+  };
+}
+
+function buildVisitorChipsSection(summary) {
+  const { visitors, hasMore, total } = _visitorsTodayPage(summary);
+  const sort = AppState.analyticsVisitorsSort === "name" ? "name" : "clicks";
+  const sortButtons = ["clicks", "name"]
+    .map((s) => {
+      const label = s === "clicks" ? "Most clicks" : "Name";
+      return `<button type="button" class="filter-btn ${sort === s ? "active" : ""}" onclick="AppState.analyticsVisitorsSort='${s}';AppState.analyticsVisitorsOffset=0;renderAdminAnalytics()">${label}</button>`;
+    })
+    .join("");
+
+  if (!visitors.length) {
+    return `<div class="chart-wrap" style="margin-top:20px;">
+      <div class="chart-title">👀 Who visited today</div>
+      <div class="analytics-tabs">${sortButtons}</div>
+      <div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">Nobody has visited yet today.</div>
+    </div>`;
+  }
+
+  const chips = visitors
+    .map((row) => {
+      const id = Number(row.user_id);
+      const handle = row.handle || (Number.isFinite(id) ? `#${id}` : "unknown");
+      const clicks = Number(row.clicks) || 0;
+      const badge = clicks > 0 ? `<span class="badge-count">${_num(clicks)}</span>` : "";
+      const onclick = Number.isFinite(id) ? `openAdminStudent(${id})` : "";
+      return `<button type="button" class="visitor-chip" ${onclick ? `onclick="${onclick}"` : ""} title="Open student history">
+        <span class="visitor-chip-handle">${esc(handle)}</span>${badge}
+      </button>`;
+    })
+    .join("");
+
+  const offset = Number(AppState.analyticsVisitorsOffset) || 0;
+  const pageSize = ANALYTICS_VISITORS_PAGE_SIZE;
+  const pageNum = Math.floor(offset / pageSize) + 1;
+  const hasPrev = offset > 0;
+  const totalHint = Number.isFinite(total) && total > 0
+    ? `<span style="font-size:0.8rem;color:var(--muted);margin-left:8px;">${_num(total)} total</span>`
+    : "";
+
+  const pager = `<div class="admin-pager">
+    ${_pagerButton("← Prev", hasPrev, `AppState.analyticsVisitorsOffset=Math.max(0,${offset}-${pageSize});renderAdminAnalytics()`)}
+    <span>Page ${pageNum}</span>
+    ${_pagerButton("Next →", hasMore, `AppState.analyticsVisitorsOffset=${offset + pageSize};renderAdminAnalytics()`)}
+  </div>`;
+
+  return `<div class="chart-wrap" style="margin-top:20px;">
+    <div class="chart-title">👀 Who visited today${totalHint}</div>
+    <div class="analytics-tabs">${sortButtons}</div>
+    <div class="visitor-chips">${chips}</div>
+    ${pager}
+  </div>`;
+}
+
+function _formatDevicesToday(devices) {
+  if (!devices || typeof devices !== "object") return "—";
+  const parts = [];
+  const phone = Number(devices.phone) || 0;
+  const laptop = Number(devices.laptop) || 0;
+  if (phone > 0) parts.push(`${_num(phone)} phone`);
+  if (laptop > 0) parts.push(`${_num(laptop)} laptop`);
+  return parts.length ? parts.join(" / ") : "—";
+}
+
+function _formatGain(value) {
+  const n = Number(value) || 0;
+  return `+${_num(n)}`;
+}
+
+/** Pad the server's sparse per-day series so the chart always spans the range. */
+function _dailyUniqueSeries(daily, rangeDays) {
+  const byDay = new Map();
+  (daily || []).forEach((d) => {
+    const key = String(d?.day || "").slice(0, 10);
+    if (key) byDay.set(key, Number(d.users) || 0);
+  });
+  const now = Date.now();
+  const days = [];
+  for (let i = rangeDays - 1; i >= 0; i--) {
+    const key = new Date(now - i * 86400000).toISOString().slice(0, 10);
+    days.push({ date: key, count: byDay.get(key) || 0 });
+  }
+  return days;
+}
+
+/** Pad cumulative roster totals per day for the growth chart. */
+function _dailyRosterSeries(daily, rangeDays) {
+  const byDay = new Map();
+  (daily || []).forEach((d) => {
+    const key = String(d?.day || "").slice(0, 10);
+    if (key) byDay.set(key, Number(d.total) || 0);
+  });
+  const now = Date.now();
+  const days = [];
+  let lastKnown = 0;
+  for (let i = rangeDays - 1; i >= 0; i--) {
+    const key = new Date(now - i * 86400000).toISOString().slice(0, 10);
+    if (byDay.has(key)) lastKnown = byDay.get(key);
+    days.push({ date: key, count: lastKnown });
+  }
+  return days;
+}
+
+function _buildBarChart(days, range, todayStr) {
+  const maxCount = Math.max(...days.map((d) => d.count), 1);
+  const labelStep = range === "7" ? 1 : range === "30" ? 5 : 15;
+
+  function fmtDay(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en", { month: "short", day: "numeric" });
+  }
+
+  return days
+    .map((d, i) => {
+      const pct = Math.round((d.count / maxCount) * 100);
+      const showLabel = i % labelStep === 0 || i === days.length - 1;
+      return `<div class="bar-col"><div class="bar-val" style="visibility:${d.count > 0 ? "visible" : "hidden"}">${d.count || ""}</div><div class="bar-fill" style="height:${Math.max(pct, d.count > 0 ? 4 : 0)}%;background:${d.date === todayStr ? "var(--accent2)" : "var(--accent)"}"></div><div class="bar-label">${showLabel ? fmtDay(d.date) : ""}</div></div>`;
+    })
+    .join("");
+}
+
 async function renderAdminAnalytics() {
   document.getElementById("adminContent").innerHTML = getAdminAnalyticsSkeleton();
+  const range = ["7", "30", "90"].includes(String(AppState.analyticsRange))
+    ? String(AppState.analyticsRange)
+    : "30";
+  const chartSeries = AppState.analyticsChartSeries === "roster" ? "roster" : "visitors";
+  const visitorsSort = AppState.analyticsVisitorsSort === "name" ? "name" : "clicks";
+  const visitorsOffset = Math.max(0, Number(AppState.analyticsVisitorsOffset) || 0);
   try {
-    const [views, clicks] = await Promise.all([
-      sb("page_views", "GET", null, null, "id,visited_at"),
-      sb("link_clicks", "GET", null, null, "id,link_id,extra_link_id,clicked_at").catch(() => []),
-    ]);
-
-    const now = new Date();
-    const rangeMs = parseInt(AppState.analyticsRange) * 24 * 60 * 60 * 1000;
-    const cutoff = new Date(now - rangeMs);
-
-    const inRange = views.filter((v) => new Date(v.visited_at) >= cutoff);
-    const totalAll = views.length;
-    const totalRange = inRange.length;
-    const todayStr = now.toISOString().slice(0, 10);
-    const todayCount = views.filter((v) => v.visited_at.slice(0, 10) === todayStr).length;
-
-    const weekCutoff = new Date(now - 7 * 24 * 60 * 60 * 1000);
-    const weekCount = views.filter((v) => new Date(v.visited_at) >= weekCutoff).length;
-
-    const dayMap = {};
-    inRange.forEach((v) => {
-      const d = v.visited_at.slice(0, 10);
-      dayMap[d] = (dayMap[d] || 0) + 1;
+    const query = new URLSearchParams({
+      range,
+      visitors_limit: String(ANALYTICS_VISITORS_PAGE_SIZE),
+      visitors_offset: String(visitorsOffset),
+      visitors_sort: visitorsSort,
     });
+    const summary = (await sb(`analytics/summary?${query}`, "GET")) || {};
 
-    const days = [];
-    for (let i = parseInt(AppState.analyticsRange) - 1; i >= 0; i--) {
-      const d = new Date(now - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      days.push({ date: d, count: dayMap[d] || 0 });
+    if (visitorsOffset > 0 && !_visitorsTodayPage(summary).visitors.length) {
+      AppState.analyticsVisitorsOffset = Math.max(0, visitorsOffset - ANALYTICS_VISITORS_PAGE_SIZE);
+      renderAdminAnalytics();
+      return;
     }
 
-    const maxCount = Math.max(...days.map((d) => d.count), 1);
-    function fmtDay(dateStr) {
-      const d = new Date(dateStr + "T00:00:00");
-      return d.toLocaleDateString("en", { month: "short", day: "numeric" });
-    }
+    const rangeDays = parseInt(range, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const chartDays =
+      chartSeries === "roster"
+        ? _dailyRosterSeries(summary.daily_roster, rangeDays)
+        : _dailyUniqueSeries(summary.daily_unique_visits, rangeDays);
+    const barsHtml = _buildBarChart(chartDays, range, todayStr);
 
-    const labelStep = AppState.analyticsRange === "7" ? 1 : AppState.analyticsRange === "30" ? 5 : 15;
-    const barsHtml = days
-      .map((d, i) => {
-        const pct = Math.round((d.count / maxCount) * 100);
-        const showLabel = i % labelStep === 0 || i === days.length - 1;
-        return `<div class="bar-col"><div class="bar-val" style="visibility:${d.count > 0 ? "visible" : "hidden"}">${d.count || ""}</div><div class="bar-fill" style="height:${Math.max(pct, d.count > 0 ? 4 : 0)}%;background:${d.date === todayStr ? "var(--accent2)" : "var(--accent)"}"></div><div class="bar-label">${showLabel ? fmtDay(d.date) : ""}</div></div>`;
+    const rangeButtons = ["7", "30", "90"]
+      .map((r) => `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="AppState.analyticsRange='${r}';renderAdminAnalytics()">${r} days</button>`)
+      .join("");
+
+    const seriesButtons = ["visitors", "roster"]
+      .map((s) => {
+        const label = s === "visitors" ? "Unique visitors" : "Registered students";
+        return `<button type="button" class="filter-btn ${chartSeries === s ? "active" : ""}" onclick="AppState.analyticsChartSeries='${s}';renderAdminAnalytics()">${label}</button>`;
       })
       .join("");
 
-    const rangeButtons = ["7", "30", "90"]
-      .map((r) => `<button class="filter-btn ${AppState.analyticsRange === r ? "active" : ""}" onclick="AppState.analyticsRange='${r}';renderAdminAnalytics()">${r} days</button>`)
-      .join("");
+    const chartTitle =
+      chartSeries === "roster"
+        ? `Registered students over time — <span style="color:var(--accent2);">■</span> today`
+        : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
 
-    const clicksInRange = clicks.filter((c) => new Date(c.clicked_at) >= cutoff);
-    const clicksToday = clicks.filter((c) => c.clicked_at.slice(0, 10) === todayStr);
-    const topLinksTodayHtml = buildTopLinksSection("🔥 Top Clicked Links (today)", clicksToday, "analyticsTopLinksTodayExpanded");
-    const topLinksHtml = buildTopLinksSection("🔥 Top Clicked Links (in range)", clicksInRange, "analyticsTopLinksExpanded");
+    const gained7 = Number(summary.students_gained_7d) || 0;
+    const deltaRow = `<div class="analytics-deltas">
+      <span class="stat-delta">${_formatGain(gained7)} this week</span>
+      <span class="stat-delta-sep">·</span>
+      <span class="stat-delta">${_formatGain(summary.students_gained_30d)} last 30 days</span>
+      <span class="stat-delta-sep">·</span>
+      <span class="stat-delta">${_formatGain(summary.students_gained_90d)} last 90 days</span>
+    </div>`;
 
     document.getElementById("adminContent").innerHTML = `
       <div class="stat-grid">
-          <div class="stat-card"><div class="stat-val">${totalAll.toLocaleString()}</div><div class="stat-label">Total visits all time</div></div>
-          <div class="stat-card"><div class="stat-val">${todayCount.toLocaleString()}</div><div class="stat-label">Visits today</div></div>
-          <div class="stat-card"><div class="stat-val">${weekCount.toLocaleString()}</div><div class="stat-label">Visits this week</div></div>
-          <div class="stat-card"><div class="stat-val">${totalRange.toLocaleString()}</div><div class="stat-label">Visits in range</div></div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(summary.total_students)}</div>
+            <div class="stat-delta">${_formatGain(gained7)} this week</div>
+            <div class="stat-label">Registered students</div>
+          </div>
+          <div class="stat-card"><div class="stat-val">${_num(summary.active_today)}</div><div class="stat-label">Active today</div></div>
+          <div class="stat-card"><div class="stat-val">${_num(summary.clicks_today)}</div><div class="stat-label">Clicks today</div></div>
+          <div class="stat-card"><div class="stat-val" style="font-size:1.35rem;">${_formatDevicesToday(summary.devices_today)}</div><div class="stat-label">Device today</div></div>
       </div>
       <div class="chart-wrap">
-          <div class="chart-title">Daily visits — <span style="color:var(--accent2);">■</span> today</div>
+          <div class="chart-title">Growth</div>
+          ${deltaRow}
           <div class="analytics-range">${rangeButtons}</div>
+          <div class="analytics-chart-series">${seriesButtons}</div>
+          <div class="chart-title" style="margin-top:0;margin-bottom:12px;font-size:0.88rem;font-weight:600;">${chartTitle}</div>
           <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
       </div>
-      ${topLinksTodayHtml}
-      ${topLinksHtml}
-      <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Each visit counted once per browser session.</p>`;
+      ${buildVisitorChipsSection(summary)}
+      ${buildTabbedTopLinksCard(summary)}
+      ${buildTopUsersInRangeSection(summary.top_users)}
+      <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Unique students, not raw hits — each student counts once per day however many times they open the site.</p>`;
   } catch (e) {
-    document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ Could not load analytics: ${e.message}</div>`;
+    document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ Could not load analytics: ${esc(e.message)}</div>`;
   }
 }
 
@@ -402,22 +616,27 @@ async function renderAdminReports() {
   const page = AdminPager.reports.page;
   const offset = page * ADMIN_PAGE_SIZE;
   try {
-    const reports = (await sb(`reports?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET")) || [];
+    const [fetchedReports] = await Promise.all([
+      sb(`reports?limit=${ADMIN_PAGE_FETCH}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET").then((r) => r || []),
+      loadStudentDirectory(),
+    ]);
+    const reportsPage = _pageSlice(fetchedReports);
+    const reports = reportsPage.items;
     if (page > 0 && reports.length === 0) {
       _setAdminPage("reports", page - 1);
       renderAdminReports();
       return;
     }
-    AdminPager.reports.hasNext = reports.length === ADMIN_PAGE_SIZE;
+    AdminPager.reports.hasNext = reportsPage.hasNext;
     let html = `<input class="admin-search" placeholder="🔍 Search reports…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('reports',0);renderAdminReports()"/>`;
     if (!reports.length) {
       const emptyMsg = q ? `No report matching "${esc(q)}" found.` : "No reports yet.";
       document.getElementById("adminContent").innerHTML = html + `<div class="empty">${emptyMsg}</div>`;
       return;
     }
-    html += `<table class="admin-table"><thead><tr><th>Course</th><th>Link</th><th>Issue</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+    html += `<table class="admin-table"><thead><tr><th>Sender</th><th>Course</th><th>Link</th><th>Issue</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
     reports.forEach((r) => {
-      html += `<tr><td>${esc(r.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(r.link_url || "—")}</td><td>${esc(r.description)}</td>
+      html += `<tr><td>${senderCell(r.user_id)}</td><td>${esc(r.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(r.link_url || "—")}</td><td>${esc(r.description)}</td>
         <td><span class="tag ${r.status === "open" ? "tag-open" : "tag-resolved"}">${r.status}</span></td>
         <td class="action-btns">
           <button class="action-btn" onclick="toggleReportStatus(${r.id},'${r.status}')">${r.status === "open" ? "✅ Resolve" : "↩ Reopen"}</button>
@@ -439,33 +658,202 @@ async function renderAdminContributions() {
   const page = AdminPager.contributions.page;
   const offset = page * ADMIN_PAGE_SIZE;
   try {
-    const contribs = (await sb(`contributions?limit=${ADMIN_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET")) || [];
+    const [fetchedContribs] = await Promise.all([
+      sb(`contributions?limit=${ADMIN_PAGE_FETCH}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET").then((r) => r || []),
+      loadStudentDirectory(),
+    ]);
+    const contribsPage = _pageSlice(fetchedContribs);
+    const contribs = contribsPage.items;
     if (page > 0 && contribs.length === 0) {
       _setAdminPage("contributions", page - 1);
       renderAdminContributions();
       return;
     }
-    AdminPager.contributions.hasNext = contribs.length === ADMIN_PAGE_SIZE;
+    AdminPager.contributions.hasNext = contribsPage.hasNext;
     let html = `<input class="admin-search" placeholder="🔍 Search contributions…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('contributions',0);renderAdminContributions()"/>`;
     if (!contribs.length) {
       const emptyMsg = q ? `No contribution matching "${esc(q)}" found.` : "No contributions yet.";
       document.getElementById("adminContent").innerHTML = html + `<div class="empty">${emptyMsg}</div>`;
       return;
     }
-    html += `<table class="admin-table"><thead><tr><th>Course</th><th>Link</th><th>Note</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+    html += `<table class="admin-table"><thead><tr><th>Sender</th><th>Course</th><th>Link</th><th>Note</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
     contribs.forEach((c) => {
-      html += `<tr><td>${esc(c.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(c.link_url)}</td><td>${esc(c.note || "—")}</td>
-        <td><span class="tag ${c.status === "pending" ? "tag-open" : "tag-resolved"}">${c.status}</span></td>
-        <td class="action-btns">
-          ${c.status === "pending" ? `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick="openAutoApproveContribModal(${esc(JSON.stringify(c))})">✅ Approve & Add</button>` : `<button class="action-btn" disabled>Approved</button>`}
-          <button class="action-btn del" onclick="confirmAction('Reject this contribution?',()=>deleteContrib(${c.id}))">🗑 Reject</button>
-        </td></tr>`;
+      const statusTag = c.status === "pending"
+        ? "tag-open"
+        : c.status === "rejected"
+          ? "tag-rejected"
+          : "tag-resolved";
+      html += `<tr><td>${senderCell(c.user_id)}</td><td>${esc(c.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(c.link_url)}</td><td>${esc(c.note || "—")}</td>
+        <td><span class="tag ${statusTag}">${esc(c.status || "pending")}</span></td>
+        <td class="action-btns">${_contributionActions(c)}</td></tr>`;
     });
     html += "</tbody></table>";
     html += _renderAdminPager("contributions", "renderAdminContributions");
     document.getElementById("adminContent").innerHTML = html;
   } catch (e) {
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ ${e.message}</div>`;
+  }
+}
+
+function _contributionActions(c) {
+  if (c.status === "rejected") {
+    return `<button class="action-btn" onclick="setContributionStatus(${c.id},'pending','Contribution reopened.')">↩ Reopen</button>
+      <button class="action-btn del" onclick="confirmAction('Delete this contribution permanently?',()=>deleteContrib(${c.id}))">🗑</button>`;
+  }
+  if (c.status === "approved") {
+    return `<button class="action-btn" disabled>Approved</button>`;
+  }
+  return `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick="openAutoApproveContribModal(${esc(JSON.stringify(c))})">✅ Approve & Add</button>
+    <button class="action-btn del" onclick="confirmAction('Reject this contribution? It stays in the list as rejected.',()=>rejectContrib(${c.id}))">✕ Reject</button>`;
+}
+
+async function rejectContrib(id) {
+  await setContributionStatus(id, "rejected", "Contribution rejected.");
+}
+
+async function setContributionStatus(id, status, toast) {
+  try {
+    await sb(`contributions?id=eq.${id}`, "PATCH", { status });
+    renderAdminContributions();
+    loadReportsBadges();
+    if (toast) showToast(toast);
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ===================== ADMIN STUDENTS =====================
+const TIMELINE_META = {
+  visit: { icon: "👣", label: "Visit" },
+  link_click: { icon: "🔗", label: "Link opened" },
+  report: { icon: "🚨", label: "Report" },
+  contribution: { icon: "➕", label: "Contribution" },
+  feedback: { icon: "⭐", label: "Feedback" },
+  favorite_added: { icon: "★", label: "Favorite added" },
+  favorite_removed: { icon: "☆", label: "Favorite removed" },
+};
+
+function openAdminStudent(id) {
+  AppState.currentAdminTab = "students";
+  AppState.adminStudentId = Number(id);
+  AppState.adminSearch = "";
+  _setAdminPage("studentTimeline", 0);
+  document.querySelectorAll(".admin-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.adminTab === "students");
+  });
+  renderAdminStudents();
+}
+
+function closeAdminStudent() {
+  AppState.adminStudentId = null;
+  _setAdminPage("studentTimeline", 0);
+  renderAdminStudents();
+}
+
+async function renderAdminStudents() {
+  if (AppState.adminStudentId) {
+    renderAdminStudentDetail();
+    return;
+  }
+  document.getElementById("adminContent").innerHTML = getAdminTableSkeleton();
+  const q = AppState.adminSearch.trim();
+  const page = AdminPager.students.page;
+  const offset = page * ADMIN_PAGE_SIZE;
+  try {
+    const studentsPage = _pageSlice(
+      (await sb(`users?limit=${ADMIN_PAGE_FETCH}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET")) || [],
+    );
+    const students = studentsPage.items;
+    if (page > 0 && students.length === 0) {
+      _setAdminPage("students", page - 1);
+      renderAdminStudents();
+      return;
+    }
+    AdminPager.students.hasNext = studentsPage.hasNext;
+    rememberStudents(students);
+
+    let html = `<input class="admin-search" placeholder="🔍 Search students…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('students',0);renderAdminStudents()"/>`;
+    if (!students.length) {
+      const emptyMsg = q ? `No student matching "${esc(q)}" found.` : "No students yet.";
+      document.getElementById("adminContent").innerHTML = html + `<div class="empty">${emptyMsg}</div>`;
+      return;
+    }
+
+    html += `<table class="admin-table"><thead><tr><th>Student</th><th>First seen</th><th>Last seen</th><th>Visits</th><th>Clicks</th><th>Actions</th></tr></thead><tbody>`;
+    students.forEach((u) => {
+      html += `<tr>
+        <td><strong>${esc(studentHandleOf(u))}</strong></td>
+        <td style="font-size:.78rem;color:var(--muted);">${esc(fmtDateTime(u.created_at))}</td>
+        <td style="font-size:.78rem;color:var(--muted);">${esc(fmtDateTime(u.last_seen_at))}</td>
+        <td>${_num(u.visit_count)}</td>
+        <td>${_num(u.click_count)}</td>
+        <td class="action-btns"><button class="action-btn" onclick="openAdminStudent(${Number(u.id)})">👤 History</button></td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    html += _renderAdminPager("students", "renderAdminStudents");
+    document.getElementById("adminContent").innerHTML = html;
+    _refocusSearch();
+  } catch (e) {
+    document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ ${esc(e.message)}</div>`;
+  }
+}
+
+function _favoriteCourseNames(ids) {
+  const names = (ids || [])
+    .map((id) => AppState.courseById.get(Number(id))?.name || `#${id}`)
+    .map((name) => esc(String(name)));
+  return names.length ? names.join(", ") : "—";
+}
+
+async function renderAdminStudentDetail() {
+  const id = AppState.adminStudentId;
+  document.getElementById("adminContent").innerHTML = getAdminTableSkeleton();
+  const page = AdminPager.studentTimeline.page;
+  const offset = page * ADMIN_PAGE_SIZE;
+  try {
+    const data =
+      (await sb(`users/${id}?limit=${ADMIN_PAGE_FETCH}&offset=${offset}`, "GET")) || {};
+    const user = data.user || {};
+    const timelinePage = _pageSlice(data.timeline);
+    const timeline = timelinePage.items;
+    if (page > 0 && timeline.length === 0) {
+      _setAdminPage("studentTimeline", page - 1);
+      renderAdminStudentDetail();
+      return;
+    }
+    AdminPager.studentTimeline.hasNext = timelinePage.hasNext;
+    rememberStudents([user]);
+
+    const rows = timeline.length
+      ? timeline
+        .map((item) => {
+          const meta = TIMELINE_META[item.type] || { icon: "•", label: item.type || "Activity" };
+          return `<tr>
+              <td style="white-space:nowrap;">${meta.icon} ${esc(meta.label)}</td>
+              <td style="font-size:.78rem;color:var(--muted);white-space:nowrap;">${esc(fmtDateTime(item.at))}</td>
+              <td>${esc(item.summary || "—")}</td>
+            </tr>`;
+        })
+        .join("")
+      : `<tr><td colspan="3" style="color:var(--muted);">No activity on this page.</td></tr>`;
+
+    document.getElementById("adminContent").innerHTML = `
+      <button class="action-btn" style="margin-bottom:16px;" onclick="closeAdminStudent()">← All students</button>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-val" style="font-size:1.2rem;word-break:break-all;">${esc(studentHandleOf(user))}</div><div class="stat-label">Student</div></div>
+        <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.created_at))}</div><div class="stat-label">Signed up</div></div>
+        <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.last_seen_at))}</div><div class="stat-label">Last seen</div></div>
+      </div>
+      <div class="chart-wrap" style="margin-bottom:20px;">
+        <div class="chart-title">⭐ Current favorites</div>
+        <div style="font-size:.85rem;color:var(--muted);">${_favoriteCourseNames(user.favorite_course_ids)}</div>
+      </div>
+      <div class="chart-title">🕒 Activity history</div>
+      <table class="admin-table"><thead><tr><th>Type</th><th>When</th><th>Details</th></tr></thead><tbody>${rows}</tbody></table>
+      ${_renderAdminPager("studentTimeline", "renderAdminStudentDetail")}`;
+  } catch (e) {
+    document.getElementById("adminContent").innerHTML = `
+      <button class="action-btn" style="margin-bottom:16px;" onclick="closeAdminStudent()">← All students</button>
+      <div class="empty">⚠️ ${esc(e.message)}</div>`;
   }
 }
 
@@ -659,7 +1047,7 @@ async function deleteContrib(id) {
     await sb(`contributions?id=eq.${id}`, "DELETE");
     renderAdminContributions();
     loadReportsBadges();
-    showToast("Contribution rejected.");
+    showToast("Contribution deleted.");
   } catch (e) { showToast(e.message, true); }
 }
 
@@ -686,7 +1074,13 @@ Object.assign(window, {
   openAutoApproveContribModal,
   applyAutoApproveContrib,
   _applyAutoApproveWithSiblings,
+  rejectContrib,
+  setContributionStatus,
   deleteContrib,
+  openAdminStudent,
+  closeAdminStudent,
+  renderAdminStudents,
+  renderAdminStudentDetail,
   ADMIN_PAGE_SIZE,
 });
 

@@ -180,7 +180,37 @@ nav {
 
 .hero p {
     color: var(--muted);
-    margin-bottom: 28px;
+    margin-bottom: 16px;
+}
+
+.student-welcome {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 12px;
+    margin: 0 auto 24px;
+    max-width: 36rem;
+    font-size: 0.95rem;
+    color: var(--muted);
+}
+
+.student-welcome-text strong {
+    color: var(--text);
+}
+
+.student-welcome-btn {
+    border: 1px solid var(--border);
+    background: var(--card, transparent);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.student-welcome-btn:hover {
+    border-color: var(--accent, var(--text));
 }
 
 .search-wrap {

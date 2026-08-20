@@ -10,10 +10,16 @@ import (
 )
 
 func (h *Handler) handlePostContribution(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	var contribution models.Contribution
 	if !decodeJSONBody(w, r, &contribution) {
 		return
 	}
+	contribution.UserID = userID
 	if err := h.contributionService.Create(r.Context(), contribution); err != nil {
 		mapPostContributionErr(h, w, r, err)
 		return
@@ -93,7 +99,7 @@ func mapUpdateContributionErr(h *Handler, w http.ResponseWriter, r *http.Request
 	case errors.Is(err, errs.ErrStatusRequired):
 		writeJSONError(w, r, http.StatusBadRequest, "Status is required")
 	case errors.Is(err, errs.ErrContributionInvalidStatus):
-		writeJSONError(w, r, http.StatusBadRequest, "Status must be pending or approved")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be pending, approved, or rejected")
 	default:
 		h.LoggerWithID(r).Error("update contribution failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
@@ -105,7 +111,7 @@ func mapListContributionErr(h *Handler, w http.ResponseWriter, r *http.Request, 
 	case errors.Is(err, errs.ErrInvalidParams):
 		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	case errors.Is(err, errs.ErrContributionInvalidStatus):
-		writeJSONError(w, r, http.StatusBadRequest, "Status must be pending or approved")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be pending, approved, or rejected")
 	default:
 		h.LoggerWithID(r).Error("list contributions failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")

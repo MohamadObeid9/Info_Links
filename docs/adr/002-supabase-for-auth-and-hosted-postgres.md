@@ -21,7 +21,7 @@ Use **Supabase** for:
 
 - **Hosted PostgreSQL** — connection via `DATABASE_URL`; Go uses standard `database/sql`, not Supabase client SDK for queries
 - **Admin login verification** — `POST /api/auth/login` calls Supabase Auth REST API with email/password; backend checks `app_metadata.role == "admin"` on the returned token
-- **App-issued JWT for API access** — after Supabase validates credentials, the Go backend signs a separate JWT (`JWT_SECRET`, 7-day expiry, `admin: true` claim) used by `RequireAdmin` middleware on admin routes
+- **App-issued JWT for API access** — after Supabase validates credentials, the Go backend signs a separate JWT (`JWT_SECRET`, 365-day expiry, `admin: true` claim) used by `RequireAdmin` middleware on admin routes
 
 The Go backend remains the **API authority**. Supabase is identity + database hosting, not the public API layer.
 

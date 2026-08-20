@@ -16,7 +16,7 @@ jobs:
           cache: true
 
       - name: Build
-        run: go build ./cmd/server
+        run: go build ./cmd/server ./cmd/seed
 
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...

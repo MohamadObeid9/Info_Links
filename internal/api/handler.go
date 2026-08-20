@@ -9,6 +9,7 @@ import (
 
 	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/models"
+	"infolinks-backend/internal/service"
 )
 
 type Handler struct {
@@ -19,6 +20,8 @@ type Handler struct {
 	httpClient          *http.Client
 	db                  dbPinger
 	linkService         linkService
+	userService         userService
+	analyticsService    analyticsService
 	reportService       reportService
 	courseService       courseService
 	contentService      contentService
@@ -37,6 +40,8 @@ type Dependencies struct {
 	SupabaseAnonKey     string
 	DB                  dbPinger
 	LinkService         linkService
+	UserService         userService
+	AnalyticsService    analyticsService
 	ReportService       reportService
 	CourseService       courseService
 	ContentService      contentService
@@ -54,6 +59,21 @@ type dbPinger interface {
 
 type contentService interface {
 	Get(ctx context.Context) ([]byte, error)
+}
+
+type userService interface {
+	CreateGuest(ctx context.Context) (int, error)
+	RegisterUser(ctx context.Context, guestID int, u models.User) (models.User, error)
+	LoginUser(ctx context.Context, guestID int, u models.User) (models.User, error)
+	GetUser(ctx context.Context, userID int) (models.User, error)
+	AddFavorite(ctx context.Context, userID int, courseIDStr string) error
+	RemoveFavorite(ctx context.Context, userID int, courseIDStr string) error
+	ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error)
+	GetUserDetail(ctx context.Context, idStr string, limit int, offset int) (models.UserDetail, error)
+}
+
+type analyticsService interface {
+	GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error)
 }
 
 type pageViewService interface {
@@ -139,6 +159,14 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		return nil, fmt.Errorf("report service is required")
 	}
 
+	if deps.UserService == nil {
+		return nil, fmt.Errorf("user service is required")
+	}
+
+	if deps.AnalyticsService == nil {
+		return nil, fmt.Errorf("analytics service is required")
+	}
+
 	if deps.ContributionService == nil {
 		return nil, fmt.Errorf("contribution service is required")
 	}
@@ -177,6 +205,8 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		jwtSecret:           deps.JWTSecret,
 		linkService:         deps.LinkService,
 		supabaseURL:         deps.SupabaseURL,
+		userService:         deps.UserService,
+		analyticsService:    deps.AnalyticsService,
 		courseService:       deps.CourseService,
 		reportService:       deps.ReportService,
 		contentService:      deps.ContentService,
@@ -191,6 +221,19 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 	}
 
 	return &newHandler, nil
+}
+
+// skipForAdmin answers 204 to analytics POSTs carrying a valid admin token, so
+// admins browsing the site never show up in usage stats. It runs before student
+// auth because an admin token has no student claims.
+func (h *Handler) skipForAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if middleware.IsAuthenticatedAdmin(string(h.jwtSecret), r.Header.Get("Authorization")) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next(w, r)
+	}
 }
 
 // LoggerWithID returns a logger enriched with the request ID when present.

@@ -48,7 +48,7 @@ func (r *postgresFeedbackRepository) Update(ctx context.Context, status string, 
 }
 
 func (r *postgresFeedbackRepository) Create(ctx context.Context, feedback models.Feedback) error {
-	if _, err := r.db.ExecContext(ctx, insertFeedbackQuery, feedback.Category, feedback.Rating, feedback.Message); err != nil {
+	if _, err := r.db.ExecContext(ctx, insertFeedbackQuery, feedback.Category, feedback.Rating, feedback.Message, feedback.UserID); err != nil {
 		return fmt.Errorf("insert feedback: %w", err)
 	}
 	return nil
@@ -71,8 +71,12 @@ func (r *postgresFeedbackRepository) List(ctx context.Context, limit int, offset
 	var feedbacks []models.Feedback
 	for rows.Next() {
 		var feedback models.Feedback
-		if err := rows.Scan(&feedback.ID, &feedback.Category, &feedback.Rating, &feedback.Message, &feedback.Status, &feedback.CreatedAt); err != nil {
+		var userID sql.NullInt64
+		if err := rows.Scan(&feedback.ID, &feedback.Category, &feedback.Rating, &feedback.Message, &feedback.Status, &feedback.CreatedAt, &userID); err != nil {
 			return nil, fmt.Errorf("list feedbacks rows scan: %w", err)
+		}
+		if userID.Valid {
+			feedback.UserID = int(userID.Int64)
 		}
 		feedbacks = append(feedbacks, feedback)
 	}

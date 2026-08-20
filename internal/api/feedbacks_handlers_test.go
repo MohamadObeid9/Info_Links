@@ -84,7 +84,14 @@ func TestHandlePostFeedback(t *testing.T) {
 			createErr:    nil,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			resultWanted: &models.Feedback{Category: "performance", Rating: 5, Message: "nice"},
+			resultWanted: &models.Feedback{Category: "performance", Rating: 5, Message: "nice", UserID: testStudentID},
+		},
+		{
+			name:         "201 takes the user id from the token, not the body",
+			body:         `{"category":"performance","rating":5,"message":"nice","user_id":999}`,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			resultWanted: &models.Feedback{Category: "performance", Rating: 5, Message: "nice", UserID: testStudentID},
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -130,8 +137,7 @@ func TestHandlePostFeedback(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeFeedbackService := &fakeFeedbackService{createErr: tt.createErr}
 			h := testHandler(t, withFeedback(fakeFeedbackService))
-			req := httptest.NewRequest(http.MethodPost, "/api/feedback", bytes.NewBufferString(tt.body))
-			req.Header.Set("Content-Type", "application/json")
+			req := studentRequest(http.MethodPost, "/api/feedback", tt.body)
 			rr := httptest.NewRecorder()
 
 			h.handlePostFeedback(rr, req)

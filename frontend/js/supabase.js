@@ -56,6 +56,15 @@ function logApiError(err, context, status) {
   console.error("[API error]", entry);
 }
 
+// Endpoints where the server derives the acting student from the token, so the
+// student session token wins over any admin token present in the same browser.
+const STUDENT_AUTH_PATHS =
+  /^\/api\/(page_views|link_clicks|reports|feedback|contributions|users)(\/|$|\?)/;
+
+function _usesStudentToken(url) {
+  return STUDENT_AUTH_PATHS.test(String(url).split("?")[0]);
+}
+
 async function apiRequest(
   url,
   {
@@ -72,8 +81,12 @@ async function apiRequest(
   if (body !== null && !finalHeaders["Content-Type"]) {
     finalHeaders["Content-Type"] = "application/json";
   }
-  if (AppState.sbToken && !finalHeaders.Authorization) {
-    finalHeaders.Authorization = `Bearer ${AppState.sbToken}`;
+  if (!finalHeaders.Authorization) {
+    if (AppState.studentToken && _usesStudentToken(url)) {
+      finalHeaders.Authorization = `Bearer ${AppState.studentToken}`;
+    } else if (AppState.sbToken) {
+      finalHeaders.Authorization = `Bearer ${AppState.sbToken}`;
+    }
   }
 
   try {
@@ -90,6 +103,7 @@ async function apiRequest(
         `Request failed (${res.status})`,
         text,
       );
+      apiErr.status = res.status;
       const headerId = res.headers.get("X-Request-ID");
       if (!apiErr.requestId && headerId?.trim()) {
         apiErr.requestId = headerId.trim();
@@ -155,6 +169,7 @@ async function sbLogout() {
 
 async function trackVisit() {
   if (AppState.adminLoggedIn) return;
+  if (!AppState.studentToken) return;
   if (sessionStorage.getItem("pv_tracked")) return;
   try {
     await apiRequest(`/api/page_views`, {
@@ -162,7 +177,9 @@ async function trackVisit() {
       body: { page: "home" },
     });
     sessionStorage.setItem("pv_tracked", "1");
-  } catch (e) {}
+  } catch (e) {
+    if (e?.status === 401) window.onStudentTokenRejected?.();
+  }
 }
 
 function trackLinkClick(linkId, linkKind = "link") {
@@ -174,7 +191,9 @@ function trackLinkClick(linkId, linkKind = "link") {
   apiRequest(`/api/link_clicks`, {
     method: "POST",
     body: payload,
-  }).catch(() => {});
+  }).catch((e) => {
+    if (e?.status === 401) window.onStudentTokenRejected?.();
+  });
 }
 
 // Global Bridge

@@ -19,7 +19,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	mux := http.NewServeMux()
 
 	registerPublicRoutes(mux, h, cfg)
-	registerAdminRoutes(cfg.JWTSecret, mux, h)
+	registerAdminRoutes(mux, h, cfg.JWTSecret)
 	registerSEORoutes(mux, seoH)
 	mux.Handle("/", newStaticFileHandler(resolveStaticDir()))
 
@@ -39,6 +39,8 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 }
 
 func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
+	jwtSecret := cfg.JWTSecret
+
 	mux.Handle("GET /metrics", metricsHandler(cfg))
 
 	mux.HandleFunc("GET /api", h.handleApiRoot)
@@ -48,17 +50,30 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 	mux.HandleFunc("GET /api/content", h.handleGetContent)
 
 	mux.HandleFunc("POST /api/auth/login", h.handleLogin)
-	mux.HandleFunc("POST /api/reports", h.handlePostReport)
-	mux.HandleFunc("POST /api/feedback", h.handlePostFeedback)
-	mux.HandleFunc("POST /api/page_views", h.handlePostPageView)
-	mux.HandleFunc("POST /api/link_clicks", h.handlePostLinkClick)
-	mux.HandleFunc("POST /api/contributions", h.handlePostContribution)
+
+	mux.HandleFunc("POST /api/users/guest", h.handlePostGuest)
+	mux.HandleFunc("POST /api/users/login", h.handleLoginUser)
+	mux.HandleFunc("POST /api/users/register", h.handleRegisterUser)
+	mux.HandleFunc("GET /api/users/me", middleware.RequireUser(jwtSecret, h.handleGetMe))
+	mux.HandleFunc("POST /api/users/me/favorites/{course_id}", middleware.RequireRegisteredUser(jwtSecret, h.handleAddFavorite))
+	mux.HandleFunc("DELETE /api/users/me/favorites/{course_id}", middleware.RequireRegisteredUser(jwtSecret, h.handleRemoveFavorite))
+
+	// Visits are the guest tracking path, everything else is gated behind signup.
+	mux.HandleFunc("POST /api/page_views", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostPageView)))
+	mux.HandleFunc("POST /api/link_clicks", h.skipForAdmin(middleware.RequireRegisteredUser(jwtSecret, h.handlePostLinkClick)))
+	mux.HandleFunc("POST /api/reports", middleware.RequireRegisteredUser(jwtSecret, h.handlePostReport))
+	mux.HandleFunc("POST /api/feedback", middleware.RequireRegisteredUser(jwtSecret, h.handlePostFeedback))
+	mux.HandleFunc("POST /api/contributions", middleware.RequireRegisteredUser(jwtSecret, h.handlePostContribution))
 }
 
-func registerAdminRoutes(jwtSecret string, mux *http.ServeMux, h *Handler) {
+func registerAdminRoutes(mux *http.ServeMux, h *Handler, jwtSecret string) {
 
 	mux.HandleFunc("GET /api/admin/page_views", middleware.RequireAdmin(jwtSecret, h.handleAdminGetPageViews))
 	mux.HandleFunc("GET /api/admin/link_clicks", middleware.RequireAdmin(jwtSecret, h.handleAdminGetLinkClicks))
+
+	mux.HandleFunc("GET /api/admin/users", middleware.RequireAdmin(jwtSecret, h.handleAdminGetUsers))
+	mux.HandleFunc("GET /api/admin/users/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminGetUser))
+	mux.HandleFunc("GET /api/admin/analytics/summary", middleware.RequireAdmin(jwtSecret, h.handleAdminGetAnalyticsSummary))
 
 	mux.HandleFunc("POST /api/admin/links", middleware.RequireAdmin(jwtSecret, h.handleAdminPostLink))
 	mux.HandleFunc("PATCH /api/admin/links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchLink))
@@ -111,6 +126,7 @@ func registerSEORoutes(mux *http.ServeMux, seoH *seo.Handler) {
 	if seoH == nil {
 		return
 	}
+
 	mux.HandleFunc("/course/{code}", seoH.HandleCourse)
 	mux.HandleFunc("/program/{slug}", seoH.HandleProgram)
 	mux.HandleFunc("/courses", seoH.HandleCoursesIndex)
