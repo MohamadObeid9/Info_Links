@@ -3,19 +3,31 @@ package api
 import (
 	"net/http"
 
-	"infolinks-backend/internal/middleware"
+	"infolinks-backend/internal/device"
 	"infolinks-backend/internal/models"
 )
 
+type pageViewBody struct {
+	Page   string `json:"page"`
+	Device string `json:"device"`
+	UserID int    `json:"user_id"`
+}
+
 func (h *Handler) handlePostPageView(w http.ResponseWriter, r *http.Request) {
-	if middleware.IsAuthenticatedAdmin(string(h.jwtSecret), r.Header.Get("Authorization")) {
-		w.WriteHeader(http.StatusNoContent)
+	userID, ok := requireUserID(w, r)
+	if !ok {
 		return
 	}
 
-	var pv models.PageView
-	if !decodeJSONBody(w, r, &pv) {
+	var body pageViewBody
+	if !decodeJSONBody(w, r, &body) {
 		return
+	}
+
+	pv := models.PageView{
+		Page:       body.Page,
+		UserID:     userID,
+		DeviceType: device.ClassifyUserAgent(r.UserAgent()),
 	}
 	if err := h.pageViewService.Create(r.Context(), pv); err != nil {
 		h.LoggerWithID(r).Error("post page view failed", "error", err)

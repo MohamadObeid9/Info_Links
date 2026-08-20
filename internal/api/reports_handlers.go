@@ -10,10 +10,16 @@ import (
 )
 
 func (h *Handler) handlePostReport(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+
 	var rep models.Report
 	if !decodeJSONBody(w, r, &rep) {
 		return
 	}
+	rep.UserID = userID
 	if err := h.reportService.Create(r.Context(), rep); err != nil {
 		mapPostReportErr(h, w, r, err)
 		return

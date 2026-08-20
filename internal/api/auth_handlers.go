@@ -11,6 +11,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+// tokenTTL is how long both admin and student JWTs stay valid. A year is the
+// product choice: students log in once and stay signed in, and admins get the
+// same lifetime so sessions do not silently expire mid-semester. These tokens
+// are not revocable, so leaking an admin token grants a year of access.
+const tokenTTL = time.Hour * 24 * 365
+
 // HandleLogin authenticates an admin and returns a JWT.
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var creds struct {
@@ -34,7 +40,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"admin": true,
-		"exp":   time.Now().Add(time.Hour * 24 * 7).Unix(), // 1 week
+		"exp":   time.Now().Add(tokenTTL).Unix(),
 	})
 
 	tokenString, err := token.SignedString(h.jwtSecret)
@@ -104,4 +110,18 @@ func isAdmin(supabaseToken string) bool {
 
 	role, _ := meta["role"].(string)
 	return role == "admin"
+}
+
+func generateUserToken(userID int, isGuest bool, jwtSecret []byte) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"userID":  userID,
+		"isGuest": isGuest,
+		"exp":     time.Now().Add(tokenTTL).Unix(),
+	})
+
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return "", err
+	}
+	return tokenString, nil
 }

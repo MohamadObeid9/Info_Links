@@ -4,6 +4,7 @@ import { showToast } from "./export.js";
 import { esc, setBtnLoading } from "./ui.js";
 import { loadReportsBadges } from "./data.js";
 import { getAdminTableSkeleton } from "./skeleton.js";
+import { loadStudentDirectory, senderCell } from "./students.js";
 
 // Feedback management
 const FEEDBACK_PAGE_SIZE = 10;
@@ -18,19 +19,24 @@ function resetAdminFeedbackPage() {
 
 function _renderFeedbackPager() {
     const pageNum = feedbackPage + 1;
-    return `<div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;">
-        <button class="action-btn" ${feedbackPage === 0 ? "disabled" : ""} onclick="setAdminFeedbackPage(-1)">← Prev</button>
-        <span style="font-size:.85rem;color:var(--muted);">Page ${pageNum}</span>
-        <button class="action-btn" ${feedbackHasNext ? "" : "disabled"} onclick="setAdminFeedbackPage(1)">Next →</button>
-    </div>`;
+    const prev = feedbackPage > 0
+        ? `<button type="button" class="action-btn pager-btn" onclick="setAdminFeedbackPage(-1)">← Prev</button>`
+        : `<button type="button" class="action-btn pager-btn" disabled>← Prev</button>`;
+    const next = feedbackHasNext
+        ? `<button type="button" class="action-btn pager-btn" onclick="setAdminFeedbackPage(1)">Next →</button>`
+        : `<button type="button" class="action-btn pager-btn" disabled>Next →</button>`;
+    return `<div class="admin-pager">${prev}<span>Page ${pageNum}</span>${next}</div>`;
 }
 
 function setAdminFeedbackPage(delta) {
+    if (delta < 0 && feedbackPage === 0) return;
+    if (delta > 0 && !feedbackHasNext) return;
     feedbackPage = Math.max(0, feedbackPage + delta);
     renderAdminFeedback();
 }
 
 async function submitFeedback() {
+    if (!window.requireStudent(submitFeedback)) return;
     const btn = document.querySelector("#view-feedback .btn-primary");
     const category = document.getElementById('feedbackCategory').value;
     if (!category) {
@@ -57,6 +63,7 @@ async function submitFeedback() {
         document.getElementById('feedbackMessage').value = '';
         updateStarDisplay();
     } catch (err) {
+        if (window.handleStudentAuthError?.(err, submitFeedback)) return;
         logApiError(err, 'submitFeedback');
         showToast(formatApiError(err, 'Failed to submit feedback'), true);
     } finally {
@@ -106,14 +113,18 @@ async function renderAdminFeedback() {
     const offset = feedbackPage * FEEDBACK_PAGE_SIZE;
 
     try {
-        const response = await sb(`feedback?limit=${FEEDBACK_PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`, 'GET');
-        const feedback = Array.isArray(response) ? response : (response && response.data) || [];
+        const [response] = await Promise.all([
+            sb(`feedback?limit=${FEEDBACK_PAGE_SIZE + 1}&offset=${offset}&q=${encodeURIComponent(q)}`, 'GET'),
+            loadStudentDirectory(),
+        ]);
+        const fetched = Array.isArray(response) ? response : (response && response.data) || [];
+        feedbackHasNext = fetched.length > FEEDBACK_PAGE_SIZE;
+        const feedback = fetched.slice(0, FEEDBACK_PAGE_SIZE);
         if (feedbackPage > 0 && feedback.length === 0) {
             feedbackPage -= 1;
             renderAdminFeedback();
             return;
         }
-        feedbackHasNext = feedback.length === FEEDBACK_PAGE_SIZE;
 
         let html = `<input class="admin-search" placeholder="🔍 Search feedback…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;resetAdminFeedbackPage();renderAdminFeedback()"/>`;
         if (feedback.length === 0) {
@@ -126,6 +137,7 @@ async function renderAdminFeedback() {
                 <table class="admin-table">
                     <thead>
                         <tr>
+                            <th>Sender</th>
                             <th>Date</th>
                             <th>Category</th>
                             <th>Rating</th>
@@ -149,6 +161,7 @@ async function renderAdminFeedback() {
 
             html += `
                 <tr>
+                    <td>${senderCell(item.user_id)}</td>
                     <td>${date}</td>
                     <td><span class="tag tag-gray">${categoryDisplay}</span></td>
                     <td style="white-space: nowrap; min-width: 140px;"><span style="font-size: 1.2rem;" title="${ratingText}">${stars}</span><span style="font-size: 0.9rem; color: var(--text); font-weight: 600; margin-left: 8px;">${ratingText}</span></td>

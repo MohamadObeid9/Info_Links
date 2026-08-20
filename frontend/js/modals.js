@@ -865,4 +865,4 @@ Object.assign(window, {
 
 document.addEventListener("keydown", _trapModalFocus);
 
-export { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder };
+export { openModal, closeModal, _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder };

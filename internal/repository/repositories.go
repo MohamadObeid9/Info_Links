@@ -9,6 +9,30 @@ type ContentRepository interface {
 	Get(ctx context.Context) ([]byte, error)
 }
 
+type UserRepository interface {
+	CreateGuest(ctx context.Context) (int, error)
+	CreateUser(ctx context.Context, u models.User) (models.User, error)
+	ClaimGuest(ctx context.Context, guestID int, u models.User) (models.User, error)
+	AdoptGuest(ctx context.Context, guestID int, userID int) error
+	GetByID(ctx context.Context, id int) (models.User, error)
+	GetByCredentials(ctx context.Context, u models.User) (models.User, error)
+	AddFavorite(ctx context.Context, userID int, courseID int) error
+	RemoveFavorite(ctx context.Context, userID int, courseID int) error
+	ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error)
+	ListActivity(ctx context.Context, userID int, limit int, offset int) ([]models.UserActivityEvent, error)
+}
+
+type AnalyticsSummaryParams struct {
+	Days           int
+	VisitorsLimit  int
+	VisitorsOffset int
+	VisitorsSort   string // "clicks" or "name"
+}
+
+type AnalyticsRepository interface {
+	GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error)
+}
+
 type SEORepository interface {
 	GetCoursePageByCode(ctx context.Context, code string) (*CoursePageData, error)
 	ListCourseCodesForSitemap(ctx context.Context) ([]string, error)

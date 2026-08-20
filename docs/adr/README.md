@@ -11,6 +11,7 @@ Short documents explaining **why** Info Links is built the way it is. Useful for
 | [005](005-render-for-deployment.md) | Render for deployment | Docker web service via `render.yaml`, CI-gated deploy, `/readyz` |
 | [006](006-server-side-seo-pages.md) | Server-side SEO pages | HTML for crawlers alongside the client-rendered SPA |
 | [007](007-versioned-schema-migrations.md) | Versioned schema migrations | `schema.sql` snapshot + golang-migrate files in `db/migrations/` |
+| [008](008-student-identity-without-passwords.md) | Student identity without passwords | Name + number identity, guest claim, student JWT separate from admin auth |
 
 ## Format
 

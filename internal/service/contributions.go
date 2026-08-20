@@ -55,7 +55,7 @@ func (c *ContributionService) Update(ctx context.Context, status string, idStr s
 	}
 
 	switch status {
-	case "pending", "approved":
+	case "pending", "approved", "rejected":
 	case "":
 		return errs.ErrStatusRequired
 	default:
@@ -74,7 +74,7 @@ func (c *ContributionService) List(ctx context.Context, limit int, offset int, q
 	}
 
 	switch status {
-	case "pending", "approved", "":
+	case "pending", "approved", "rejected", "":
 	default:
 		return nil, errs.ErrContributionInvalidStatus
 	}

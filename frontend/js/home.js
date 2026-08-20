@@ -1,7 +1,7 @@
 
 // ===================== HOME RENDER =====================
 import { AppState } from "./state.js";
-import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips } from "./ui.js";
+import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref } from "./ui.js";
 
 function renderProgTabs() {
   document.getElementById("progTabs").innerHTML =
@@ -54,6 +54,12 @@ function renderFavorites() {
   const q = document.getElementById("searchInput")?.value.toLowerCase().trim() || "";
   const favIds = AppState.favorites;
   let html = "";
+
+  if (!window.isRegisteredStudent?.() && !AppState.adminLoggedIn) {
+    document.getElementById("coursesOutput").innerHTML =
+      '<div class="empty">Sign up to save courses here — it takes a name and a number.</div>';
+    return;
+  }
 
   if (favIds.size === 0) {
     document.getElementById("coursesOutput").innerHTML =
@@ -223,7 +229,7 @@ function renderExtra() {
                  data-url="${esc(l.url)}"
                  data-link-id="${l.id}"
                  data-link-kind="extra_link"
-                 href="${esc(l.url)}">
+                 href="${_linkHref(l.url)}">
                 <span class="link-item-main">
                   ${getLinkBadge(l.type)}
                   <span class="link-label">${esc(l.label)}</span>
@@ -245,6 +251,10 @@ function renderExtra() {
 }
 
 function selectProg(id) {
+  // "My Courses" is server-synced, so it needs a registered student.
+  if (id === "favorites" && !window.requireStudent(() => selectProg("favorites"))) {
+    return;
+  }
   AppState.currentProg = id;
   AppState.currentYear = "all";
   AppState.currentSem = "all";

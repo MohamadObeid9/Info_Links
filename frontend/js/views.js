@@ -123,6 +123,7 @@ function onReportCourseChange() {
 }
 
 async function submitReport() {
+  if (!window.requireStudent(submitReport)) return;
   const btn = document.getElementById("submitReportBtn");
   const courseName = document.getElementById("rCourse").value.trim();
   const link = document.getElementById("rLink").value;
@@ -146,6 +147,7 @@ async function submitReport() {
     document.getElementById("rDesc").value = "";
     showToast("Report submitted! Thank you.");
   } catch (e) {
+    if (window.handleStudentAuthError?.(e, submitReport)) return;
     showToast("Failed to submit: " + e.message, true);
   } finally {
     setBtnLoading(btn, false);
@@ -153,6 +155,7 @@ async function submitReport() {
 }
 
 async function submitContribution() {
+  if (!window.requireStudent(submitContribution)) return;
   const btn = document.getElementById("submitContribBtn");
   const course = document.getElementById("cCourse").value.trim();
   const link = document.getElementById("cLink").value.trim();
@@ -187,6 +190,7 @@ async function submitContribution() {
     document.getElementById("cNote").value = "";
     showToast("Contribution submitted! Thank you.");
   } catch (e) {
+    if (window.handleStudentAuthError?.(e, submitContribution)) return;
     showToast("Failed to submit: " + e.message, true);
   } finally {
     setBtnLoading(btn, false);

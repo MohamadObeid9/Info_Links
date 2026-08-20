@@ -72,6 +72,7 @@ func TestHandlePostReport(t *testing.T) {
 	tests := []struct {
 		name         string
 		body         string
+		noStudent    bool
 		createErr    error
 		statusWanted int
 		errMsg       string
@@ -84,7 +85,22 @@ func TestHandlePostReport(t *testing.T) {
 			createErr:    nil,
 			statusWanted: http.StatusCreated,
 			wantCalls:    1,
-			reportWanted: &models.Report{CourseName: "A", LinkURL: "https://example.com", Description: ""},
+			reportWanted: &models.Report{CourseName: "A", LinkURL: "https://example.com", Description: "", UserID: testStudentID},
+		},
+		{
+			name:         "201 takes the user id from the token, not the body",
+			body:         `{"course_name":"A","link_url":"https://example.com","description":"","user_id":999}`,
+			statusWanted: http.StatusCreated,
+			wantCalls:    1,
+			reportWanted: &models.Report{CourseName: "A", LinkURL: "https://example.com", Description: "", UserID: testStudentID},
+		},
+		{
+			name:         "401 when the student token is missing",
+			body:         `{"course_name":"A","link_url":"https://example.com","description":""}`,
+			noStudent:    true,
+			statusWanted: http.StatusUnauthorized,
+			errMsg:       "Unauthorized: No token provided",
+			wantCalls:    0,
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -114,8 +130,10 @@ func TestHandlePostReport(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeReportService := &fakeReportService{createErr: tt.createErr}
 			h := testHandler(t, withReport(fakeReportService))
-			req := httptest.NewRequest(http.MethodPost, "/api/reports", bytes.NewBufferString(tt.body))
-			req.Header.Set("Content-Type", "application/json")
+			req := studentRequest(http.MethodPost, "/api/reports", tt.body)
+			if tt.noStudent {
+				req = jsonRequest(http.MethodPost, "/api/reports", tt.body)
+			}
 			rr := httptest.NewRecorder()
 
 			h.handlePostReport(rr, req)

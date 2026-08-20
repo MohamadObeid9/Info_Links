@@ -159,7 +159,7 @@ Each domain has its own `mapXxxErr` helper in the same `*_handlers.go` file.
 1. Decode email/password from JSON
 2. Verify credentials with Supabase Auth API (`verifyWithSupabase`)
 3. Check `app_metadata.role == "admin"` in the Supabase JWT (`isAdmin`)
-4. Issue a short-lived app JWT signed with `JWT_SECRET` (7-day expiry, `admin: true` claim)
+4. Issue an app JWT signed with `JWT_SECRET` (365-day expiry, `admin: true` claim)
 5. Return `{"token":"..."}` to the frontend
 
 **Protected routes:**

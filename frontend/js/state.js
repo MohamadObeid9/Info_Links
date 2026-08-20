@@ -16,9 +16,28 @@ const _rawToken = localStorage.getItem("infolinks_token");
 const _validToken = _isTokenValid(_rawToken) ? _rawToken : null;
 if (_rawToken && !_validToken) localStorage.removeItem("infolinks_token");
 
+// Student session token — completely separate from the admin token above.
+const STUDENT_TOKEN_KEY = "infolinks_student_token";
+// Last known registered student id, so the favorites cache can paint before
+// GET /api/users/me resolves.
+const STUDENT_UID_KEY = "infolinks_student_uid";
+const _rawStudentToken = localStorage.getItem(STUDENT_TOKEN_KEY);
+const _validStudentToken = _isTokenValid(_rawStudentToken) ? _rawStudentToken : null;
+if (_rawStudentToken && !_validStudentToken) {
+  localStorage.removeItem(STUDENT_TOKEN_KEY);
+  localStorage.removeItem(STUDENT_UID_KEY);
+}
+const _storedStudentId = _validStudentToken
+  ? parseInt(localStorage.getItem(STUDENT_UID_KEY) || "", 10) || null
+  : null;
+
 const AppState = {
   sbToken: _validToken,
   adminLoggedIn: !!_validToken,
+  studentToken: _validStudentToken,
+  studentUser: null,
+  studentUserId: _storedStudentId,
+  adminStudentId: null,
   currentAdminTab: "courses",
   adminSearch: "",
   adminFilterProg: "all",
@@ -32,34 +51,66 @@ const AppState = {
   currentSem: "all",
   dbPrograms: [],
   analyticsRange: "30",
+  analyticsChartSeries: "visitors",
+  analyticsVisitorsSort: "clicks",
+  analyticsVisitorsOffset: 0,
+  analyticsLinksTab: "today",
   analyticsTopLinksExpanded: false,
   analyticsTopLinksTodayExpanded: false,
+  analyticsTopUsersExpanded: false,
   dbExtra: [],
   courseById: new Map(),
   linkById: new Map(),
   favorites: new Set(), // Set of course IDs (strings from localStorage)
 };
 
-// ── Favorites: restore from localStorage ─────────────────────────────────────
-(function initFavorites() {
-  try {
-    const raw = localStorage.getItem("infolinks_favorites");
-    if (raw) {
-      const arr = JSON.parse(raw);
-      AppState.favorites = new Set(arr.map(String));
-    }
-  } catch (e) {
-    AppState.favorites = new Set();
-  }
-})();
+// ── Favorites ────────────────────────────────────────────────────────────────
+// Favorites live server-side; localStorage is only a per-user cache so the star
+// state paints instantly on reload. The legacy shared key is dropped so one
+// student never inherits another's favorites on the same browser.
+localStorage.removeItem("infolinks_favorites");
+
+function _favoritesCacheKey() {
+  const id = AppState.studentUser?.id ?? AppState.studentUserId;
+  return id ? `infolinks_favorites_u${id}` : null;
+}
 
 function saveFavorites() {
+  const key = _favoritesCacheKey();
+  if (!key) return;
   try {
-    localStorage.setItem(
-      "infolinks_favorites",
-      JSON.stringify([...AppState.favorites]),
-    );
+    localStorage.setItem(key, JSON.stringify([...AppState.favorites]));
   } catch (e) { }
+}
+
+/** Paint favorites from the per-user cache (called before /users/me resolves). */
+function loadFavoritesCache() {
+  const key = _favoritesCacheKey();
+  if (!key) return false;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+    AppState.favorites = new Set(JSON.parse(raw).map(String));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Replace the local set with the authoritative server list. */
+function setFavorites(courseIds) {
+  AppState.favorites = new Set((courseIds || []).map(String));
+  saveFavorites();
+}
+
+function clearFavorites() {
+  const key = _favoritesCacheKey();
+  AppState.favorites = new Set();
+  if (key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) { }
+  }
 }
 
 function toggleFavorite(courseId) {
@@ -94,4 +145,14 @@ Object.defineProperties(window, {
 });
 
 window.AppState = AppState;
-export { AppState, saveFavorites, toggleFavorite };
+export {
+  AppState,
+  STUDENT_TOKEN_KEY,
+  STUDENT_UID_KEY,
+  _isTokenValid as isJwtValid,
+  saveFavorites,
+  loadFavoritesCache,
+  setFavorites,
+  clearFavorites,
+  toggleFavorite,
+};

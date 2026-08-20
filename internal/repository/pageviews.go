@@ -35,7 +35,7 @@ func (r *postgresPageViewRepository) List(ctx context.Context) ([]models.PageVie
 }
 
 func (r *postgresPageViewRepository) Create(ctx context.Context, pv models.PageView) error {
-	if _, err := r.db.ExecContext(ctx, insertPageViewQuery, pv.Page); err != nil {
+	if _, err := r.db.ExecContext(ctx, insertPageViewQuery, pv.Page, pv.UserID, pv.DeviceType); err != nil {
 		return fmt.Errorf("insert page view: %w", err)
 	}
 	return nil

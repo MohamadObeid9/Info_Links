@@ -5,13 +5,12 @@ import (
 	"net/http"
 
 	"infolinks-backend/internal/errs"
-	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/models"
 )
 
 func (h *Handler) handlePostLinkClick(w http.ResponseWriter, r *http.Request) {
-	if middleware.IsAuthenticatedAdmin(string(h.jwtSecret), r.Header.Get("Authorization")) {
-		w.WriteHeader(http.StatusNoContent)
+	userID, ok := requireUserID(w, r)
+	if !ok {
 		return
 	}
 
@@ -19,6 +18,7 @@ func (h *Handler) handlePostLinkClick(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSONBody(w, r, &lc) {
 		return
 	}
+	lc.UserID = userID
 	if err := h.linkClickService.Create(r.Context(), lc); err != nil {
 		mapPostLinkClickErr(h, w, r, err)
 		return

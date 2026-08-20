@@ -99,9 +99,9 @@
     color: #2196f3;
 }
 
-.tag-gray {
-    background: rgba(158, 158, 158, 0.2);
-    color: var(--muted);
+.tag-rejected {
+    background: rgba(244, 67, 54, 0.2);
+    color: var(--danger);
 }
 
 .action-btns {
@@ -123,6 +123,38 @@
 .action-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+    color: var(--muted);
+    border-color: var(--border);
+    background: transparent;
+}
+
+.admin-pager {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.admin-pager span {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.pager-btn:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.pager-btn:not(:disabled):hover {
+    background: var(--accent);
+    color: #fff;
 }
 
 .action-btn.del {
@@ -214,6 +246,72 @@
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+.stat-delta {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #22c55e;
+    margin-bottom: 4px;
+}
+
+.analytics-deltas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+}
+
+.analytics-deltas .stat-delta-sep {
+    color: var(--muted);
+}
+
+.analytics-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.analytics-chart-series {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.visitor-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.visitor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.visitor-chip:hover {
+    border-color: var(--accent);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.visitor-chip-handle {
+    font-weight: 600;
+}
+
+.visitor-chip .badge-count {
+    margin-left: 0;
 }
 
 .chart-wrap {

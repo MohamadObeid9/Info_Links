@@ -26,6 +26,18 @@ func writeJSONError(w http.ResponseWriter, r *http.Request, status int, message 
 	writeJSON(w, status, payload)
 }
 
+// requireUserID returns the student id put in the context by the auth middleware.
+// Handlers behind RequireUser always find one; the guard keeps a route that was
+// wired without the middleware from writing rows with no owner.
+func requireUserID(w http.ResponseWriter, r *http.Request) (int, bool) {
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID <= 0 {
+		writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: No token provided")
+		return 0, false
+	}
+	return userID, true
+}
+
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	dec := json.NewDecoder(r.Body)

@@ -30,11 +30,11 @@ func TestPageViewRepository_Create(t *testing.T) {
 	}{
 		{
 			name: "insert page view",
-			pv:   models.PageView{Page: "home"},
+			pv:   models.PageView{Page: "home", UserID: 7, DeviceType: "phone"},
 		},
 		{
 			name:    "insert exec error",
-			pv:      models.PageView{Page: "home"},
+			pv:      models.PageView{Page: "home", UserID: 7, DeviceType: "phone"},
 			execErr: errs.ErrDatabaseDown,
 			err:     errs.ErrDatabaseDown,
 		},
@@ -43,7 +43,7 @@ func TestPageViewRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestPageViewRepo(t)
 			exp := mock.ExpectExec(insertPageViewQuery).
-				WithArgs(tt.pv.Page)
+				WithArgs(tt.pv.Page, tt.pv.UserID, tt.pv.DeviceType)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {

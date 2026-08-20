@@ -48,7 +48,7 @@ func (c *postgresContributionRepository) Update(ctx context.Context, status stri
 }
 
 func (c *postgresContributionRepository) Create(ctx context.Context, contribution models.Contribution) error {
-	if _, err := c.db.ExecContext(ctx, insertContributionQuery, contribution.CourseName, contribution.LinkURL, contribution.Note); err != nil {
+	if _, err := c.db.ExecContext(ctx, insertContributionQuery, contribution.CourseName, contribution.LinkURL, contribution.Note, contribution.UserID); err != nil {
 		return fmt.Errorf("insert contribution: %w", err)
 	}
 	return nil
@@ -71,8 +71,12 @@ func (c *postgresContributionRepository) List(ctx context.Context, limit int, of
 	var contributions []models.Contribution
 	for rows.Next() {
 		var contribution models.Contribution
-		if err := rows.Scan(&contribution.ID, &contribution.CourseName, &contribution.LinkURL, &contribution.Note, &contribution.Status, &contribution.CreatedAt); err != nil {
+		var userID sql.NullInt64
+		if err := rows.Scan(&contribution.ID, &contribution.CourseName, &contribution.LinkURL, &contribution.Note, &contribution.Status, &contribution.CreatedAt, &userID); err != nil {
 			return nil, fmt.Errorf("list contributions rows scan: %w", err)
+		}
+		if userID.Valid {
+			contribution.UserID = int(userID.Int64)
 		}
 		contributions = append(contributions, contribution)
 	}

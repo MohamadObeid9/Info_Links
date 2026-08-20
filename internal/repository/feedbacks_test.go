@@ -31,11 +31,11 @@ func TestFeedbackRepository_Create(t *testing.T) {
 	}{
 		{
 			name:     "insert feedback",
-			feedback: models.Feedback{Category: "Performance", Rating: 5, Message: "very good resources"},
+			feedback: models.Feedback{Category: "Performance", Rating: 5, Message: "very good resources", UserID: 7},
 		},
 		{
 			name:     "insert exec error",
-			feedback: models.Feedback{Category: "Performance", Rating: 5, Message: "very good resources"},
+			feedback: models.Feedback{Category: "Performance", Rating: 5, Message: "very good resources", UserID: 7},
 			execErr:  errs.ErrDatabaseDown,
 			err:      errs.ErrDatabaseDown,
 		},
@@ -44,7 +44,7 @@ func TestFeedbackRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestFeedbackRepo(t)
 			exp := mock.ExpectExec(insertFeedbackQuery).
-				WithArgs(tt.feedback.Category, tt.feedback.Rating, tt.feedback.Message)
+				WithArgs(tt.feedback.Category, tt.feedback.Rating, tt.feedback.Message, tt.feedback.UserID)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {
@@ -181,6 +181,7 @@ func TestFeedbackRepository_Delete(t *testing.T) {
 func TestFeedbackRepository_List(t *testing.T) {
 	sampleRow := models.Feedback{
 		ID:        1,
+		UserID:    7,
 		Category:  "Performance",
 		Rating:    5,
 		Message:   "very nice",
@@ -208,7 +209,7 @@ func TestFeedbackRepository_List(t *testing.T) {
 			offset:     0,
 			query:      listFeedbackNoFilterQuery,
 			queryArgs:  []any{25, 0},
-			rows:       [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Feedback{sampleRow},
 		},
 		{
@@ -219,7 +220,7 @@ func TestFeedbackRepository_List(t *testing.T) {
 			status:     "new",
 			query:      listFeedbackWithQStatusQuery,
 			queryArgs:  []any{"%Performance%", "new", 10, 5},
-			rows:       [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Feedback{sampleRow},
 		},
 		{
@@ -229,7 +230,7 @@ func TestFeedbackRepository_List(t *testing.T) {
 			status:     "new",
 			query:      listFeedbackWithStatusQuery,
 			queryArgs:  []any{"new", 10, 10},
-			rows:       [][]any{{2, "Performance", 5, "nice", "new", "2024-02-01T00:00:00Z"}},
+			rows:       [][]any{{2, "Performance", 5, "nice", "new", "2024-02-01T00:00:00Z", nil}},
 			wantResult: []models.Feedback{{ID: 2, Category: "Performance", Rating: 5, Message: "nice", Status: "new", CreatedAt: "2024-02-01T00:00:00Z"}},
 		},
 		{
@@ -239,7 +240,7 @@ func TestFeedbackRepository_List(t *testing.T) {
 			q:          "Performance",
 			query:      listFeedbackWithQQuery,
 			queryArgs:  []any{"%Performance%", 10, 0},
-			rows:       [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Feedback{sampleRow},
 		},
 		{
@@ -259,7 +260,7 @@ func TestFeedbackRepository_List(t *testing.T) {
 			status:    "new",
 			query:     listFeedbackWithStatusQuery,
 			queryArgs: []any{"new", 10, 0},
-			rows:      [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:      [][]any{{sampleRow.ID, sampleRow.Category, sampleRow.Rating, sampleRow.Message, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			rowsErr:   errs.ErrDatabaseDown,
 			err:       errs.ErrDatabaseDown,
 		},
@@ -271,7 +272,7 @@ func TestFeedbackRepository_List(t *testing.T) {
 			if tt.queryErr != nil {
 				exp.WillReturnError(tt.queryErr)
 			} else {
-				cols := []string{"id", "category", "rating", "message", "status", "created_at"}
+				cols := []string{"id", "category", "rating", "message", "status", "created_at", "user_id"}
 				rows := sqlmock.NewRows(cols)
 				for _, row := range tt.rows {
 					rows.AddRow(driverValues(row)...)

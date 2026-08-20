@@ -173,6 +173,49 @@ select.inp {
     justify-content: flex-end;
 }
 
+.auth-mode-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin: -4px 0 16px;
+    padding: 4px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.auth-mode-btn {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 9px 12px;
+    border-radius: 9px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.2;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.auth-mode-btn:hover:not(.active) {
+    color: var(--text);
+    background: color-mix(in srgb, var(--bg2) 70%, transparent);
+}
+
+.auth-mode-btn.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.auth-hint {
+    margin: 0 0 4px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--muted);
+}
+
 .toast {
     position: fixed;
     bottom: 24px;

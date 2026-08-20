@@ -1,11 +1,19 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"infolinks-backend/internal/middleware"
 )
+
+// testStudentID is the student id the auth middleware would put in the context.
+const testStudentID = 42
 
 type mockPinger struct {
 	err error
@@ -18,6 +26,8 @@ func (m mockPinger) Ping(ctx context.Context) error {
 // handlerTestDeps holds fakes for NewHandler in tests. Nil fields use harmless defaults.
 type handlerTestDeps struct {
 	db           *mockPinger
+	user         *fakeUserService
+	analytics    *fakeAnalyticsService
 	link         *fakeLinkService
 	course       *fakeCourseService
 	report       *fakeReportService
@@ -34,6 +44,14 @@ type testHandlerOption func(*handlerTestDeps)
 
 func withDB(p *mockPinger) testHandlerOption {
 	return func(d *handlerTestDeps) { d.db = p }
+}
+
+func withUser(s *fakeUserService) testHandlerOption {
+	return func(d *handlerTestDeps) { d.user = s }
+}
+
+func withAnalytics(s *fakeAnalyticsService) testHandlerOption {
+	return func(d *handlerTestDeps) { d.analytics = s }
 }
 
 func withReport(s *fakeReportService) testHandlerOption {
@@ -77,6 +95,8 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 
 	deps := handlerTestDeps{
 		db:           &mockPinger{},
+		user:         &fakeUserService{},
+		analytics:    &fakeAnalyticsService{},
 		link:         &fakeLinkService{},
 		report:       &fakeReportService{},
 		course:       &fakeCourseService{},
@@ -98,6 +118,8 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 		SupabaseURL:         "https://random.supabase.co",
 		SupabaseAnonKey:     "a-random-generated-key",
 		DB:                  deps.db,
+		UserService:         deps.user,
+		AnalyticsService:    deps.analytics,
 		LinkService:         deps.link,
 		ReportService:       deps.report,
 		CourseService:       deps.course,
@@ -113,4 +135,18 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 		t.Fatalf("NewHandler: %v", err)
 	}
 	return h
+}
+
+// jsonRequest builds a JSON request with no authenticated student.
+func jsonRequest(method, target, body string) *http.Request {
+	req := httptest.NewRequest(method, target, bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
+// studentRequest builds a JSON request already carrying a student identity, the
+// way the auth middleware hands it to the handler.
+func studentRequest(method, target, body string) *http.Request {
+	req := jsonRequest(method, target, body)
+	return req.WithContext(middleware.ContextWithUser(req.Context(), testStudentID, false))
 }

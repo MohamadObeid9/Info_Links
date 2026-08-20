@@ -83,14 +83,21 @@ func TestHandlePostContribution(t *testing.T) {
 			createErr:          nil,
 			statusWanted:       http.StatusCreated,
 			wantCalls:          1,
-			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", Note: ""},
+			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", Note: "", UserID: testStudentID},
 		},
 		{
 			name:               "201 accepts link_type from frontend",
 			body:               `{"course_name":"A","link_url":"https://example.com","link_type":"drive","note":"[Type:drive] "}`,
 			statusWanted:       http.StatusCreated,
 			wantCalls:          1,
-			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", LinkType: "drive", Note: "[Type:drive] "},
+			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", LinkType: "drive", Note: "[Type:drive] ", UserID: testStudentID},
+		},
+		{
+			name:               "201 takes the user id from the token, not the body",
+			body:               `{"course_name":"A","link_url":"https://example.com","note":"","user_id":999}`,
+			statusWanted:       http.StatusCreated,
+			wantCalls:          1,
+			contributionWanted: &models.Contribution{CourseName: "A", LinkURL: "https://example.com", Note: "", UserID: testStudentID},
 		},
 		{
 			name:         "400 invalid JSON body",
@@ -120,8 +127,7 @@ func TestHandlePostContribution(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeContributionService := &fakeContributionService{createErr: tt.createErr}
 			h := testHandler(t, withContribution(fakeContributionService))
-			req := httptest.NewRequest(http.MethodPost, "/api/contributions", bytes.NewBufferString(tt.body))
-			req.Header.Set("Content-Type", "application/json")
+			req := studentRequest(http.MethodPost, "/api/contributions", tt.body)
 			rr := httptest.NewRecorder()
 
 			h.handlePostContribution(rr, req)
@@ -189,7 +195,7 @@ func TestHandleAdminGetContributions(t *testing.T) {
 			target:       "/api/admin/contributions?limit=10&offset=10&status=open",
 			listErr:      errs.ErrContributionInvalidStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be pending or approved",
+			errMsg:       "Status must be pending, approved, or rejected",
 		},
 		{
 			name:         "reject list invalid params",
@@ -333,7 +339,7 @@ func TestHandleAdminUpdateContribution(t *testing.T) {
 			body:         `{"status":"open"}`,
 			updateErr:    errs.ErrContributionInvalidStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be pending or approved",
+			errMsg:       "Status must be pending, approved, or rejected",
 			wantCalls:    1,
 		},
 		{
@@ -362,6 +368,15 @@ func TestHandleAdminUpdateContribution(t *testing.T) {
 			wantCalls:    1,
 			wantID:       "10",
 			wantStatus:   "approved",
+		},
+		{
+			name:         "accept valid rejected status",
+			pathID:       "10",
+			body:         `{"status":"rejected"}`,
+			statusWanted: http.StatusOK,
+			wantCalls:    1,
+			wantID:       "10",
+			wantStatus:   "rejected",
 		},
 	}
 	for _, tt := range tests {

@@ -16,6 +16,7 @@ Project history and planned work.
 | **Phase 6** | Open-sourced project for community contributions |
 | **Phase 7** | Favorites, content types, analytics, and PWA support |
 | **Phase 8** | Go backend with layered architecture, observability, CI, and SEO |
+| **Phase 9** | Student identity without passwords, synced favorites, and unique-user analytics |
 
 ---
 
@@ -27,6 +28,12 @@ Project history and planned work.
 - [x] Community rating system for resources (Feedback)
 - [x] Offline mode support (PWA / Service Worker)
 - [x] Production Go backend with tests and observability
+- [x] Student accounts without email or password (name + number 1-100)
+- [x] Guest sessions claimed at signup so pre-signup activity is kept
+- [x] Favorites synced to the account instead of one browser
+- [x] Unique-user analytics aggregated in SQL (active students per range, top students)
+- [x] Admin Students directory with per-student activity timeline
+- [ ] Cleanup job for stale unclaimed guest rows
 - [ ] Link health checker worker (companion Go service)
 - [ ] Mobile app (iOS/Android)
 - [ ] Push notifications for new resources

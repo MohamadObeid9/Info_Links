@@ -31,11 +31,11 @@ func TestContributionRepository_Create(t *testing.T) {
 	}{
 		{
 			name:         "insert contribution",
-			contribution: models.Contribution{CourseName: "My Course", LinkURL: "https://test.com", Note: "note"},
+			contribution: models.Contribution{CourseName: "My Course", LinkURL: "https://test.com", Note: "note", UserID: 7},
 		},
 		{
 			name:         "insert exec error",
-			contribution: models.Contribution{CourseName: "My Course", LinkURL: "https://test.com", Note: "note"},
+			contribution: models.Contribution{CourseName: "My Course", LinkURL: "https://test.com", Note: "note", UserID: 7},
 			execErr:      errs.ErrDatabaseDown,
 			err:          errs.ErrDatabaseDown,
 		},
@@ -44,7 +44,7 @@ func TestContributionRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestContributionRepo(t)
 			exp := mock.ExpectExec(insertContributionQuery).
-				WithArgs(tt.contribution.CourseName, tt.contribution.LinkURL, tt.contribution.Note)
+				WithArgs(tt.contribution.CourseName, tt.contribution.LinkURL, tt.contribution.Note, tt.contribution.UserID)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {
@@ -187,6 +187,7 @@ func TestContributionRepository_Update(t *testing.T) {
 func TestContributionRepository_List(t *testing.T) {
 	sampleRow := models.Contribution{
 		ID:         3,
+		UserID:     7,
 		CourseName: "Linux",
 		LinkURL:    "https://example.com",
 		Note:       "broken link",
@@ -214,7 +215,7 @@ func TestContributionRepository_List(t *testing.T) {
 			offset:     0,
 			query:      listContributionsNoFilterQuery,
 			queryArgs:  []any{35, 0},
-			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Contribution{sampleRow},
 		},
 		{
@@ -225,7 +226,7 @@ func TestContributionRepository_List(t *testing.T) {
 			status:     "pending",
 			query:      listContributionsWithQStatusQuery,
 			queryArgs:  []any{"%Linux%", "pending", 15, 25},
-			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Contribution{sampleRow},
 		},
 		{
@@ -235,7 +236,7 @@ func TestContributionRepository_List(t *testing.T) {
 			status:     "approved",
 			query:      listContributionsWithStatusQuery,
 			queryArgs:  []any{"approved", 10, 10},
-			rows:       [][]any{{2, "Go", "https://go.dev", "", "approved", "2024-02-01T00:00:00Z"}},
+			rows:       [][]any{{2, "Go", "https://go.dev", "", "approved", "2024-02-01T00:00:00Z", nil}},
 			wantResult: []models.Contribution{{ID: 2, CourseName: "Go", LinkURL: "https://go.dev", Status: "approved", CreatedAt: "2024-02-01T00:00:00Z"}},
 		},
 		{
@@ -245,7 +246,7 @@ func TestContributionRepository_List(t *testing.T) {
 			q:          "Linux",
 			query:      listContributionsWithQQuery,
 			queryArgs:  []any{"%Linux%", 10, 0},
-			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:       [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			wantResult: []models.Contribution{sampleRow},
 		},
 		{
@@ -265,7 +266,7 @@ func TestContributionRepository_List(t *testing.T) {
 			status:    "pending",
 			query:     listContributionsWithStatusQuery,
 			queryArgs: []any{"pending", 10, 0},
-			rows:      [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt}},
+			rows:      [][]any{{sampleRow.ID, sampleRow.CourseName, sampleRow.LinkURL, sampleRow.Note, sampleRow.Status, sampleRow.CreatedAt, sampleRow.UserID}},
 			rowsErr:   errs.ErrDatabaseDown,
 			err:       errs.ErrDatabaseDown,
 		},
@@ -277,7 +278,7 @@ func TestContributionRepository_List(t *testing.T) {
 			if tt.queryErr != nil {
 				exp.WillReturnError(tt.queryErr)
 			} else {
-				cols := []string{"id", "course_name", "link_url", "note", "status", "created_at"}
+				cols := []string{"id", "course_name", "link_url", "note", "status", "created_at", "user_id"}
 				rows := sqlmock.NewRows(cols)
 				for _, row := range tt.rows {
 					rows.AddRow(driverValues(row)...)
