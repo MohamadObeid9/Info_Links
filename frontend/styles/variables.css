@@ -213,6 +213,10 @@ nav {
     border-color: var(--accent, var(--text));
 }
 
+.search-bar {
+    margin: 0 auto 8px;
+}
+
 .search-wrap {
     position: relative;
     max-width: 520px;

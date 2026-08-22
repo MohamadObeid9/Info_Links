@@ -4,6 +4,7 @@ import "./js/supabase.js";
 import "./js/skeleton.js";
 import "./js/ui.js";
 import "./js/home.js";
+import "./js/mobile-home.js";
 import "./js/data.js";
 import "./js/feedback.js";
 import "./js/export.js";
@@ -80,6 +81,9 @@ document.addEventListener("click", (e) => {
         break;
       case "openAddCourseModal":
         window.openAddCourseModal();
+        break;
+      case "openAddExtraSectionModal":
+        window.openAddExtraSectionModal();
         break;
       case "exportData":
         window.exportData();

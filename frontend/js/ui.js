@@ -65,6 +65,21 @@ function toggleFilters() {
   document.getElementById("filterToggleBtn").classList.toggle("open");
   document.getElementById("filtersCollapsible").classList.toggle("open");
 }
+
+const MOBILE_MQ = "(max-width: 768px)";
+
+function isMobileView() {
+  return window.matchMedia(MOBILE_MQ).matches;
+}
+
+function adminTd(label, inner, extraAttrs = "") {
+  return `<td data-label="${esc(label)}"${extraAttrs}>${inner}</td>`;
+}
+
+function adminCell(role, label, inner) {
+  return `<td class="${role}" data-label="${esc(label)}">${inner}</td>`;
+}
+
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("nav-btn")) {
     document.getElementById("hamburgerBtn").classList.remove("open");
@@ -166,9 +181,11 @@ function getContentTypeChip(ct) { return getContentTypeChips(ct); }
 /**
  * Builds the HTML string for a single course card.
  * Used by both renderCourses (filtered) and renderAllCourses (all).
+ * opts.path is shown on mobile search results (program · year · semester).
  */
-function _buildCourseCard(c) {
+function _buildCourseCard(c, opts = {}) {
   const isFav = AppState.favorites.has(String(c.id));
+  const path = opts.path || "";
   const linksHtml = c.links.length
     ? c.links
       .map(
@@ -193,15 +210,19 @@ function _buildCourseCard(c) {
 
   return `
     <div class="course-card" id="course-card-${c.id}">
-      <div class="course-header">
+      <div class="course-header" data-toggle-course="${c.id}">
         <h2 class="course-name">${esc(c.name)}</h2>
-        <div style="display:flex;align-items:center;gap:6px;">
-          ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
-          <h3 class="course-code">${esc(c.code)}</h3>
+        <div class="course-header-side">
+          <div class="course-header-tags">
+            ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
+            <h3 class="course-code">${esc(c.code)}</h3>
+            ${path ? `<span class="course-path">${esc(path)}</span>` : ""}
+          </div>
           <button class="fav-btn ${isFav ? "active" : ""}"
             title="${isFav ? "Remove from My Courses" : "Add to My Courses"}"
             onclick="handleFavoriteToggle(${c.id})"
             aria-label="Favorite">★</button>
+          <span class="course-chev" aria-hidden="true">›</span>
         </div>
       </div>
       <div class="links-list">${linksHtml}</div>
@@ -285,6 +306,7 @@ window.copyLink = copyLink;
 window.setBtnLoading = setBtnLoading;
 window.esc = esc;
 window.handleFavoriteToggle = handleFavoriteToggle;
+window.isMobileView = isMobileView;
 
 export {
   esc,
@@ -302,4 +324,7 @@ export {
   copyLink,
   handleFavoriteToggle,
   _linkHref,
+  isMobileView,
+  adminTd,
+  adminCell,
 };

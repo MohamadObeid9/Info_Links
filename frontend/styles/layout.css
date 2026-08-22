@@ -152,6 +152,36 @@
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 14px;
+    gap: 10px;
+}
+
+.course-header-side {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.course-header-tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.course-chev {
+    display: none;
+    color: var(--muted);
+    font-size: 1.15rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.course-path {
+    display: none;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 500;
 }
 
 .course-name {

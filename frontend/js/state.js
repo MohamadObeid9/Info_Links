@@ -49,6 +49,8 @@ const AppState = {
   currentProg: null,
   currentYear: "all",
   currentSem: "all",
+  // Phone browse: "program" picker, "year" (year+semester), or "list".
+  mobileStep: "program",
   dbPrograms: [],
   analyticsRange: "30",
   analyticsChartSeries: "visitors",

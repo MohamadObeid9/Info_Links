@@ -1,13 +1,13 @@
 import { AppState } from "./state.js";
 import { sb, sbAuth, sbLogout } from "./supabase.js";
-import { esc, setBtnLoading, getLinkBadge, getContentTypeChip, _findSharedCourses } from "./ui.js";
+import { esc, setBtnLoading, getLinkBadge, getContentTypeChips, _findSharedCourses, adminCell, isMobileView } from "./ui.js";
 import { getAdminTableSkeleton, getAdminAnalyticsSkeleton } from "./skeleton.js";
 import { loadAll, loadReportsBadges } from "./data.js";
 import { _clearCache } from "./cache.js";
 import { showToast } from "./export.js";
 import { renderAdminFeedback } from "./feedback.js";
 import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder } from "./modals.js";
-import { loadStudentDirectory, rememberStudents, senderCell, studentHandleOf, fmtDateTime } from "./students.js";
+import { loadStudentDirectory, rememberStudents, senderCell, senderDetail, studentHandleOf, fmtDateTime } from "./students.js";
 
 // ===================== ADMIN AUTH =====================
 async function checkLogin() {
@@ -87,6 +87,15 @@ function adminSetPage(tab, delta, rerenderFnName) {
   if (typeof window[rerenderFnName] === "function") window[rerenderFnName]();
 }
 
+function syncAdminMobileChrome() {
+  const select = document.getElementById("adminTabSelect");
+  if (select && select.value !== AppState.currentAdminTab) {
+    select.value = AppState.currentAdminTab;
+  }
+  const add = document.getElementById("adminMobileAdd");
+  if (add) add.hidden = true;
+}
+
 function adminTab(t) {
   AppState.currentAdminTab = t;
   AppState.adminSearch = "";
@@ -102,11 +111,52 @@ function adminTab(t) {
   document.querySelectorAll(".admin-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.adminTab === t);
   });
+  syncAdminMobileChrome();
   renderAdminContent();
+}
+
+function shortUrl(url) {
+  if (!url) return "";
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    const path = u.pathname === "/" ? "" : u.pathname;
+    const s = host + path;
+    return s.length > 36 ? `${s.slice(0, 34)}…` : s;
+  } catch {
+    return url.length > 36 ? `${url.slice(0, 34)}…` : url;
+  }
+}
+
+function _adminLinkRow(l, editOnclick, deleteOnclick) {
+  if (!isMobileView()) {
+    return `
+      <div class="link-chip">
+        ${getLinkBadge(l.type)}<span>${esc(l.label)}</span>
+        ${getContentTypeChips(l.content_type)}
+        ${l.note ? `<span class="admin-muted">(${esc(l.note)})</span>` : ""}
+        <button class="action-btn admin-chip-btn" onclick="${editOnclick}">✏️</button>
+        <button class="action-btn del admin-chip-btn" onclick="${deleteOnclick}">✕</button>
+      </div>`;
+  }
+  return `
+    <div class="link-item admin-link-row">
+      <div class="link-item-main">
+        ${getLinkBadge(l.type)}
+        <span class="link-label">${esc(l.label)}</span>
+        ${l.note ? `<span class="link-note">${esc(l.note)}</span>` : ""}
+      </div>
+      ${getContentTypeChips(l.content_type)}
+      <div class="admin-link-actions">
+        <button class="action-btn" onclick="${editOnclick}">✏️ Edit</button>
+        <button class="action-btn del" onclick="${deleteOnclick}">🗑 Delete</button>
+      </div>
+    </div>`;
 }
 
 function renderAdminContent() {
   loadReportsBadges();
+  syncAdminMobileChrome();
   if (AppState.currentAdminTab === "courses") renderAdminCourses();
   else if (AppState.currentAdminTab === "extra") renderAdminExtra();
   else if (AppState.currentAdminTab === "feedback") renderAdminFeedback();
@@ -312,14 +362,14 @@ function buildVisitorChipsSection(summary) {
   </div>`;
 }
 
-function _formatDevicesToday(devices) {
-  if (!devices || typeof devices !== "object") return "—";
-  const parts = [];
+function _deviceTodayParts(devices) {
+  if (!devices || typeof devices !== "object") return { val: "0", sub: "" };
   const phone = Number(devices.phone) || 0;
   const laptop = Number(devices.laptop) || 0;
-  if (phone > 0) parts.push(`${_num(phone)} phone`);
-  if (laptop > 0) parts.push(`${_num(laptop)} laptop`);
-  return parts.length ? parts.join(" / ") : "—";
+  if (phone && laptop) return { val: `${_num(phone)}/${_num(laptop)}`, sub: "phone / laptop" };
+  if (phone) return { val: _num(phone), sub: "phone" };
+  if (laptop) return { val: _num(laptop), sub: "laptop" };
+  return { val: "0", sub: "" };
 }
 
 function _formatGain(value) {
@@ -427,6 +477,7 @@ async function renderAdminAnalytics() {
         : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
 
     const gained7 = Number(summary.students_gained_7d) || 0;
+    const deviceToday = _deviceTodayParts(summary.devices_today);
     const deltaRow = `<div class="analytics-deltas">
       <span class="stat-delta">${_formatGain(gained7)} this week</span>
       <span class="stat-delta-sep">·</span>
@@ -436,15 +487,27 @@ async function renderAdminAnalytics() {
     </div>`;
 
     document.getElementById("adminContent").innerHTML = `
-      <div class="stat-grid">
+      <div class="stat-grid analytics-kpis">
           <div class="stat-card">
             <div class="stat-val">${_num(summary.total_students)}</div>
-            <div class="stat-delta">${_formatGain(gained7)} this week</div>
+            <div class="stat-mid"><span class="stat-delta">${_formatGain(gained7)} this week</span></div>
             <div class="stat-label">Registered students</div>
           </div>
-          <div class="stat-card"><div class="stat-val">${_num(summary.active_today)}</div><div class="stat-label">Active today</div></div>
-          <div class="stat-card"><div class="stat-val">${_num(summary.clicks_today)}</div><div class="stat-label">Clicks today</div></div>
-          <div class="stat-card"><div class="stat-val" style="font-size:1.35rem;">${_formatDevicesToday(summary.devices_today)}</div><div class="stat-label">Device today</div></div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(summary.active_today)}</div>
+            <div class="stat-mid"></div>
+            <div class="stat-label">Active today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(summary.clicks_today)}</div>
+            <div class="stat-mid"></div>
+            <div class="stat-label">Clicks today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${deviceToday.val}</div>
+            <div class="stat-mid">${deviceToday.sub ? `<span class="stat-sub">${deviceToday.sub}</span>` : ""}</div>
+            <div class="stat-label">Device today</div>
+          </div>
       </div>
       <div class="chart-wrap">
           <div class="chart-title">Growth</div>
@@ -528,35 +591,34 @@ function renderAdminCourses() {
         if (!filtered.length) return;
         progHtml += `<div style="font-size:.78rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:12px 0 8px;">${esc(year.name)} — ${esc(sem.name)}</div>`;
         filtered.forEach((c) => {
-          progHtml += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <strong>${esc(c.name)}</strong>
-                <span style="color:var(--accent);font-size:.78rem;">${esc(c.code)}</span>
-                ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
-              </div>
+          progHtml += `<div class="admin-entity-card">
+            <div class="admin-entity-head">
+              <button type="button" class="admin-entity-toggle">
+                <span class="admin-entity-title">
+                  <strong>${esc(c.name)}</strong>
+                  <span class="course-code">${esc(c.code)}</span>
+                  ${c.is_optional ? '<span class="optional-tag">OPTIONAL</span>' : ""}
+                </span>
+                <span class="admin-entity-hint">${c.links.length} link${c.links.length === 1 ? "" : "s"}</span>
+                <span class="course-chev" aria-hidden="true">›</span>
+              </button>
               <div class="action-btns">
                 <button class="action-btn" onclick="toggleOptional(${c.id},${c.is_optional})">${c.is_optional ? "✅ Optional" : "⬜ Optional"}</button>
                 <button class="action-btn" onclick="openEditCourseModal(${c.id})">✏️ Edit</button>
                 <button class="action-btn" onclick="openAddLinkModal(${c.id})">+ Link</button>
-                <button class="action-btn del" onclick="confirmAction('Delete this course and all its links?',()=>deleteCourse(${c.id}))">🗑</button>
+                <button class="action-btn del" onclick="confirmAction('Delete this course and all its links?',()=>deleteCourse(${c.id}))">🗑 Delete</button>
               </div>
             </div>
-            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
+            <div class="admin-link-list">
               ${c.links.length
               ? c.links
-                .map(
-                  (l) => `
-                <div class="link-chip">
-                  ${getLinkBadge(l.type)}<span>${esc(l.label)}</span>
-                  ${getContentTypeChip(l.content_type)}
-                  ${l.note ? `<span style="color:var(--muted)">(${esc(l.note)})</span>` : ""}
-                  <button class="action-btn" style="padding:2px 7px;font-size:.7rem;" onclick="openEditLinkModal(${l.id},${c.id})">✏️</button>
-                  <button class="action-btn del" style="padding:2px 7px;font-size:.7rem;" onclick="confirmDeleteLink(${l.id},${c.id})">✕</button>
-                </div>`,
-                )
+                .map((l) => _adminLinkRow(
+                  l,
+                  `openEditLinkModal(${l.id},${c.id})`,
+                  `confirmDeleteLink(${l.id},${c.id})`,
+                ))
                 .join("")
-              : '<span style="font-size:.78rem;color:var(--muted);">No links</span>'
+              : '<span class="admin-muted">No links</span>'
             }
             </div>
           </div>`;
@@ -575,33 +637,32 @@ function renderAdminCourses() {
 function renderAdminExtra() {
   const q = AppState.adminSearch.toLowerCase();
   let html = `<input class="admin-search" placeholder="🔍 Search extra resources…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;renderAdminExtra()"/>
-  <button class="btn btn-primary" style="margin-bottom:16px;" onclick="openAddExtraSectionModal()">+ Add Section</button>`;
+  <button class="btn btn-primary admin-desktop-add" style="margin-bottom:16px;" onclick="openAddExtraSectionModal()">+ Add Section</button>`;
   AppState.dbExtra.forEach((r) => {
     if (q && !r.title.toLowerCase().includes(q)) return;
-    html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-        <div style="font-weight:700;">${r.icon} ${esc(r.title)}</div>
+    html += `<div class="admin-entity-card">
+      <div class="admin-entity-head">
+        <button type="button" class="admin-entity-toggle">
+          <span class="admin-entity-title">${r.icon} ${esc(r.title)}</span>
+          <span class="admin-entity-hint">${r.links.length} link${r.links.length === 1 ? "" : "s"}</span>
+          <span class="course-chev" aria-hidden="true">›</span>
+        </button>
         <div class="action-btns">
           <button class="action-btn" onclick="openEditExtraSectionModal(${r.id})">✏️ Edit</button>
           <button class="action-btn" onclick="openAddExtraLinkModal(${r.id})">+ Link</button>
           <button class="action-btn del" onclick="confirmAction('Delete this section and all its links?',()=>deleteExtraSection(${r.id}))">🗑 Delete</button>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <div class="admin-link-list">
         ${r.links.length
         ? r.links
-          .map(
-            (l) => `
-          <div class="link-chip">
-            ${getLinkBadge(l.type)}<span>${esc(l.label)}</span>
-            ${getContentTypeChip(l.content_type)}
-            ${l.note ? `<span style="color:var(--muted)">(${esc(l.note)})</span>` : ""}
-            <button class="action-btn" style="padding:2px 7px;font-size:.7rem;" onclick="openEditExtraLinkModal(${l.id},${r.id})">✏️</button>
-            <button class="action-btn del" style="padding:2px 7px;font-size:.7rem;" onclick="confirmAction('Remove this link?',()=>deleteExtraLink(${l.id},${r.id}))">✕</button>
-          </div>`,
-          )
+          .map((l) => _adminLinkRow(
+            l,
+            `openEditExtraLinkModal(${l.id},${r.id})`,
+            `confirmAction('Remove this link?',()=>deleteExtraLink(${l.id},${r.id}))`,
+          ))
           .join("")
-        : '<span style="font-size:.78rem;color:var(--muted);">No links</span>'
+        : '<span class="admin-muted">No links</span>'
       }
       </div>
     </div>`;
@@ -636,12 +697,18 @@ async function renderAdminReports() {
     }
     html += `<table class="admin-table"><thead><tr><th>Sender</th><th>Course</th><th>Link</th><th>Issue</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
     reports.forEach((r) => {
-      html += `<tr><td>${senderCell(r.user_id)}</td><td>${esc(r.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(r.link_url || "—")}</td><td>${esc(r.description)}</td>
-        <td><span class="tag ${r.status === "open" ? "tag-open" : "tag-resolved"}">${r.status}</span></td>
-        <td class="action-btns">
+      const issue = (r.description || "").trim() || "No description";
+      html += `<tr class="admin-row">
+        ${senderDetail(r.user_id)}
+        ${adminCell("admin-pri", "Course", esc(r.course_name))}
+        ${adminCell(r.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", `<span class="admin-url">${esc(r.link_url || "—")}</span>`)}
+        ${adminCell("admin-sec", "Issue", esc(issue))}
+        ${adminCell("admin-meta", "Status", `<span class="tag ${r.status === "open" ? "tag-open" : "tag-resolved"}">${r.status}</span>`)}
+        ${adminCell("admin-actions action-btns", "Actions", `
           <button class="action-btn" onclick="toggleReportStatus(${r.id},'${r.status}')">${r.status === "open" ? "✅ Resolve" : "↩ Reopen"}</button>
-          <button class="action-btn del" onclick="confirmAction('Delete this report?',()=>deleteReport(${r.id}))">🗑</button>
-        </td></tr>`;
+          <button class="action-btn del" onclick="confirmAction('Delete this report?',()=>deleteReport(${r.id}))">🗑 Delete</button>
+        `)}
+      </tr>`;
     });
     html += "</tbody></table>";
     html += _renderAdminPager("reports", "renderAdminReports");
@@ -683,9 +750,16 @@ async function renderAdminContributions() {
         : c.status === "rejected"
           ? "tag-rejected"
           : "tag-resolved";
-      html += `<tr><td>${senderCell(c.user_id)}</td><td>${esc(c.course_name)}</td><td style="max-width:140px;word-break:break-all;font-size:.75rem;">${esc(c.link_url)}</td><td>${esc(c.note || "—")}</td>
-        <td><span class="tag ${statusTag}">${esc(c.status || "pending")}</span></td>
-        <td class="action-btns">${_contributionActions(c)}</td></tr>`;
+      const note = (c.note || "").trim();
+      const preview = note || shortUrl(c.link_url) || "No note";
+      html += `<tr class="admin-row">
+        ${senderDetail(c.user_id)}
+        ${adminCell("admin-pri", "Course", esc(c.course_name))}
+        ${adminCell(c.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", `<span class="admin-url">${esc(c.link_url || "—")}</span>`)}
+        ${adminCell("admin-sec", "Note", esc(preview))}
+        ${adminCell("admin-meta", "Status", `<span class="tag ${statusTag}">${esc(c.status || "pending")}</span>`)}
+        ${adminCell("admin-actions action-btns", "Actions", _contributionActions(c))}
+      </tr>`;
     });
     html += "</tbody></table>";
     html += _renderAdminPager("contributions", "renderAdminContributions");
@@ -704,7 +778,7 @@ function _contributionActions(c) {
     return `<button class="action-btn" disabled>Approved</button>`;
   }
   return `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick="openAutoApproveContribModal(${esc(JSON.stringify(c))})">✅ Approve & Add</button>
-    <button class="action-btn del" onclick="confirmAction('Reject this contribution? It stays in the list as rejected.',()=>rejectContrib(${c.id}))">✕ Reject</button>`;
+    <button class="action-btn del" onclick="confirmAction('Reject this contribution? It stays in the list as rejected.',()=>rejectContrib(${c.id}),'Reject')">✕ Reject</button>`;
 }
 
 async function rejectContrib(id) {
@@ -779,13 +853,13 @@ async function renderAdminStudents() {
 
     html += `<table class="admin-table"><thead><tr><th>Student</th><th>First seen</th><th>Last seen</th><th>Visits</th><th>Clicks</th><th>Actions</th></tr></thead><tbody>`;
     students.forEach((u) => {
-      html += `<tr>
-        <td><strong>${esc(studentHandleOf(u))}</strong></td>
-        <td style="font-size:.78rem;color:var(--muted);">${esc(fmtDateTime(u.created_at))}</td>
-        <td style="font-size:.78rem;color:var(--muted);">${esc(fmtDateTime(u.last_seen_at))}</td>
-        <td>${_num(u.visit_count)}</td>
-        <td>${_num(u.click_count)}</td>
-        <td class="action-btns"><button class="action-btn" onclick="openAdminStudent(${Number(u.id)})">👤 History</button></td>
+      html += `<tr class="admin-row" data-student-id="${Number(u.id)}">
+        ${adminCell("admin-pri", "Student", `<strong>${esc(studentHandleOf(u))}</strong>`)}
+        ${adminCell("admin-sec", "Last seen", esc(fmtDateTime(u.last_seen_at)))}
+        ${adminCell("admin-detail", "First seen", esc(fmtDateTime(u.created_at)))}
+        ${adminCell("admin-meta", "Visits", String(_num(u.visit_count)))}
+        ${adminCell("admin-detail", "Clicks", String(_num(u.click_count)))}
+        ${adminCell("admin-actions action-btns", "Actions", `<button class="action-btn" onclick="openAdminStudent(${Number(u.id)})">👤 History</button>`)}
       </tr>`;
     });
     html += "</tbody></table>";
@@ -827,14 +901,14 @@ async function renderAdminStudentDetail() {
       ? timeline
         .map((item) => {
           const meta = TIMELINE_META[item.type] || { icon: "•", label: item.type || "Activity" };
-          return `<tr>
-              <td style="white-space:nowrap;">${meta.icon} ${esc(meta.label)}</td>
-              <td style="font-size:.78rem;color:var(--muted);white-space:nowrap;">${esc(fmtDateTime(item.at))}</td>
-              <td>${esc(item.summary || "—")}</td>
+          return `<tr class="admin-row">
+              ${adminCell("admin-pri", "Type", `${meta.icon} ${esc(meta.label)}`)}
+              ${adminCell("admin-sec", "Details", esc(item.summary || "—"))}
+              ${adminCell("admin-meta", "When", esc(fmtDateTime(item.at)))}
             </tr>`;
         })
         .join("")
-      : `<tr><td colspan="3" style="color:var(--muted);">No activity on this page.</td></tr>`;
+      : `<tr class="admin-table-empty"><td colspan="3" style="color:var(--muted);">No activity on this page.</td></tr>`;
 
     document.getElementById("adminContent").innerHTML = `
       <button class="action-btn" style="margin-bottom:16px;" onclick="closeAdminStudent()">← All students</button>
@@ -1050,6 +1124,47 @@ async function deleteContrib(id) {
     showToast("Contribution deleted.");
   } catch (e) { showToast(e.message, true); }
 }
+
+function bindAdminMobile() {
+  const select = document.getElementById("adminTabSelect");
+  if (select && !select.dataset.bound) {
+    select.addEventListener("change", () => adminTab(select.value));
+    select.dataset.bound = "1";
+  }
+  const root = document.getElementById("view-admin");
+  if (root && !root.dataset.mobileBound) {
+    root.addEventListener("click", (e) => {
+      if (!isMobileView()) return;
+      if (e.target.closest(".action-btn, a, select, input, .btn")) return;
+
+      const toggle = e.target.closest(".admin-entity-toggle");
+      if (toggle) {
+        e.preventDefault();
+        const card = toggle.closest(".admin-entity-card");
+        const open = card.classList.contains("open");
+        document.querySelectorAll(".admin-entity-card.open").forEach((el) => el.classList.remove("open"));
+        if (!open) card.classList.add("open");
+        return;
+      }
+
+      const studentRow = e.target.closest("tr[data-student-id]");
+      if (studentRow) {
+        openAdminStudent(studentRow.dataset.studentId);
+        return;
+      }
+
+      const row = e.target.closest(".admin-table tr.admin-row");
+      if (row && !row.classList.contains("admin-table-empty")) {
+        const open = row.classList.contains("open");
+        document.querySelectorAll(".admin-table tr.open").forEach((el) => el.classList.remove("open"));
+        if (!open) row.classList.add("open");
+      }
+    });
+    root.dataset.mobileBound = "1";
+  }
+}
+
+bindAdminMobile();
 
 Object.assign(window, {
   checkLogin,

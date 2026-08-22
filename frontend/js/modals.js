@@ -9,13 +9,13 @@ import { showToast } from "./export.js";
 let _modalCallback = null;
 let _lastFocusedElement = null;
 
-function confirmAction(msg, fn) {
+function confirmAction(msg, fn, confirmLabel = "Delete") {
   _modalCallback = fn;
   openModal(`<h2>⚠️ Confirm</h2>
     <p style="color:var(--muted);margin-top:8px;font-size:.9rem;">${esc(msg)}</p>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn" style="background:var(--danger);color:#fff;" onclick="executeModalAction()">Delete</button>
+      <button class="btn" style="background:var(--danger);color:#fff;" onclick="executeModalAction()">${esc(confirmLabel)}</button>
     </div>`);
 }
 
