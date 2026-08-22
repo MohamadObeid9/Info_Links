@@ -2,7 +2,7 @@
 // Shared id → handle lookup so reports / contributions / feedback can show a
 // Sender column without one request per row.
 import { sb, logApiError } from "./supabase.js";
-import { esc } from "./ui.js";
+import { esc, adminCell } from "./ui.js";
 
 const DIRECTORY_PAGE_SIZE = 200;
 const DIRECTORY_MAX_PAGES = 10;
@@ -66,6 +66,12 @@ function senderCell(userId) {
   return `<button class="action-btn" onclick="openAdminStudent(${id})" title="Open student history">${esc(handle)}</button>`;
 }
 
+function senderDetail(userId) {
+  const html = senderCell(userId);
+  const empty = html === "—" ? " admin-empty" : "";
+  return adminCell(`admin-detail${empty}`, "Sender", html);
+}
+
 function fmtDateTime(ts) {
   if (!ts) return "—";
   const d = new Date(ts);
@@ -85,5 +91,6 @@ export {
   rememberStudents,
   loadStudentDirectory,
   senderCell,
+  senderDetail,
   fmtDateTime,
 };

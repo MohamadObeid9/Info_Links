@@ -2,7 +2,7 @@ import { AppState } from "./state.js";
 import { _loadCache, _saveCache } from "./cache.js";
 import { apiRequest, formatApiError, sb } from "./supabase.js";
 import { showSkeleton } from "./skeleton.js";
-import { esc } from "./ui.js";
+import { esc, isMobileView } from "./ui.js";
 import {
   renderProgTabs,
   renderYearFilters,
@@ -10,6 +10,7 @@ import {
   renderCourses,
   renderExtra,
 } from "./home.js";
+import { initMobileHomeState } from "./mobile-home.js";
 
 // ===================== LOAD DATA =====================
 function _buildTree(
@@ -72,8 +73,17 @@ function _naturalLinkSort(a, b) {
 }
 
 function _renderAfterLoad() {
+  initMobileHomeState();
   if (!AppState.currentProg) AppState.currentProg = "all";
   document.getElementById("extraSection").style.display = "none";
+  if (isMobileView()) {
+    document.querySelector(".filter-row").style.display = "none";
+    document.getElementById("coursesOutput").style.display = "";
+    renderProgTabs();
+    renderCourses();
+    _populateCourseDatalist();
+    return;
+  }
   if (AppState.currentProg === "all") {
     document.querySelector(".filter-row").style.display = "none";
     document.getElementById("extraSection").style.display = "";
@@ -188,10 +198,44 @@ async function loadReportsBadges() {
     fb.style.display = newF ? "inline" : "none";
     fb.textContent = newF;
     fb.classList.toggle("is-alert", newF > 0);
+    _paintAdminInboxHints(openR, pendC, newF);
   } catch (e) {}
 }
 
+function _paintAdminInboxHints(openR, pendC, newF) {
+  const select = document.getElementById("adminTabSelect");
+  if (select) {
+    const labels = {
+      feedback: newF ? `Feedback (${newF})` : "Feedback",
+      reports: openR ? `Reports (${openR})` : "Reports",
+      contributions: pendC ? `Contributions (${pendC})` : "Contributions",
+    };
+    [...select.options].forEach((opt) => {
+      if (labels[opt.value]) opt.textContent = labels[opt.value];
+    });
+  }
+
+  const el = document.getElementById("adminMobileAlerts");
+  if (!el) return;
+  const items = [
+    newF > 0 && { tab: "feedback", label: "Feedback", n: newF },
+    openR > 0 && { tab: "reports", label: "Reports", n: openR },
+    pendC > 0 && { tab: "contributions", label: "Contributions", n: pendC },
+  ].filter(Boolean);
+  el.hidden = items.length === 0;
+  el.innerHTML = items
+    .map(
+      (i) =>
+        `<button type="button" class="admin-alert-chip" data-admin-tab="${i.tab}">${i.label} <span class="badge is-alert">${i.n}</span></button>`,
+    )
+    .join("");
+}
+
 function onSearch() {
+  if (isMobileView()) {
+    window.renderCourses();
+    return;
+  }
   if (AppState.currentProg === "extra") window.renderExtra();
   else if (AppState.currentProg === "all") {
     window.renderCourses();

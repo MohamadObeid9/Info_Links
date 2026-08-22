@@ -65,6 +65,8 @@
                 <h1>Info Links</h1>
                 <p>All courses, materials & links — organized by program, year & semester.</p>
                 <div class="student-welcome" id="studentWelcome" hidden></div>
+            </div>
+            <div class="search-bar">
                 <div class="search-wrap">
                     <span class="si">🔍</span>
                     <input type="text" id="searchInput" placeholder="Search by course name or code…" />
@@ -233,6 +235,19 @@
                     <button class="btn btn-ghost" data-action="exportData">📥 Export</button>
                     <button class="btn btn-ghost" data-action="logout">Logout</button>
                 </div>
+            </div>
+            <div class="admin-mobile-bar">
+                <select id="adminTabSelect" aria-label="Admin section">
+                    <option value="courses">Courses &amp; Links</option>
+                    <option value="extra">Extra Resources</option>
+                    <option value="feedback">Feedback</option>
+                    <option value="reports">Reports</option>
+                    <option value="contributions">Contributions</option>
+                    <option value="students">Students</option>
+                    <option value="analytics">Analytics</option>
+                </select>
+                <button type="button" class="btn btn-primary" id="adminMobileAdd" hidden>+ Add</button>
+                <div class="admin-mobile-alerts" id="adminMobileAlerts" hidden></div>
             </div>
             <div class="admin-tabs">
                 <button class="admin-tab active" data-admin-tab="courses">Courses &amp; Links</button>

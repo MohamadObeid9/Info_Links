@@ -576,6 +576,51 @@ select.inp {
     flex-wrap: wrap;
 }
 
+.admin-entity-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}
+
+.admin-entity-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-entity-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-weight: 700;
+}
+
+.admin-link-list {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.admin-chip-btn {
+    padding: 2px 7px;
+    font-size: 0.7rem;
+}
+
+.admin-muted {
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+
+.admin-url {
+    word-break: break-all;
+}
+
 .about-content {
     max-width: 680px;
     margin: 0 auto;

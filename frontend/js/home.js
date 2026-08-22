@@ -1,7 +1,8 @@
 
 // ===================== HOME RENDER =====================
 import { AppState } from "./state.js";
-import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref } from "./ui.js";
+import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView } from "./ui.js";
+import { renderMobileHome, selectMobileProg } from "./mobile-home.js";
 
 function renderProgTabs() {
   document.getElementById("progTabs").innerHTML =
@@ -99,6 +100,7 @@ function renderFavorites() {
 }
 
 function renderCourses() {
+  if (isMobileView() && renderMobileHome()) return;
   if (AppState.currentProg === "all") {
     renderAllCourses();
     return;
@@ -213,7 +215,7 @@ function renderExtra() {
 
   document.getElementById("extraSection").innerHTML = filtered.length
     ? `
-    <h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--accent);">📦 Extra Resources</h2>
+    ${isMobileView() ? "" : '<h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--accent);">📦 Extra Resources</h2>'}
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
       ${filtered
         .map(
@@ -253,6 +255,10 @@ function renderExtra() {
 function selectProg(id) {
   // "My Courses" is server-synced, so it needs a registered student.
   if (id === "favorites" && !window.requireStudent(() => selectProg("favorites"))) {
+    return;
+  }
+  if (isMobileView()) {
+    selectMobileProg(id);
     return;
   }
   AppState.currentProg = id;

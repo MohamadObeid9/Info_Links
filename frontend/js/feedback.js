@@ -1,10 +1,10 @@
 import { AppState } from "./state.js";
 import { sb, apiRequest, formatApiError, logApiError } from "./supabase.js";
 import { showToast } from "./export.js";
-import { esc, setBtnLoading } from "./ui.js";
+import { esc, setBtnLoading, adminCell } from "./ui.js";
 import { loadReportsBadges } from "./data.js";
 import { getAdminTableSkeleton } from "./skeleton.js";
-import { loadStudentDirectory, senderCell } from "./students.js";
+import { loadStudentDirectory, senderCell, senderDetail } from "./students.js";
 
 // Feedback management
 const FEEDBACK_PAGE_SIZE = 10;
@@ -133,7 +133,6 @@ async function renderAdminFeedback() {
             return;
         }
         html += `
-            <div style="overflow-x: auto;">
                 <table class="admin-table">
                     <thead>
                         <tr>
@@ -160,17 +159,17 @@ async function renderAdminFeedback() {
             const categoryDisplay = item.category ? esc(item.category.charAt(0).toUpperCase() + item.category.slice(1)) : 'N/A';
 
             html += `
-                <tr>
-                    <td>${senderCell(item.user_id)}</td>
-                    <td>${date}</td>
-                    <td><span class="tag tag-gray">${categoryDisplay}</span></td>
-                    <td style="white-space: nowrap; min-width: 140px;"><span style="font-size: 1.2rem;" title="${ratingText}">${stars}</span><span style="font-size: 0.9rem; color: var(--text); font-weight: 600; margin-left: 8px;">${ratingText}</span></td>
-                    <td style="max-width: 300px; word-wrap: break-word;">${message}</td>
-                    <td><span class="tag ${statusClass}">${item.status || 'new'}</span></td>
-                    <td>
-                        <button class="action-btn" onclick="toggleFeedbackStatus(${item.id}, '${item.status}')" title="Toggle status" style="font-size: 0.9rem;">${item.status === 'new' ? '✓ Mark read' : '↩ Mark new'}</button>
-                        <button class="action-btn delete-btn" onclick="confirmAction('Delete this feedback?', () => deleteFeedback(${item.id}))" title="Delete">🗑</button>
-                    </td>
+                <tr class="admin-row">
+                    ${senderDetail(item.user_id)}
+                    ${adminCell("admin-detail", "Date", date)}
+                    ${adminCell("admin-detail", "Category", `<span class="tag tag-gray">${categoryDisplay}</span>`)}
+                    ${adminCell("admin-pri", "Rating", `<span style="font-size: 1.1rem;" title="${ratingText}">${stars}</span><span style="font-size: 0.9rem; color: var(--text); font-weight: 600; margin-left: 8px;">${ratingText}</span>`)}
+                    ${adminCell("admin-sec", "Message", message)}
+                    ${adminCell("admin-meta", "Status", `<span class="tag ${statusClass}">${item.status || 'new'}</span>`)}
+                    ${adminCell("admin-actions action-btns", "Actions", `
+                        <button class="action-btn" onclick="toggleFeedbackStatus(${item.id}, '${item.status}')" title="Toggle status">${item.status === 'new' ? '✓ Mark read' : '↩ Mark new'}</button>
+                        <button class="action-btn delete-btn del" onclick="confirmAction('Delete this feedback?', () => deleteFeedback(${item.id}))" title="Delete">🗑 Delete</button>
+                    `)}
                 </tr>
             `;
         });
@@ -178,7 +177,6 @@ async function renderAdminFeedback() {
         html += `
                     </tbody>
                 </table>
-            </div>
         `;
         html += _renderFeedbackPager();
 

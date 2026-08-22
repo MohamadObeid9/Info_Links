@@ -112,9 +112,9 @@ function applyHighlightFromURL() {
       }
     });
     if (targetId) {
-      document
-        .getElementById(`course-card-${targetId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const card = document.getElementById(`course-card-${targetId}`);
+      card?.classList.add("open");
+      card?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
 }
