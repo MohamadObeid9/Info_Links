@@ -63,6 +63,46 @@ func TestStaticHandler_spaPathsReturn200(t *testing.T) {
 			if !strings.Contains(rr.Body.String(), "<html") {
 				t.Fatalf("expected index.html body for SPA path %q", path)
 			}
+			if cc := rr.Header().Get("Cache-Control"); cc != cacheControlHTML {
+				t.Fatalf("Cache-Control: got %q want %q", cc, cacheControlHTML)
+			}
 		})
+	}
+}
+
+func TestStaticCacheControl(t *testing.T) {
+	tests := []struct {
+		path string
+		html bool
+		want string
+	}{
+		{path: "/", html: true, want: cacheControlHTML},
+		{path: "/about", html: true, want: cacheControlHTML},
+		{path: "/assets/index-CQUV9458.js", want: cacheControlHashed},
+		{path: "/assets/index-DpG80_j0.css", want: cacheControlHashed},
+		{path: "/assets/inter-latin-800-normal-BYj_oED-.woff2", want: cacheControlHashed},
+		{path: "/assets/favicon-32x32.png", want: cacheControlStatic},
+		{path: "/registerSW.js", want: cacheControlStatic},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			got := staticCacheControl(tt.path, tt.html)
+			if got != tt.want {
+				t.Fatalf("staticCacheControl(%q, %v) = %q, want %q", tt.path, tt.html, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStaticHandler_unhashedAssetCacheControl(t *testing.T) {
+	handler := testStaticRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/assets/favicon-32x32.png", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d want %d", rr.Code, http.StatusOK)
+	}
+	if cc := rr.Header().Get("Cache-Control"); cc != cacheControlStatic {
+		t.Fatalf("Cache-Control: got %q want %q", cc, cacheControlStatic)
 	}
 }
