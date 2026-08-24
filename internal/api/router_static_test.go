@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -94,15 +96,42 @@ func TestStaticCacheControl(t *testing.T) {
 	}
 }
 
-func TestStaticHandler_unhashedAssetCacheControl(t *testing.T) {
-	handler := testStaticRouter(t)
-	req := httptest.NewRequest(http.MethodGet, "/assets/favicon-32x32.png", nil)
-	rr := httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status: got %d want %d", rr.Code, http.StatusOK)
+func TestStaticHandler_assetCacheControl(t *testing.T) {
+	dir := t.TempDir()
+	assets := filepath.Join(dir, "assets")
+	if err := os.Mkdir(assets, 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if cc := rr.Header().Get("Cache-Control"); cc != cacheControlStatic {
-		t.Fatalf("Cache-Control: got %q want %q", cc, cacheControlStatic)
+	files := map[string]string{
+		filepath.Join(dir, "index.html"):           "<html></html>",
+		filepath.Join(assets, "logo.png"):          "png",
+		filepath.Join(assets, "index-CQUV9458.js"): "js",
+	}
+	for path, body := range files {
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	handler := newStaticFileHandler(dir)
+	tests := []struct {
+		path string
+		want string
+	}{
+		{path: "/assets/logo.png", want: cacheControlStatic},
+		{path: "/assets/index-CQUV9458.js", want: cacheControlHashed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status: got %d want %d", rr.Code, http.StatusOK)
+			}
+			if cc := rr.Header().Get("Cache-Control"); cc != tt.want {
+				t.Fatalf("Cache-Control: got %q want %q", cc, tt.want)
+			}
+		})
 	}
 }
