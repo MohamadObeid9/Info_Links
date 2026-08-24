@@ -54,7 +54,7 @@ func (s *FeedbackService) Update(ctx context.Context, status string, idStr strin
 	}
 
 	switch status {
-	case "new", "read":
+	case "new", "read", "rejected":
 	case "":
 		return errs.ErrStatusRequired
 	default:
@@ -85,7 +85,7 @@ func (s *FeedbackService) List(ctx context.Context, limit int, offset int, q str
 	}
 
 	switch status {
-	case "new", "read", "":
+	case "new", "read", "rejected", "":
 	default:
 		return nil, errs.ErrFeedbackInvalidStatus
 	}

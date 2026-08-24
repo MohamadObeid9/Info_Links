@@ -26,35 +26,6 @@ function findProgram(id) {
   return AppState.dbPrograms.find((p) => idsEqual(p.id, id));
 }
 
-function loadMobileBrowse() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(MOBILE_BROWSE_KEY) || "null");
-    if (!raw || raw.prog == null || raw.year == null || raw.sem == null) return null;
-    const prog = findProgram(raw.prog);
-    const year = prog?.years.find((y) => idsEqual(y.id, raw.year));
-    const sem = year?.sems.find((s) => idsEqual(s.id, raw.sem));
-    if (!prog || !year || !sem) return null;
-    return { prog: prog.id, year: year.id, sem: sem.id };
-  } catch {
-    return null;
-  }
-}
-
-function saveMobileBrowse() {
-  if (!isRealProgram(AppState.currentProg)) return;
-  if (AppState.currentYear === "all" || AppState.currentSem === "all") return;
-  try {
-    localStorage.setItem(
-      MOBILE_BROWSE_KEY,
-      JSON.stringify({
-        prog: AppState.currentProg,
-        year: AppState.currentYear,
-        sem: AppState.currentSem,
-      }),
-    );
-  } catch { }
-}
-
 function hideExtra() {
   const extra = document.getElementById("extraSection");
   const courses = document.getElementById("coursesOutput");
@@ -359,7 +330,6 @@ function selectMobileSem(yearId, semId) {
   AppState.currentYear = coerceId(yearId);
   AppState.currentSem = coerceId(semId);
   AppState.mobileStep = "list";
-  saveMobileBrowse();
   renderMobileList();
 }
 
@@ -391,15 +361,13 @@ function toggleCourseCard(courseId) {
 
 function initMobileHomeState() {
   if (!isMobileView()) return;
-  const saved = loadMobileBrowse();
-  if (saved) {
-    AppState.currentProg = saved.prog;
-    AppState.currentYear = saved.year;
-    AppState.currentSem = saved.sem;
-    AppState.mobileStep = "list";
-  } else {
-    AppState.mobileStep = "program";
-  }
+  try {
+    localStorage.removeItem(MOBILE_BROWSE_KEY);
+  } catch { }
+  AppState.currentProg = "all";
+  AppState.currentYear = "all";
+  AppState.currentSem = "all";
+  AppState.mobileStep = "program";
 }
 
 function onMobileViewportChange() {

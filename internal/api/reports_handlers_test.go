@@ -199,7 +199,7 @@ func TestHandleAdminGetReports(t *testing.T) {
 			target:       "/api/admin/reports?limit=10&offset=10&status=pending",
 			listErr:      errs.ErrReportInvalidStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be open or resolved",
+			errMsg:       "Status must be open, resolved, or rejected",
 		},
 		{
 			name:         "reject list invalid params",
@@ -343,7 +343,7 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 			body:         `{"status":"pending"}`,
 			updateErr:    errs.ErrReportInvalidStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be open or resolved",
+			errMsg:       "Status must be open, resolved, or rejected",
 			wantCalls:    1,
 		},
 		{
@@ -372,6 +372,15 @@ func TestHandleAdminUpdateReport(t *testing.T) {
 			wantCalls:    1,
 			wantID:       "10",
 			wantStatus:   "resolved",
+		},
+		{
+			name:         "accept valid rejected status",
+			pathID:       "10",
+			body:         `{"status":"rejected"}`,
+			statusWanted: http.StatusOK,
+			wantCalls:    1,
+			wantID:       "10",
+			wantStatus:   "rejected",
 		},
 	}
 	for _, tt := range tests {

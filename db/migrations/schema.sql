@@ -2,6 +2,7 @@
 -- PostgreSQL database dump
 --
 
+\restrict ARubgEUTEUEvYQmCoxvtf2WBFdVHwFLCBVtf7qtn09SEwpJuYJgJrLTtPvY8Re6
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -30,6 +31,39 @@ CREATE SCHEMA public;
 --
 
 COMMENT ON SCHEMA public IS 'standard public schema';
+
+
+--
+-- Name: rls_auto_enable(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rls_auto_enable() RETURNS event_trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'pg_catalog'
+    AS $$
+DECLARE
+  cmd record;
+BEGIN
+  FOR cmd IN
+    SELECT *
+    FROM pg_event_trigger_ddl_commands()
+    WHERE command_tag IN ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')
+      AND object_type IN ('table','partitioned table')
+  LOOP
+     IF cmd.schema_name IS NOT NULL AND cmd.schema_name IN ('public') AND cmd.schema_name NOT IN ('pg_catalog','information_schema') AND cmd.schema_name NOT LIKE 'pg_toast%' AND cmd.schema_name NOT LIKE 'pg_temp%' THEN
+      BEGIN
+        EXECUTE format('alter table if exists %s enable row level security', cmd.object_identity);
+        RAISE LOG 'rls_auto_enable: enabled RLS on %', cmd.object_identity;
+      EXCEPTION
+        WHEN OTHERS THEN
+          RAISE LOG 'rls_auto_enable: failed to enable RLS on %', cmd.object_identity;
+      END;
+     ELSE
+        RAISE LOG 'rls_auto_enable: skip % (either system schema or not in enforced list: %.)', cmd.object_identity, cmd.schema_name;
+     END IF;
+  END LOOP;
+END;
+$$;
 
 
 SET default_tablespace = '';
@@ -192,7 +226,7 @@ CREATE TABLE public.feedback (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     user_id integer,
     CONSTRAINT feedback_rating_check CHECK (((rating >= 1) AND (rating <= 5))),
-    CONSTRAINT feedback_status_check CHECK ((status = ANY (ARRAY['new'::text, 'read'::text])))
+    CONSTRAINT feedback_status_check CHECK ((status = ANY (ARRAY['new'::text, 'read'::text, 'rejected'::text])))
 );
 
 
@@ -952,6 +986,12 @@ ALTER TABLE public.extra_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.extra_sections ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: favorite_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.favorite_events ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: feedback; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1126,6 +1166,12 @@ ALTER TABLE public.schema_migrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.semesters ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: users; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: years; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1135,4 +1181,4 @@ ALTER TABLE public.years ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 61jAIe654TYZTqSU51Zwqfx7E7na29jMs1EQ5hzdiYkprb9grFMO418eggMHplx
+\unrestrict ARubgEUTEUEvYQmCoxvtf2WBFdVHwFLCBVtf7qtn09SEwpJuYJgJrLTtPvY8Re6

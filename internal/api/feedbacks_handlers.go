@@ -90,7 +90,7 @@ func mapUpdateFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, er
 	case errors.Is(err, errs.ErrStatusRequired):
 		writeJSONError(w, r, http.StatusBadRequest, "Status is required")
 	case errors.Is(err, errs.ErrFeedbackInvalidStatus):
-		writeJSONError(w, r, http.StatusBadRequest, "Status must be new or read")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be new, read, or rejected")
 	default:
 		h.LoggerWithID(r).Error("update feedback failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
@@ -112,7 +112,7 @@ func mapDeleteFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, er
 func mapListFeedbackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrFeedbackInvalidStatus):
-		writeJSONError(w, r, http.StatusBadRequest, "Status must be new or read")
+		writeJSONError(w, r, http.StatusBadRequest, "Status must be new, read, or rejected")
 	case errors.Is(err, errs.ErrInvalidParams):
 		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	default:
