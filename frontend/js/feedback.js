@@ -155,7 +155,11 @@ async function renderAdminFeedback() {
             const stars = `<span style="color: gold;">${filledStars}</span><span style="color: #999;">${emptyStars}</span>`;
             const ratingText = `${item.rating}/5`;
             const message = esc(item.message) || '(no message)';
-            const statusClass = item.status === 'new' ? 'tag-blue' : 'tag-gray';
+            const statusClass = item.status === 'new'
+                ? 'tag-blue'
+                : item.status === 'rejected'
+                    ? 'tag-rejected'
+                    : 'tag-resolved';
             const categoryDisplay = item.category ? esc(item.category.charAt(0).toUpperCase() + item.category.slice(1)) : 'N/A';
 
             html += `
@@ -165,11 +169,8 @@ async function renderAdminFeedback() {
                     ${adminCell("admin-detail", "Category", `<span class="tag tag-gray">${categoryDisplay}</span>`)}
                     ${adminCell("admin-pri", "Rating", `<span style="font-size: 1.1rem;" title="${ratingText}">${stars}</span><span style="font-size: 0.9rem; color: var(--text); font-weight: 600; margin-left: 8px;">${ratingText}</span>`)}
                     ${adminCell("admin-sec", "Message", message)}
-                    ${adminCell("admin-meta", "Status", `<span class="tag ${statusClass}">${item.status || 'new'}</span>`)}
-                    ${adminCell("admin-actions action-btns", "Actions", `
-                        <button class="action-btn" onclick="toggleFeedbackStatus(${item.id}, '${item.status}')" title="Toggle status">${item.status === 'new' ? '✓ Mark read' : '↩ Mark new'}</button>
-                        <button class="action-btn delete-btn del" onclick="confirmAction('Delete this feedback?', () => deleteFeedback(${item.id}))" title="Delete">🗑 Delete</button>
-                    `)}
+                    ${adminCell("admin-meta", "Status", `<span class="tag ${statusClass}">${esc(item.status || 'new')}</span>`)}
+                    ${adminCell("admin-actions action-btns", "Actions", _feedbackActions(item))}
                 </tr>
             `;
         });
@@ -187,13 +188,24 @@ async function renderAdminFeedback() {
     }
 }
 
-async function toggleFeedbackStatus(id, currentStatus) {
+function _feedbackActions(item) {
+    if (item.status === 'rejected') {
+        return `<button class="action-btn" onclick="setFeedbackStatus(${item.id},'new','Feedback reopened.')">↩ Reopen</button>
+            <button class="action-btn delete-btn del" onclick="confirmAction('Delete this feedback permanently?', () => deleteFeedback(${item.id}))">🗑</button>`;
+    }
+    if (item.status === 'read') {
+        return `<button class="action-btn" onclick="setFeedbackStatus(${item.id},'new','Marked as new.')">↩ Mark new</button>`;
+    }
+    return `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick="setFeedbackStatus(${item.id},'read','Marked as read.')">✓ Mark read</button>
+        <button class="action-btn del" onclick="confirmAction('Reject this feedback? It stays in the list as rejected.',()=>setFeedbackStatus(${item.id},'rejected','Feedback rejected.'),'Reject')">✕ Reject</button>`;
+}
+
+async function setFeedbackStatus(id, status, toast) {
     try {
-        const newStatus = currentStatus === 'new' ? 'read' : 'new';
-        await sb(`feedback?id=eq.${id}`, 'PATCH', { status: newStatus });
+        await sb(`feedback?id=eq.${id}`, 'PATCH', { status });
         renderAdminFeedback();
         loadReportsBadges();
-        showToast(`Marked as ${newStatus}`);
+        if (toast) showToast(toast);
     } catch (err) {
         logApiError(err, 'updateFeedback');
         showToast(formatApiError(err, 'Failed to update feedback'), true);
@@ -219,7 +231,8 @@ Object.assign(window, {
   renderAdminFeedback,
   setAdminFeedbackPage,
   resetAdminFeedbackPage,
-  toggleFeedbackStatus,
+  toggleFeedbackStatus: setFeedbackStatus,
+  setFeedbackStatus,
   deleteFeedback,
 });
 

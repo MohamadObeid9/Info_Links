@@ -198,7 +198,7 @@ type ExtraLink struct {
 type Report struct {
 	ID          int    `json:"id"`
 	UserID      int    `json:"user_id,omitempty"`
-	Status      string `json:"status"` // open, resolved
+	Status      string `json:"status"` // open, resolved, rejected
 	LinkURL     string `json:"link_url"`
 	CreatedAt   string `json:"created_at"`
 	CourseName  string `json:"course_name"`
@@ -222,7 +222,7 @@ type Feedback struct {
 	ID        int    `json:"id"`
 	UserID    int    `json:"user_id,omitempty"`
 	Rating    int    `json:"rating"`
-	Status    string `json:"status"` // new, read
+	Status    string `json:"status"` // new, read, rejected
 	Message   string `json:"message"`
 	Category  string `json:"category"`
 	CreatedAt string `json:"created_at"`

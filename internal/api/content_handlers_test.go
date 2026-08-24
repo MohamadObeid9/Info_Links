@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	"infolinks-backend/internal/errs"
@@ -75,10 +76,17 @@ func TestHandleGetContent(t *testing.T) {
 				if body["error"] != tt.errMsg {
 					t.Fatalf("error = %q, want %q", body["error"], tt.errMsg)
 				}
+				if cc := rr.Header().Get("Cache-Control"); strings.Contains(cc, "max-age=60") {
+					t.Fatalf("error response must not be publicly cached, Cache-Control=%q", cc)
+				}
 				return
 			}
 			if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
 				t.Fatalf("Content-Type = %q, want application/json", ct)
+			}
+			wantCC := "public, max-age=60, stale-while-revalidate=600"
+			if cc := rr.Header().Get("Cache-Control"); cc != wantCC {
+				t.Fatalf("Cache-Control = %q, want %q", cc, wantCC)
 			}
 			if !reflect.DeepEqual(rr.Body.Bytes(), tt.wantBody) {
 				t.Fatalf("body = %q, want %q", rr.Body.Bytes(), tt.wantBody)

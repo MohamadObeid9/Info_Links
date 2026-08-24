@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"infolinks-backend/internal/config"
@@ -142,8 +143,28 @@ func resolveStaticDir() string {
 	return staticDir
 }
 
+const (
+	cacheControlHTML   = "public, max-age=0, must-revalidate"
+	cacheControlHashed = "public, max-age=31536000, immutable"
+	cacheControlStatic = "public, max-age=86400"
+)
+
+// Vite (and similar) content hashes: index-CQUV9458.js, inter-latin-400-normal-BYj_oED-.woff2
+var hashedStaticName = regexp.MustCompile(`(?i)-[A-Za-z0-9_-]{8}\.[a-z0-9]+$`)
+
+func staticCacheControl(urlPath string, servingHTML bool) string {
+	if servingHTML {
+		return cacheControlHTML
+	}
+	if hashedStaticName.MatchString(filepath.Base(urlPath)) {
+		return cacheControlHashed
+	}
+	return cacheControlStatic
+}
+
 func newStaticFileHandler(staticDir string) http.Handler {
 	fs := http.FileServer(http.Dir(staticDir))
+	indexPath := filepath.Join(staticDir, "index.html")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isSEOPath(r.URL.Path) {
@@ -158,7 +179,8 @@ func newStaticFileHandler(staticDir string) http.Handler {
 		if err != nil {
 			if os.IsNotExist(err) {
 				if isSPAPath(r.URL.Path) {
-					http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+					w.Header().Set("Cache-Control", staticCacheControl(r.URL.Path, true))
+					http.ServeFile(w, r, indexPath)
 					return
 				}
 				http.NotFound(w, r)
@@ -170,13 +192,16 @@ func newStaticFileHandler(staticDir string) http.Handler {
 
 		if info.IsDir() && r.URL.Path != "/" {
 			if isSPAPath(r.URL.Path) {
-				http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+				w.Header().Set("Cache-Control", staticCacheControl(r.URL.Path, true))
+				http.ServeFile(w, r, indexPath)
 				return
 			}
 			http.NotFound(w, r)
 			return
 		}
 
+		servingHTML := r.URL.Path == "/" || strings.EqualFold(filepath.Base(path), "index.html")
+		w.Header().Set("Cache-Control", staticCacheControl(r.URL.Path, servingHTML))
 		fs.ServeHTTP(w, r)
 	})
 }
@@ -232,9 +257,9 @@ func contentSecurityPolicy(allowedOrigins []string) string {
 	return strings.Join([]string{
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline'",
-		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data:",
-		"font-src 'self' https://fonts.gstatic.com",
+		"font-src 'self'",
 		"connect-src " + strings.Join(connectSrcValues, " "),
 		"object-src 'none'",
 		"base-uri 'self'",

@@ -230,7 +230,7 @@ func TestHandleAdminUpdateFeedback(t *testing.T) {
 			body:         `{"status":"pending"}`,
 			updateErr:    errs.ErrFeedbackInvalidStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be new or read",
+			errMsg:       "Status must be new, read, or rejected",
 			wantCalls:    1,
 		},
 		{
@@ -259,6 +259,15 @@ func TestHandleAdminUpdateFeedback(t *testing.T) {
 			wantCalls:    1,
 			wantID:       "10",
 			wantStatus:   "new",
+		},
+		{
+			name:         "accept valid rejected status",
+			pathID:       "10",
+			body:         `{"status":"rejected"}`,
+			statusWanted: http.StatusOK,
+			wantCalls:    1,
+			wantID:       "10",
+			wantStatus:   "rejected",
 		},
 	}
 	for _, tt := range tests {
@@ -428,7 +437,7 @@ func TestHandleAdminGetFeedbacks(t *testing.T) {
 			target:       "/api/admin/feedback?limit=10&offset=10&status=pending",
 			listErr:      errs.ErrFeedbackInvalidStatus,
 			statusWanted: http.StatusBadRequest,
-			errMsg:       "Status must be new or read",
+			errMsg:       "Status must be new, read, or rejected",
 		},
 		{
 			name:         "reject list invalid params",

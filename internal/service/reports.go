@@ -39,7 +39,7 @@ func (s *ReportService) List(ctx context.Context, limit int, offset int, q strin
 	}
 
 	switch status {
-	case "open", "resolved", "":
+	case "open", "resolved", "rejected", "":
 	default:
 		return nil, errs.ErrReportInvalidStatus
 	}
@@ -74,7 +74,7 @@ func (s *ReportService) Update(ctx context.Context, status string, idStr string)
 	}
 
 	switch status {
-	case "open", "resolved":
+	case "open", "resolved", "rejected":
 	case "":
 		return errs.ErrStatusRequired
 	default:

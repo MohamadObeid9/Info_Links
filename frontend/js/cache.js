@@ -1,7 +1,7 @@
 // ===================== CACHE =====================
 const _CACHE_KEY = "infolinks_data";
 const _CACHE_TS_KEY = "infolinks_cache_ts";
-const _CACHE_TTL = 60 * 60 * 1000; // 1 hour
+const _CACHE_TTL = 60 * 60 * 1000; // fresh window; stale entries still render while we revalidate
 
 function _saveCache(data) {
   try {
@@ -14,10 +14,13 @@ function _saveCache(data) {
 
 function _loadCache() {
   try {
-    const ts = localStorage.getItem(_CACHE_TS_KEY);
-    if (!ts || Date.now() - parseInt(ts) > _CACHE_TTL) return null;
     const raw = localStorage.getItem(_CACHE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return null;
+    const ts = parseInt(localStorage.getItem(_CACHE_TS_KEY) || "0", 10);
+    const stale = !ts || Date.now() - ts > _CACHE_TTL;
+    return { data, stale };
   } catch (e) {
     return null;
   }

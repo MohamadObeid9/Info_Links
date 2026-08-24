@@ -72,8 +72,38 @@ function _naturalLinkSort(a, b) {
   return (a.display_order || 0) - (b.display_order || 0);
 }
 
-function _renderAfterLoad() {
-  initMobileHomeState();
+function _contentPayload(data) {
+  return {
+    programs: data.programs || [],
+    years: data.years || [],
+    semesters: data.semesters || [],
+    courses: data.courses || [],
+    links: data.links || [],
+    extra_sections: data.extra_sections || [],
+    extra_links: data.extra_links || [],
+  };
+}
+
+function _applyContent(payload) {
+  _buildTree(
+    payload.programs,
+    payload.years,
+    payload.semesters,
+    payload.courses,
+    payload.links,
+    payload.extra_sections,
+    payload.extra_links,
+  );
+}
+
+async function _fetchAndCacheContent() {
+  const payload = _contentPayload(await apiRequest("/api/content"));
+  if (!AppState.adminLoggedIn) _saveCache(payload);
+  return payload;
+}
+
+function _renderAfterLoad({ resetMobile = true } = {}) {
+  if (resetMobile) initMobileHomeState();
   if (!AppState.currentProg) AppState.currentProg = "all";
   document.getElementById("extraSection").style.display = "none";
   if (isMobileView()) {
@@ -117,61 +147,43 @@ function _populateCourseDatalist() {
 }
 
 async function loadAll() {
-  const isFirstLoad = !document.getElementById("coursesOutput").dataset.loaded;
+  const output = document.getElementById("coursesOutput");
+  const extra = document.getElementById("extraSection");
+  const cached = AppState.adminLoggedIn ? null : _loadCache();
+
+  if (cached) {
+    _applyContent(cached.data);
+    output.dataset.loaded = "1";
+    _renderAfterLoad();
+    if (!cached.stale) return;
+    try {
+      const fresh = await _fetchAndCacheContent();
+      if (JSON.stringify(cached.data) !== JSON.stringify(fresh)) {
+        _applyContent(fresh);
+        _renderAfterLoad({ resetMobile: false });
+      }
+    } catch {
+      // Keep showing the stale payload if the refresh fails.
+    }
+    return;
+  }
+
+  const isFirstLoad = !output.dataset.loaded;
   if (isFirstLoad) {
     showSkeleton();
   } else {
-    document.getElementById("coursesOutput").innerHTML =
+    output.innerHTML =
       '<div class="loader"><div class="spinner"></div> Loading…</div>';
   }
-  document.getElementById("extraSection").innerHTML = "";
+  extra.innerHTML = "";
   try {
-    // Admins always get fresh data; visitors use the 1-hour cache.
-    const cached = AppState.adminLoggedIn ? null : _loadCache();
-
-    if (cached) {
-      _buildTree(
-        cached.programs,
-        cached.years,
-        cached.semesters,
-        cached.courses,
-        cached.links,
-        cached.extra_sections,
-        cached.extra_links,
-      );
-      _renderAfterLoad();
-      return;
-    }
-
-    // Cache miss — fetch all data from our new Go backend
-    const data = await apiRequest("/api/content");
-
-    if (!AppState.adminLoggedIn) {
-      _saveCache({
-        programs: data.programs || [],
-        years: data.years || [],
-        semesters: data.semesters || [],
-        courses: data.courses || [],
-        links: data.links || [],
-        extra_sections: data.extra_sections || [],
-        extra_links: data.extra_links || [],
-      });
-    }
-
-    _buildTree(
-      data.programs || [],
-      data.years || [],
-      data.semesters || [],
-      data.courses || [],
-      data.links || [],
-      data.extra_sections || [],
-      data.extra_links || [],
-    );
-    document.getElementById("coursesOutput").dataset.loaded = "1";
+    const payload = await _fetchAndCacheContent();
+    _applyContent(payload);
+    output.dataset.loaded = "1";
     _renderAfterLoad();
   } catch (e) {
     const message = formatApiError(e, "Failed to fetch from backend");
-    document.getElementById("coursesOutput").innerHTML =
+    output.innerHTML =
       `<div class="empty">⚠️ Failed to load data: ${esc(message)}</div>`;
   }
 }

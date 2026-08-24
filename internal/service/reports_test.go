@@ -170,6 +170,15 @@ func TestReportService_List(t *testing.T) {
 			err:     nil,
 			listErr: nil,
 		},
+		{
+			name:    "accept rejected status",
+			limit:   10,
+			offset:  10,
+			q:       "",
+			status:  "rejected",
+			err:     nil,
+			listErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -465,6 +474,15 @@ func TestReportService_Update(t *testing.T) {
 			id:         10,
 			status:     "resolved",
 			wantStatus: "resolved",
+			err:        nil,
+			updateErr:  nil,
+		},
+		{
+			name:       "accept valid rejected status",
+			idStr:      "10",
+			id:         10,
+			status:     "rejected",
+			wantStatus: "rejected",
 			err:        nil,
 			updateErr:  nil,
 		},

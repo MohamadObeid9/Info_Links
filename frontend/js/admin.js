@@ -698,16 +698,18 @@ async function renderAdminReports() {
     html += `<table class="admin-table"><thead><tr><th>Sender</th><th>Course</th><th>Link</th><th>Issue</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
     reports.forEach((r) => {
       const issue = (r.description || "").trim() || "No description";
+      const statusTag = r.status === "open"
+        ? "tag-open"
+        : r.status === "rejected"
+          ? "tag-rejected"
+          : "tag-resolved";
       html += `<tr class="admin-row">
         ${senderDetail(r.user_id)}
         ${adminCell("admin-pri", "Course", esc(r.course_name))}
         ${adminCell(r.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", `<span class="admin-url">${esc(r.link_url || "—")}</span>`)}
         ${adminCell("admin-sec", "Issue", esc(issue))}
-        ${adminCell("admin-meta", "Status", `<span class="tag ${r.status === "open" ? "tag-open" : "tag-resolved"}">${r.status}</span>`)}
-        ${adminCell("admin-actions action-btns", "Actions", `
-          <button class="action-btn" onclick="toggleReportStatus(${r.id},'${r.status}')">${r.status === "open" ? "✅ Resolve" : "↩ Reopen"}</button>
-          <button class="action-btn del" onclick="confirmAction('Delete this report?',()=>deleteReport(${r.id}))">🗑 Delete</button>
-        `)}
+        ${adminCell("admin-meta", "Status", `<span class="tag ${statusTag}">${esc(r.status || "open")}</span>`)}
+        ${adminCell("admin-actions action-btns", "Actions", _reportActions(r))}
       </tr>`;
     });
     html += "</tbody></table>";
@@ -767,6 +769,27 @@ async function renderAdminContributions() {
   } catch (e) {
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ ${e.message}</div>`;
   }
+}
+
+function _reportActions(r) {
+  if (r.status === "rejected") {
+    return `<button class="action-btn" onclick="setReportStatus(${r.id},'open','Report reopened.')">↩ Reopen</button>
+      <button class="action-btn del" onclick="confirmAction('Delete this report permanently?',()=>deleteReport(${r.id}))">🗑</button>`;
+  }
+  if (r.status === "resolved") {
+    return `<button class="action-btn" onclick="setReportStatus(${r.id},'open','Report reopened.')">↩ Reopen</button>`;
+  }
+  return `<button class="action-btn" style="color:var(--success); border-color:var(--success)" onclick="setReportStatus(${r.id},'resolved','Report resolved.')">✅ Resolve</button>
+    <button class="action-btn del" onclick="confirmAction('Reject this report? It stays in the list as rejected.',()=>setReportStatus(${r.id},'rejected','Report rejected.'),'Reject')">✕ Reject</button>`;
+}
+
+async function setReportStatus(id, status, toast) {
+  try {
+    await sb(`reports?id=eq.${id}`, "PATCH", { status });
+    renderAdminReports();
+    loadReportsBadges();
+    if (toast) showToast(toast);
+  } catch (e) { showToast(e.message, true); }
 }
 
 function _contributionActions(c) {
@@ -855,8 +878,8 @@ async function renderAdminStudents() {
     students.forEach((u) => {
       html += `<tr class="admin-row" data-student-id="${Number(u.id)}">
         ${adminCell("admin-pri", "Student", `<strong>${esc(studentHandleOf(u))}</strong>`)}
-        ${adminCell("admin-sec", "Last seen", esc(fmtDateTime(u.last_seen_at)))}
         ${adminCell("admin-detail", "First seen", esc(fmtDateTime(u.created_at)))}
+        ${adminCell("admin-sec", "Last seen", esc(fmtDateTime(u.last_seen_at)))}
         ${adminCell("admin-meta", "Visits", String(_num(u.visit_count)))}
         ${adminCell("admin-detail", "Clicks", String(_num(u.click_count)))}
         ${adminCell("admin-actions action-btns", "Actions", `<button class="action-btn" onclick="openAdminStudent(${Number(u.id)})">👤 History</button>`)}
@@ -1101,13 +1124,6 @@ async function deleteExtraLink(id) {
     showToast("Link removed.");
   } catch (e) { showToast(e.message, true); }
 }
-async function toggleReportStatus(id, status) {
-  try {
-    await sb(`reports?id=eq.${id}`, "PATCH", { status: status === "open" ? "resolved" : "open" });
-    renderAdminReports();
-    loadReportsBadges();
-  } catch (e) { showToast(e.message, true); }
-}
 async function deleteReport(id) {
   try {
     await sb(`reports?id=eq.${id}`, "DELETE");
@@ -1184,7 +1200,8 @@ Object.assign(window, {
   applyDeleteLink,
   deleteExtraSection,
   deleteExtraLink,
-  toggleReportStatus,
+  toggleReportStatus: setReportStatus,
+  setReportStatus,
   deleteReport,
   openAutoApproveContribModal,
   applyAutoApproveContrib,
