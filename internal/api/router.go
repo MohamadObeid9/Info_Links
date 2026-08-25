@@ -62,6 +62,8 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 	// Visits are the guest tracking path, everything else is gated behind signup.
 	mux.HandleFunc("POST /api/page_views", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostPageView)))
 	mux.HandleFunc("POST /api/link_clicks", h.skipForAdmin(middleware.RequireRegisteredUser(jwtSecret, h.handlePostLinkClick)))
+	mux.HandleFunc("POST /api/search_events", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostSearchEvent)))
+	mux.HandleFunc("POST /api/browse_events", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostBrowseEvent)))
 	mux.HandleFunc("POST /api/reports", middleware.RequireRegisteredUser(jwtSecret, h.handlePostReport))
 	mux.HandleFunc("POST /api/feedback", middleware.RequireRegisteredUser(jwtSecret, h.handlePostFeedback))
 	mux.HandleFunc("POST /api/contributions", middleware.RequireRegisteredUser(jwtSecret, h.handlePostContribution))
@@ -247,7 +249,7 @@ func allowedOrigins(rawOrigins string) []string {
 }
 
 func contentSecurityPolicy(allowedOrigins []string) string {
-	connectSrcValues := []string{"'self'"}
+	connectSrcValues := []string{"'self'", "https://cloudflareinsights.com"}
 	for _, origin := range allowedOrigins {
 		if origin != "" {
 			connectSrcValues = append(connectSrcValues, origin)
@@ -256,7 +258,7 @@ func contentSecurityPolicy(allowedOrigins []string) string {
 
 	return strings.Join([]string{
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data:",
 		"font-src 'self'",

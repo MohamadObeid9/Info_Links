@@ -72,6 +72,8 @@ func (r *postgresUserRepository) AdoptGuest(ctx context.Context, guestID int, us
 		reassignContributionsQuery,
 		reassignFeedbackQuery,
 		reassignFavoriteEventsQuery,
+		reassignSearchEventsQuery,
+		reassignBrowseEventsQuery,
 	} {
 		if _, err := tx.ExecContext(ctx, q, guestID, userID); err != nil {
 			return fmt.Errorf("reassign guest activity: %w", err)
@@ -205,7 +207,7 @@ func (r *postgresUserRepository) ListActivity(ctx context.Context, userID int, l
 	events := []models.UserActivityEvent{}
 	for rows.Next() {
 		var e models.UserActivityEvent
-		if err := rows.Scan(&e.Type, &e.At, &e.Summary, &e.RefID); err != nil {
+		if err := rows.Scan(&e.Type, &e.At, &e.Summary, &e.RefID, &e.DeviceType); err != nil {
 			return nil, fmt.Errorf("list user activity rows scan: %w", err)
 		}
 		events = append(events, e)
@@ -215,6 +217,18 @@ func (r *postgresUserRepository) ListActivity(ctx context.Context, userID int, l
 		return nil, fmt.Errorf("list user activity rows err: %w", err)
 	}
 	return events, nil
+}
+
+func (r *postgresUserRepository) GetLastDeviceType(ctx context.Context, userID int) (string, error) {
+	var deviceType string
+	err := r.db.QueryRowContext(ctx, getLastDeviceTypeQuery, userID).Scan(&deviceType)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("get last device type: %w", err)
+	}
+	return deviceType, nil
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

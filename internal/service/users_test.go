@@ -52,6 +52,10 @@ type fakeUserRepo struct {
 	activityCalls  int
 	activityResult []models.UserActivityEvent
 	activityErr    error
+
+	lastDeviceCalls  int
+	lastDeviceResult string
+	lastDeviceErr    error
 }
 
 func (f *fakeUserRepo) CreateGuest(ctx context.Context) (int, error) {
@@ -133,6 +137,14 @@ func (f *fakeUserRepo) ListActivity(ctx context.Context, userID int, limit int, 
 		return nil, f.activityErr
 	}
 	return f.activityResult, nil
+}
+
+func (f *fakeUserRepo) GetLastDeviceType(ctx context.Context, userID int) (string, error) {
+	f.lastDeviceCalls++
+	if f.lastDeviceErr != nil {
+		return "", f.lastDeviceErr
+	}
+	return f.lastDeviceResult, nil
 }
 
 func TestUserService_CreateGuest(t *testing.T) {
@@ -629,27 +641,32 @@ func TestUserService_ListStudents(t *testing.T) {
 
 func TestUserService_GetUserDetail(t *testing.T) {
 	student := models.User{ID: 19, FirstName: "mohamad", LastName: "hassan", Number: 55}
-	timeline := []models.UserActivityEvent{{Type: "visit", At: "2026-08-18T10:00:00Z", Summary: "visited home", RefID: 4}}
+	timeline := []models.UserActivityEvent{{Type: "visit", At: "2026-08-18T10:00:00Z", Summary: "visited home from phone", RefID: 4, DeviceType: "phone"}}
 
 	tests := []struct {
-		name         string
-		idStr        string
-		limit        int
-		offset       int
-		byIDErr      error
-		activityErr  error
-		wantByID     int
-		wantActivity int
-		want         models.UserDetail
-		wantErr      error
+		name           string
+		idStr          string
+		limit          int
+		offset         int
+		byIDErr        error
+		activityErr    error
+		lastDeviceErr  error
+		lastDevice     string
+		wantByID       int
+		wantActivity   int
+		wantLastDevice int
+		want           models.UserDetail
+		wantErr        error
 	}{
 		{
-			name:         "returns the profile and its timeline",
-			idStr:        " 19 ",
-			limit:        10,
-			wantByID:     1,
-			wantActivity: 1,
-			want:         models.UserDetail{User: student, Timeline: timeline},
+			name:           "returns the profile and its timeline",
+			idStr:          " 19 ",
+			limit:          10,
+			lastDevice:     "phone",
+			wantByID:       1,
+			wantActivity:   1,
+			wantLastDevice: 1,
+			want:           models.UserDetail{User: student, LastDeviceType: "phone", Timeline: timeline},
 		},
 		{
 			name:    "rejects a non numeric id",
@@ -680,15 +697,27 @@ func TestUserService_GetUserDetail(t *testing.T) {
 			wantActivity: 1,
 			wantErr:      errs.ErrDatabaseDown,
 		},
+		{
+			name:           "wraps a last device error",
+			idStr:          "19",
+			limit:          10,
+			lastDeviceErr:  errs.ErrDatabaseDown,
+			wantByID:       1,
+			wantActivity:   1,
+			wantLastDevice: 1,
+			wantErr:        errs.ErrDatabaseDown,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &fakeUserRepo{
-				byIDResult:     student,
-				byIDErr:        tt.byIDErr,
-				activityResult: timeline,
-				activityErr:    tt.activityErr,
+				byIDResult:       student,
+				byIDErr:          tt.byIDErr,
+				activityResult:   timeline,
+				activityErr:      tt.activityErr,
+				lastDeviceResult: tt.lastDevice,
+				lastDeviceErr:    tt.lastDeviceErr,
 			}
 			svc := NewUserService(repo)
 
@@ -699,6 +728,9 @@ func TestUserService_GetUserDetail(t *testing.T) {
 			}
 			if repo.activityCalls != tt.wantActivity {
 				t.Fatalf("list activity calls = %d, want %d", repo.activityCalls, tt.wantActivity)
+			}
+			if repo.lastDeviceCalls != tt.wantLastDevice {
+				t.Fatalf("last device calls = %d, want %d", repo.lastDeviceCalls, tt.wantLastDevice)
 			}
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {

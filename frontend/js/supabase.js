@@ -59,7 +59,7 @@ function logApiError(err, context, status) {
 // Endpoints where the server derives the acting student from the token, so the
 // student session token wins over any admin token present in the same browser.
 const STUDENT_AUTH_PATHS =
-  /^\/api\/(page_views|link_clicks|reports|feedback|contributions|users)(\/|$|\?)/;
+  /^\/api\/(page_views|link_clicks|search_events|browse_events|reports|feedback|contributions|users)(\/|$|\?)/;
 
 function _usesStudentToken(url) {
   return STUDENT_AUTH_PATHS.test(String(url).split("?")[0]);
@@ -196,12 +196,50 @@ function trackLinkClick(linkId, linkKind = "link") {
   });
 }
 
+let _searchTrackTimer = null;
+let _lastSearchTracked = "";
+
+function trackSearch(query) {
+  if (AppState.adminLoggedIn || !AppState.studentToken) return;
+  const q = String(query || "").trim().toLowerCase();
+  if (q.length < 2 || q === _lastSearchTracked) return;
+  clearTimeout(_searchTrackTimer);
+  _searchTrackTimer = setTimeout(() => {
+    _lastSearchTracked = q;
+    apiRequest(`/api/search_events`, {
+      method: "POST",
+      body: { query: q },
+    }).catch((e) => {
+      if (e?.status === 401) window.onStudentTokenRejected?.();
+    });
+  }, 600);
+}
+
+function trackBrowse(step) {
+  if (AppState.adminLoggedIn || !AppState.studentToken) return;
+  if (step !== "year" && step !== "list") return;
+  const key = `browse_${step}`;
+  if (sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key, "1");
+  apiRequest(`/api/browse_events`, {
+    method: "POST",
+    body: { step },
+  }).catch((e) => {
+    if (e?.status === 401) {
+      sessionStorage.removeItem(key);
+      window.onStudentTokenRejected?.();
+    }
+  });
+}
+
 // Global Bridge
 window.sb = sb;
 window.sbAuth = sbAuth;
 window.sbLogout = sbLogout;
 window.trackVisit = trackVisit;
 window.trackLinkClick = trackLinkClick;
+window.trackSearch = trackSearch;
+window.trackBrowse = trackBrowse;
 window.apiRequest = apiRequest;
 window.formatApiError = formatApiError;
 window.logApiError = logApiError;
@@ -212,6 +250,8 @@ export {
   sbLogout,
   trackVisit,
   trackLinkClick,
+  trackSearch,
+  trackBrowse,
   apiRequest,
   formatApiError,
   logApiError,

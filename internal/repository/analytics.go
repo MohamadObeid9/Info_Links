@@ -21,7 +21,7 @@ func NewPostgresAnalyticsRepository(db *sql.DB) AnalyticsRepository {
 func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error) {
 	var summary models.AnalyticsSummary
 
-	if err := r.db.QueryRowContext(ctx, analyticsCountsQuery).Scan(
+	if err := r.db.QueryRowContext(ctx, analyticsCountsQuery, params.Days).Scan(
 		&summary.TotalStudents,
 		&summary.StudentsGained7d,
 		&summary.StudentsGained30d,
@@ -30,8 +30,32 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 		&summary.ClicksToday,
 		&summary.DevicesToday.Phone,
 		&summary.DevicesToday.Laptop,
+		&summary.DevicesToday.Both,
+		&summary.ActiveInRange,
+		&summary.ClicksInRange,
+		&summary.ClickersInRange,
+		&summary.PrevActiveInRange,
+		&summary.PrevClicksInRange,
+		&summary.DevicesInRange.Phone,
+		&summary.DevicesInRange.Laptop,
+		&summary.DevicesInRange.Both,
+		&summary.ReturningInRange,
+		&summary.NewInRange,
+		&summary.Funnel.Arrivals,
+		&summary.Funnel.SignedUp,
+		&summary.PrevStudentsGained,
+		&summary.Funnel.StillGuest,
+		&summary.Funnel.GuestsOpen,
+		&summary.Inbox.Reports,
+		&summary.Inbox.Contributions,
+		&summary.Inbox.Feedback,
+		&summary.Browse.ReachedYear,
+		&summary.Browse.ReachedList,
 	); err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics counts: %w", err)
+	}
+	if summary.ActiveInRange > 0 {
+		summary.ClicksPerActive = float64(summary.ClicksInRange) / float64(summary.ActiveInRange)
 	}
 
 	dailyVisits, err := r.dailyUniqueVisits(ctx, params.Days)
@@ -70,7 +94,57 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	}
 	summary.VisitorsToday = visitorsToday
 
+	topCourses, err := r.courseDemand(ctx, analyticsTopCoursesQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics top courses: %w", err)
+	}
+	summary.TopCourses = topCourses
+
+	zeroCourses, err := r.courseDemand(ctx, analyticsZeroClickCoursesQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics zero-click courses: %w", err)
+	}
+	summary.ZeroClickCourses = zeroCourses
+
+	zeroLinks, err := r.deadLinks(ctx, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics zero-click links: %w", err)
+	}
+	summary.ZeroClickLinks = zeroLinks
+
+	topFavorites, err := r.courseDemand(ctx, analyticsTopFavoritesQuery)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics top favorites: %w", err)
+	}
+	summary.TopFavorites = topFavorites
+
+	heatmap, err := r.heatmap(ctx, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics heatmap: %w", err)
+	}
+	summary.Heatmap = heatmap
+
+	searchTerms, err := r.searchTerms(ctx, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics search terms: %w", err)
+	}
+	summary.SearchTerms = searchTerms
+
 	return summary, nil
+}
+
+func (r *postgresAnalyticsRepository) InsertSearch(ctx context.Context, userID int, query string) error {
+	if _, err := r.db.ExecContext(ctx, insertSearchEventQuery, userID, query); err != nil {
+		return fmt.Errorf("insert search event: %w", err)
+	}
+	return nil
+}
+
+func (r *postgresAnalyticsRepository) InsertBrowse(ctx context.Context, userID int, step string) error {
+	if _, err := r.db.ExecContext(ctx, insertBrowseEventQuery, userID, step); err != nil {
+		return fmt.Errorf("insert browse event: %w", err)
+	}
+	return nil
 }
 
 func (r *postgresAnalyticsRepository) dailyUniqueVisits(ctx context.Context, days int) ([]models.DailyUniqueDay, error) {
@@ -221,4 +295,88 @@ func (r *postgresAnalyticsRepository) scanUserClickRows(rows *sql.Rows) ([]model
 		return nil, fmt.Errorf("rows err: %w", err)
 	}
 	return users, nil
+}
+
+func (r *postgresAnalyticsRepository) courseDemand(ctx context.Context, query string, args ...any) ([]models.CourseDemand, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := []models.CourseDemand{}
+	for rows.Next() {
+		var c models.CourseDemand
+		if err := rows.Scan(&c.CourseID, &c.Name, &c.Code, &c.Count); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return out, nil
+}
+
+func (r *postgresAnalyticsRepository) deadLinks(ctx context.Context, days int) ([]models.DeadLink, error) {
+	rows, err := r.db.QueryContext(ctx, analyticsZeroClickLinksQuery, days)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := []models.DeadLink{}
+	for rows.Next() {
+		var d models.DeadLink
+		if err := rows.Scan(&d.Kind, &d.ID, &d.Label, &d.CourseName); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		out = append(out, d)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return out, nil
+}
+
+func (r *postgresAnalyticsRepository) heatmap(ctx context.Context, days int) ([]models.HeatmapCell, error) {
+	rows, err := r.db.QueryContext(ctx, analyticsHeatmapQuery, days)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := []models.HeatmapCell{}
+	for rows.Next() {
+		var c models.HeatmapCell
+		if err := rows.Scan(&c.Dow, &c.Hour, &c.Count); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		out = append(out, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return out, nil
+}
+
+func (r *postgresAnalyticsRepository) searchTerms(ctx context.Context, days int) ([]models.SearchTermCount, error) {
+	rows, err := r.db.QueryContext(ctx, analyticsSearchTermsQuery, days)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := []models.SearchTermCount{}
+	for rows.Next() {
+		var s models.SearchTermCount
+		if err := rows.Scan(&s.Query, &s.Count); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return out, nil
 }

@@ -244,6 +244,7 @@ function _paintAdminInboxHints(openR, pendC, newF) {
 }
 
 function onSearch() {
+  window.trackSearch?.(document.getElementById("searchInput")?.value || "");
   if (isMobileView()) {
     window.renderCourses();
     return;

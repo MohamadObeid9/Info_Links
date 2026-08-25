@@ -294,12 +294,14 @@ function selectProg(id) {
 function setYear(y) {
   AppState.currentYear = y;
   AppState.currentSem = "all";
+  window.trackBrowse?.("year");
   renderYearFilters();
   renderSemFilters();
   renderCourses();
 }
 function setSem(s) {
   AppState.currentSem = s;
+  window.trackBrowse?.("list");
   renderSemFilters();
   renderCourses();
 }

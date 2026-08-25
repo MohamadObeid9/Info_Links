@@ -220,10 +220,9 @@ function buildTopLinksList(topLinks, expandKey = null) {
     return `<div style="color:var(--muted);font-size:0.9rem;">No click data.</div>`;
   }
 
-  const expandable = Boolean(expandKey);
-  const expanded = expandable && AppState[expandKey];
-  const items = rows
-    .slice(0, expanded || !expandable ? 10 : 5)
+  const expanded = Boolean(expandKey && AppState[expandKey]);
+  const visible = expanded ? rows : rows.slice(0, 10);
+  const items = visible
     .map((row) => {
       const info = resolveLinkInfo(row.kind, row.id);
       return `<li><strong>${_num(row.clicks)}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
@@ -231,8 +230,8 @@ function buildTopLinksList(topLinks, expandKey = null) {
     .join("");
 
   const expandBtn =
-    expandable && rows.length > 5
-      ? `<button class="filter-btn" style="margin-top:12px;" onclick="AppState.${expandKey}=!AppState.${expandKey};renderAdminAnalytics()">${expanded ? "Show top 5" : "Show top 10"}</button>`
+    expandKey && rows.length > 10
+      ? `<button type="button" class="filter-btn" style="margin-top:12px;" onclick="analyticsToggleExpand('${expandKey}')">${expanded ? "Show less" : "Show All"}</button>`
       : "";
 
   return `<ul style="list-style:none;padding:0;">${items}</ul>${expandBtn}`;
@@ -247,11 +246,11 @@ function buildTabbedTopLinksCard(summary) {
   const tabButtons = ["today", "range"]
     .map((t) => {
       const label = t === "today" ? "Today" : "In range";
-      return `<button type="button" class="filter-btn ${tab === t ? "active" : ""}" onclick="AppState.analyticsLinksTab='${t}';renderAdminAnalytics()">${label}</button>`;
+      return `<button type="button" class="filter-btn ${tab === t ? "active" : ""}" onclick="AppState.analyticsLinksTab='${t}';analyticsPaintLocal()">${label}</button>`;
     })
     .join("");
 
-  return `<div class="chart-wrap" style="margin-top:20px;">
+  return `<div class="chart-wrap analytics-card">
     <div class="chart-title">🔥 Top clicked links</div>
     <div class="analytics-tabs">${tabButtons}</div>
     ${buildTopLinksList(links, expandKey)}
@@ -261,16 +260,16 @@ function buildTabbedTopLinksCard(summary) {
 function buildTopUsersInRangeSection(rows) {
   const list = Array.isArray(rows) ? rows : [];
   if (!list.length) {
-    return `<div class="chart-wrap" style="margin-top:20px;">
+    return `<div class="chart-wrap analytics-card">
       <div class="chart-title">🏆 Top students (in range)</div>
-      <div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">No clicks in this range yet.</div>
+      <div style="color:var(--muted);font-size:0.9rem;">No clicks in this range yet.</div>
     </div>`;
   }
 
   const expandKey = "analyticsTopUsersExpanded";
-  const expanded = AppState[expandKey];
-  const items = list
-    .slice(0, expanded ? 10 : 5)
+  const expanded = Boolean(AppState[expandKey]);
+  const visible = expanded ? list : list.slice(0, 10);
+  const items = visible
     .map((row) => {
       const id = Number(row.user_id);
       const handle = row.handle || (Number.isFinite(id) ? `#${id}` : "unknown");
@@ -282,13 +281,13 @@ function buildTopUsersInRangeSection(rows) {
     .join("");
 
   const expandBtn =
-    list.length > 5
-      ? `<button class="filter-btn" style="margin-top:12px;" onclick="AppState.${expandKey}=!AppState.${expandKey};renderAdminAnalytics()">${expanded ? "Show top 5" : "Show top 10"}</button>`
+    list.length > 10
+      ? `<button type="button" class="filter-btn" style="margin-top:12px;" onclick="analyticsToggleExpand('${expandKey}')">${expanded ? "Show less" : "Show All"}</button>`
       : "";
 
-  return `<div class="chart-wrap" style="margin-top:20px;">
+  return `<div class="chart-wrap analytics-card">
     <div class="chart-title">🏆 Top students (in range)</div>
-    <ul style="list-style:none;padding:0;margin-top:16px;">${items}</ul>
+    <ul style="list-style:none;padding:0;margin-top:8px;">${items}</ul>
     ${expandBtn}
   </div>`;
 }
@@ -320,7 +319,7 @@ function buildVisitorChipsSection(summary) {
     .join("");
 
   if (!visitors.length) {
-    return `<div class="chart-wrap" style="margin-top:20px;">
+    return `<div class="chart-wrap analytics-card">
       <div class="chart-title">👀 Who visited today</div>
       <div class="analytics-tabs">${sortButtons}</div>
       <div style="color:var(--muted);margin-top:16px;font-size:0.9rem;">Nobody has visited yet today.</div>
@@ -354,7 +353,7 @@ function buildVisitorChipsSection(summary) {
     ${_pagerButton("Next →", hasMore, `AppState.analyticsVisitorsOffset=${offset + pageSize};renderAdminAnalytics()`)}
   </div>`;
 
-  return `<div class="chart-wrap" style="margin-top:20px;">
+  return `<div class="chart-wrap analytics-card">
     <div class="chart-title">👀 Who visited today${totalHint}</div>
     <div class="analytics-tabs">${sortButtons}</div>
     <div class="visitor-chips">${chips}</div>
@@ -366,15 +365,177 @@ function _deviceTodayParts(devices) {
   if (!devices || typeof devices !== "object") return { val: "0", sub: "" };
   const phone = Number(devices.phone) || 0;
   const laptop = Number(devices.laptop) || 0;
-  if (phone && laptop) return { val: `${_num(phone)}/${_num(laptop)}`, sub: "phone / laptop" };
-  if (phone) return { val: _num(phone), sub: "phone" };
-  if (laptop) return { val: _num(laptop), sub: "laptop" };
-  return { val: "0", sub: "" };
+  const both = Number(devices.both) || 0;
+  if (!phone && !laptop) return { val: "0", sub: "" };
+  let sub = "unique students";
+  if (both) sub += ` · ${_num(both)} used both`;
+  if (phone && laptop) return { val: `${_num(phone)}/${_num(laptop)}`, sub: `phone / laptop · ${sub}` };
+  if (phone) return { val: _num(phone), sub: `phone · ${sub}` };
+  return { val: _num(laptop), sub: `laptop · ${sub}` };
+}
+
+function _deviceLabel(type) {
+  if (type === "phone") return "📱 Phone";
+  if (type === "laptop") return "💻 Laptop";
+  return "—";
+}
+
+function _pctDelta(current, previous) {
+  const cur = Number(current) || 0;
+  const prev = Number(previous) || 0;
+  if (prev <= 0) return cur > 0 ? "+new" : "—";
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  return `${pct > 0 ? "+" : ""}${pct}%`;
+}
+
+function _pctOfTotal(part, total) {
+  const p = Number(part) || 0;
+  const t = Number(total) || 0;
+  if (t <= 0) return "—";
+  return `${Math.round((p / t) * 100)}%`;
+}
+
+function _showAllList(rows, expandKey, emptyMsg, renderItem) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) {
+    return `<div style="color:var(--muted);font-size:0.9rem;">${esc(emptyMsg)}</div>`;
+  }
+  const expanded = Boolean(AppState[expandKey]);
+  const visible = expanded ? list : list.slice(0, 10);
+  const items = visible.map(renderItem).join("");
+  const expandBtn =
+    list.length > 10
+      ? `<button type="button" class="filter-btn" style="margin-top:12px;" onclick="analyticsToggleExpand('${expandKey}')">${expanded ? "Show less" : "Show All"}</button>`
+      : "";
+  return `<ul style="list-style:none;padding:0;margin:0;">${items}</ul>${expandBtn}`;
+}
+
+function _courseDemandList(rows, emptyMsg, countLabel = "clicks", expandKey = null) {
+  return _showAllList(rows, expandKey, emptyMsg, (row) =>
+    `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.name)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.code)})</span></li>`,
+  );
+}
+
+function _deadLinksList(rows, expandKey = null) {
+  return _showAllList(rows, expandKey, "Every link got at least one click in this range.", (row) =>
+    `<li style="margin-bottom:8px;">${esc(row.label)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.course_name)})</span></li>`,
+  );
+}
+
+function _searchTermsList(rows, expandKey = null) {
+  return _showAllList(rows, expandKey, "No searches tracked in this range yet.", (row) =>
+    `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> × <code>${esc(row.query)}</code></li>`,
+  );
+}
+
+function _heatmapCellStyle(n, max) {
+  if (!n) return "";
+  const t = max ? Math.min(1, Math.sqrt(n / max)) : 0;
+  // Cream → teal → gold → coral so quiet hours stay warm and peaks pop.
+  const stops = [
+    { t: 0, h: 165, s: 55, l: 78 },
+    { t: 0.35, h: 168, s: 72, l: 42 },
+    { t: 0.7, h: 38, s: 95, l: 52 },
+    { t: 1, h: 8, s: 88, l: 54 },
+  ];
+  let a = stops[0];
+  let b = stops[stops.length - 1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (t >= stops[i].t && t <= stops[i + 1].t) {
+      a = stops[i];
+      b = stops[i + 1];
+      break;
+    }
+  }
+  const span = b.t - a.t || 1;
+  const p = (t - a.t) / span;
+  const h = a.h + (b.h - a.h) * p;
+  const s = a.s + (b.s - a.s) * p;
+  const l = a.l + (b.l - a.l) * p;
+  const color = l < 58 ? "#fff" : "#14302c";
+  const glow = t > 0.55 ? `box-shadow:0 0 10px hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}% / 0.45);` : "";
+  return `background:hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%);color:${color};font-weight:700;${glow}`;
+}
+
+function _buildHeatmap(cells) {
+  const map = new Map();
+  let max = 0;
+  const mobile = isMobileView();
+  const step = mobile ? 2 : 1;
+  const startHour = 0;
+  const endHour = 23;
+
+  (cells || []).forEach((c) => {
+    const hour = Number(c.hour) || 0;
+    const bucket = hour - (hour % step);
+    const key = `${Number(c.dow)}-${bucket}`;
+    const n = (map.get(key) || 0) + (Number(c.count) || 0);
+    map.set(key, n);
+    if (n > max) max = n;
+  });
+
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const hours = [];
+  for (let h = startHour; h <= endHour; h += step) hours.push(h);
+
+  const head = `<div class="heatmap-cell heatmap-label"></div>${hours
+    .map((h) => `<div class="heatmap-cell heatmap-label">${h}</div>`)
+    .join("")}`;
+  const body = days
+    .map((label, dow) => {
+      const row = hours
+        .map((hour) => {
+          const n = map.get(`${dow}-${hour}`) || 0;
+          const end = hour + step - 1;
+          const title = step === 1
+            ? `${label} ${hour}:00 — ${_num(n)}`
+            : `${label} ${hour}:00–${end}:59 — ${_num(n)}`;
+          const empty = n === 0 ? " heatmap-empty" : " heatmap-hit";
+          const labelText = n ? _num(n) : "";
+          return `<div class="heatmap-cell${empty}" title="${title}" style="${_heatmapCellStyle(n, max)}">${labelText}</div>`;
+        })
+        .join("");
+      return `<div class="heatmap-cell heatmap-label">${label}</div>${row}`;
+    })
+    .join("");
+
+  return `<div class="heatmap-scroll"><div class="heatmap-grid" style="--heatmap-cols:${hours.length}">${head}${body}</div></div>
+    <div class="heatmap-legend" aria-hidden="true">
+      <span>Quiet</span>
+      <span class="heatmap-legend-swatch heatmap-legend-0"></span>
+      <span class="heatmap-legend-swatch heatmap-legend-1"></span>
+      <span class="heatmap-legend-swatch heatmap-legend-2"></span>
+      <span class="heatmap-legend-swatch heatmap-legend-3"></span>
+      <span>Busy</span>
+    </div>`;
 }
 
 function _formatGain(value) {
   const n = Number(value) || 0;
   return `+${_num(n)}`;
+}
+
+function _statsInRangeSection(summary, range) {
+  const total = Number(summary.total_students) || 0;
+  const newStudents = Number(summary.funnel?.signed_up) || 0;
+  const prevNew = Number(summary.prev_students_gained) || 0;
+  const active = Number(summary.active_in_range) || 0;
+  const newPct = _pctDelta(newStudents, prevNew);
+  const activePct = _pctOfTotal(active, total);
+
+  return `<div class="chart-wrap analytics-card analytics-stats-range">
+    <div class="chart-title">📊 Stats in range (${esc(range)} days)</div>
+    <div class="analytics-stats-grid">
+      <div class="analytics-stat-tile">
+        <div class="analytics-stat-val">${_num(newStudents)} <span class="analytics-stat-pct">(${esc(newPct)})</span></div>
+        <div class="analytics-stat-label">New students vs prior ${esc(range)}d</div>
+      </div>
+      <div class="analytics-stat-tile">
+        <div class="analytics-stat-val">${_num(active)} <span class="analytics-stat-pct">(${esc(activePct)})</span></div>
+        <div class="analytics-stat-label">Active students of total roster</div>
+      </div>
+    </div>
+  </div>`;
 }
 
 /** Pad the server's sparse per-day series so the chart always spans the range. */
@@ -429,12 +590,156 @@ function _buildBarChart(days, range, todayStr) {
     .join("");
 }
 
+let _analyticsSummaryCache = null;
+
+function analyticsToggleExpand(key) {
+  AppState[key] = !AppState[key];
+  analyticsPaintLocal();
+}
+
+function analyticsPaintLocal() {
+  if (!_analyticsSummaryCache) {
+    renderAdminAnalytics();
+    return;
+  }
+  const y = window.scrollY;
+  const heat = document.querySelector(".heatmap-scroll");
+  const hx = heat ? heat.scrollLeft : 0;
+  paintAdminAnalytics(_analyticsSummaryCache);
+  window.scrollTo(0, y);
+  const heatAfter = document.querySelector(".heatmap-scroll");
+  if (heatAfter) heatAfter.scrollLeft = hx;
+}
+
+function paintAdminAnalytics(summary) {
+  const range = ["7", "30", "90"].includes(String(AppState.analyticsRange))
+    ? String(AppState.analyticsRange)
+    : "30";
+  const chartSeries = AppState.analyticsChartSeries === "roster" ? "roster" : "visitors";
+  const rangeDays = parseInt(range, 10);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const chartDays =
+      chartSeries === "roster"
+        ? _dailyRosterSeries(summary.daily_roster, rangeDays)
+        : _dailyUniqueSeries(summary.daily_unique_visits, rangeDays);
+    const barsHtml = _buildBarChart(chartDays, range, todayStr);
+
+    const rangeButtons = ["7", "30", "90"]
+      .map((r) => `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="AppState.analyticsRange='${r}';renderAdminAnalytics()">${r} days</button>`)
+      .join("");
+
+    const seriesButtons = ["visitors", "roster"]
+      .map((s) => {
+        const label = s === "visitors" ? "Unique visitors" : "Registered students";
+        return `<button type="button" class="filter-btn ${chartSeries === s ? "active" : ""}" onclick="AppState.analyticsChartSeries='${s}';analyticsPaintLocal()">${label}</button>`;
+      })
+      .join("");
+
+    const chartTitle =
+      chartSeries === "roster"
+        ? `Registered students over time — <span style="color:var(--accent2);">■</span> today`
+        : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
+
+    const gained7 = Number(summary.students_gained_7d) || 0;
+    const deviceRange = _deviceTodayParts(summary.devices_in_range);
+    const activeRange = Number(summary.active_in_range) || 0;
+    const clicksRange = Number(summary.clicks_in_range) || 0;
+    const clickers = Number(summary.clickers_in_range) || 0;
+    const clicksPerActive = Number(summary.clicks_per_active) || 0;
+    const funnel = summary.funnel || {};
+    const browse = summary.browse || {};
+
+    document.getElementById("adminContent").innerHTML = `
+      <div class="analytics-stack">
+      <div class="stat-grid analytics-kpis">
+          <div class="stat-card">
+            <div class="stat-val">${_num(summary.total_students)}</div>
+            <div class="stat-mid"><span class="stat-delta">${_formatGain(gained7)} this week</span></div>
+            <div class="stat-label">Registered students</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(activeRange)}</div>
+            <div class="stat-mid"><span class="stat-sub">today ${_num(summary.active_today)} · ${_pctDelta(activeRange, summary.prev_active_in_range)} vs prior</span></div>
+            <div class="stat-label">Active in range</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(clicksRange)}</div>
+            <div class="stat-mid"><span class="stat-sub">${_num(clickers)} people · ${clicksPerActive.toFixed(1)} / active</span></div>
+            <div class="stat-label">Clicks in range</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${deviceRange.val}</div>
+            <div class="stat-mid">${deviceRange.sub ? `<span class="stat-sub">${deviceRange.sub}</span>` : ""}</div>
+            <div class="stat-label">Device in range</div>
+          </div>
+      </div>
+      <div class="stat-grid analytics-kpis">
+          <div class="stat-card">
+            <div class="stat-val">${_num(summary.returning_in_range)} / ${_num(summary.new_in_range)}</div>
+            <div class="stat-mid"><span class="stat-sub">returning / new visitors</span></div>
+            <div class="stat-label">Audience mix</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(funnel.signed_up)} / ${_num(funnel.arrivals)}</div>
+            <div class="stat-mid"><span class="stat-sub">${_num(funnel.still_guest)} still guest · ${_num(funnel.guests_open)} open guests</span></div>
+            <div class="stat-label">Signup funnel</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(browse.reached_year)} → ${_num(browse.reached_list)}</div>
+            <div class="stat-mid"><span class="stat-sub">reached year → semester list</span></div>
+            <div class="stat-label">Browse depth</div>
+          </div>
+      </div>
+      <div class="chart-wrap analytics-card">
+          <div class="chart-title">Growth</div>
+          <div class="analytics-range">${rangeButtons}</div>
+          <div class="analytics-chart-series">${seriesButtons}</div>
+          <div class="chart-title" style="margin-top:0;margin-bottom:12px;font-size:0.88rem;font-weight:600;">${chartTitle}</div>
+          <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
+      </div>
+      ${_statsInRangeSection(summary, range)}
+      ${buildVisitorChipsSection(summary)}
+      ${buildTabbedTopLinksCard(summary)}
+      <div class="analytics-two-col">
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">📚 Top courses (in range)</div>
+          ${_courseDemandList(summary.top_courses, "No course clicks in this range.", "clicks", "analyticsTopCoursesExpanded")}
+        </div>
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">⭐ Most favorited</div>
+          ${_courseDemandList(summary.top_favorites, "No favorites yet.", "stars", "analyticsTopFavoritesExpanded")}
+        </div>
+      </div>
+      <div class="analytics-two-col">
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">🕳️ Courses with zero clicks</div>
+          ${_courseDemandList(summary.zero_click_courses, "Every course with links got clicks.", "links ignored", "analyticsZeroCoursesExpanded")}
+        </div>
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">💤 Links never opened</div>
+          ${_deadLinksList(summary.zero_click_links, "analyticsZeroLinksExpanded")}
+        </div>
+      </div>
+      <div class="analytics-two-col">
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">🔎 Search terms</div>
+          ${_searchTermsList(summary.search_terms, "analyticsSearchExpanded")}
+        </div>
+        ${buildTopUsersInRangeSection(summary.top_users)}
+      </div>
+      <div class="chart-wrap analytics-card analytics-heatmap-card">
+        <div class="chart-title">🗓️ Activity heatmap</div>
+        ${_buildHeatmap(summary.heatmap)}
+      </div>
+      <p class="analytics-footnote">Unique students where noted — device counts people, not tab loads. Search and browse depth fill in as new traffic arrives after deploy.</p>
+      </div>`;
+}
+
 async function renderAdminAnalytics() {
   document.getElementById("adminContent").innerHTML = getAdminAnalyticsSkeleton();
   const range = ["7", "30", "90"].includes(String(AppState.analyticsRange))
     ? String(AppState.analyticsRange)
     : "30";
-  const chartSeries = AppState.analyticsChartSeries === "roster" ? "roster" : "visitors";
   const visitorsSort = AppState.analyticsVisitorsSort === "name" ? "name" : "clicks";
   const visitorsOffset = Math.max(0, Number(AppState.analyticsVisitorsOffset) || 0);
   try {
@@ -452,76 +757,10 @@ async function renderAdminAnalytics() {
       return;
     }
 
-    const rangeDays = parseInt(range, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const chartDays =
-      chartSeries === "roster"
-        ? _dailyRosterSeries(summary.daily_roster, rangeDays)
-        : _dailyUniqueSeries(summary.daily_unique_visits, rangeDays);
-    const barsHtml = _buildBarChart(chartDays, range, todayStr);
-
-    const rangeButtons = ["7", "30", "90"]
-      .map((r) => `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="AppState.analyticsRange='${r}';renderAdminAnalytics()">${r} days</button>`)
-      .join("");
-
-    const seriesButtons = ["visitors", "roster"]
-      .map((s) => {
-        const label = s === "visitors" ? "Unique visitors" : "Registered students";
-        return `<button type="button" class="filter-btn ${chartSeries === s ? "active" : ""}" onclick="AppState.analyticsChartSeries='${s}';renderAdminAnalytics()">${label}</button>`;
-      })
-      .join("");
-
-    const chartTitle =
-      chartSeries === "roster"
-        ? `Registered students over time — <span style="color:var(--accent2);">■</span> today`
-        : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
-
-    const gained7 = Number(summary.students_gained_7d) || 0;
-    const deviceToday = _deviceTodayParts(summary.devices_today);
-    const deltaRow = `<div class="analytics-deltas">
-      <span class="stat-delta">${_formatGain(gained7)} this week</span>
-      <span class="stat-delta-sep">·</span>
-      <span class="stat-delta">${_formatGain(summary.students_gained_30d)} last 30 days</span>
-      <span class="stat-delta-sep">·</span>
-      <span class="stat-delta">${_formatGain(summary.students_gained_90d)} last 90 days</span>
-    </div>`;
-
-    document.getElementById("adminContent").innerHTML = `
-      <div class="stat-grid analytics-kpis">
-          <div class="stat-card">
-            <div class="stat-val">${_num(summary.total_students)}</div>
-            <div class="stat-mid"><span class="stat-delta">${_formatGain(gained7)} this week</span></div>
-            <div class="stat-label">Registered students</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val">${_num(summary.active_today)}</div>
-            <div class="stat-mid"></div>
-            <div class="stat-label">Active today</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val">${_num(summary.clicks_today)}</div>
-            <div class="stat-mid"></div>
-            <div class="stat-label">Clicks today</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val">${deviceToday.val}</div>
-            <div class="stat-mid">${deviceToday.sub ? `<span class="stat-sub">${deviceToday.sub}</span>` : ""}</div>
-            <div class="stat-label">Device today</div>
-          </div>
-      </div>
-      <div class="chart-wrap">
-          <div class="chart-title">Growth</div>
-          ${deltaRow}
-          <div class="analytics-range">${rangeButtons}</div>
-          <div class="analytics-chart-series">${seriesButtons}</div>
-          <div class="chart-title" style="margin-top:0;margin-bottom:12px;font-size:0.88rem;font-weight:600;">${chartTitle}</div>
-          <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
-      </div>
-      ${buildVisitorChipsSection(summary)}
-      ${buildTabbedTopLinksCard(summary)}
-      ${buildTopUsersInRangeSection(summary.top_users)}
-      <p style="font-size:.78rem;color:var(--muted);margin-top:8px;">Unique students, not raw hits — each student counts once per day however many times they open the site.</p>`;
+    _analyticsSummaryCache = summary;
+    paintAdminAnalytics(summary);
   } catch (e) {
+    _analyticsSummaryCache = null;
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ Could not load analytics: ${esc(e.message)}</div>`;
   }
 }
@@ -939,6 +1178,7 @@ async function renderAdminStudentDetail() {
         <div class="stat-card"><div class="stat-val" style="font-size:1.2rem;word-break:break-all;">${esc(studentHandleOf(user))}</div><div class="stat-label">Student</div></div>
         <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.created_at))}</div><div class="stat-label">Signed up</div></div>
         <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.last_seen_at))}</div><div class="stat-label">Last seen</div></div>
+        <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(_deviceLabel(data.last_device_type))}</div><div class="stat-label">Device</div></div>
       </div>
       <div class="chart-wrap" style="margin-bottom:20px;">
         <div class="chart-title">⭐ Current favorites</div>
@@ -1192,6 +1432,8 @@ Object.assign(window, {
   renderAdminReports,
   renderAdminContributions,
   renderAdminAnalytics,
+  analyticsToggleExpand,
+  analyticsPaintLocal,
   renderAdminCourses,
   renderAdminExtra,
   toggleOptional,

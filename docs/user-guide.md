@@ -83,7 +83,7 @@ Admin login is unchanged and stays separate from student accounts: admins sign i
 
 - Alphabetical list of registered students with first seen and last seen dates
 - Search by handle
-- Detail view with a single activity timeline — visits, links opened, reports, contributions, feedback, and favorites added or removed, newest first
+- Detail view with a single activity timeline — visits (e.g. “visited home from phone”), links opened, reports, contributions, feedback, and favorites added or removed, newest first. The profile card shows the device from their most recent classified visit.
 
 Activity from before a student signed up is kept and appears in their timeline, because the visitor record is claimed at signup rather than replaced. If they already have an account and sign in instead, that first guest visit is moved onto their student row so it shows their handle, not `guest_<id>`.
 
@@ -91,12 +91,13 @@ Activity from before a student signed up is kept and appears in their timeline, 
 
 The Analytics tab counts **people**, not just page loads:
 
-- **Overview cards** — registered students (with green signup deltas for 7/30/90 days), active today, link clicks today, and a phone/laptop split from server-classified visits
-- **Growth chart** — toggle between unique visitors per day and cumulative registered roster over the selected 7/30/90-day range
-- **Today's visitors** — paged handle chips (sort by clicks or name), replacing the old flat lists
-- **Demand** — top links today and in range, plus top students in range
+- **Overview cards** — registered students, active/clicks/device **in the selected 7/30/90 range** (with vs-prior deltas), unique phone/laptop students, returning vs new, signup funnel, browse depth, and open inbox counts
+- **Growth chart** — toggle between unique visitors per day and cumulative registered roster over the selected range
+- **Today's visitors** — paged handle chips (sort by clicks or name)
+- **Demand** — top links, top courses, zero-click courses/links, most-favorited courses, top students
+- **Search terms** and an hour×weekday activity heatmap
 
-New visits store a coarse `device_type` (`phone` or `laptop`) derived from the User-Agent on the server; the client never sends device data. Older visits keep a NULL device and are omitted from the split until new data accumulates.
+New visits store a coarse `device_type` (`phone` or `laptop`) derived from the User-Agent on the server; the client never sends device data. Search and browse-depth events are recorded separately so demand and funnel metrics stay actionable.
 
 Counting is done in the database rather than in the browser, so the dashboard stays fast as history grows. Two caveats when reading the numbers: visitors who never sign up are still counted as visits but cannot be attributed to a person, and admin browsing is excluded from analytics entirely.
 

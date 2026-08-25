@@ -142,7 +142,12 @@ func (s *UserService) GetUserDetail(ctx context.Context, idStr string, limit int
 		return models.UserDetail{}, fmt.Errorf("list user activity: %w", err)
 	}
 
-	return models.UserDetail{User: user, Timeline: timeline}, nil
+	lastDevice, err := s.repo.GetLastDeviceType(ctx, id)
+	if err != nil {
+		return models.UserDetail{}, fmt.Errorf("get last device type: %w", err)
+	}
+
+	return models.UserDetail{User: user, LastDeviceType: lastDevice, Timeline: timeline}, nil
 }
 
 // normalizeCredentials trims and lowercases the name so the partial unique index
