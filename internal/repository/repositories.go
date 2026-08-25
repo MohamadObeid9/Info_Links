@@ -76,6 +76,7 @@ type ExtraLinkRepository interface {
 
 type CourseRepository interface {
 	Delete(ctx context.Context, id int) error
+	DeletePlacement(ctx context.Context, courseID, placementID int) error
 	Create(ctx context.Context, course models.Course) error
 	GetByID(ctx context.Context, id int) (models.Course, error)
 	Update(ctx context.Context, course models.Course, id int) error

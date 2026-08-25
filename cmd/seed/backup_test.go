@@ -74,6 +74,39 @@ func TestLoadBackup(t *testing.T) {
 	}
 }
 
+func TestCanonicalizeCoursesAndLinks(t *testing.T) {
+	keep, dup := 1, 2
+	courses := []models.Course{
+		{ID: keep, SemesterID: 10, Name: "Java 1", Code: "NFA031", DisplayOrder: 1},
+		{ID: dup, SemesterID: 20, Name: "Java 1", Code: "nfa031", DisplayOrder: 2},
+	}
+	links := []models.Link{
+		{ID: 1, CourseID: &keep, URL: "https://a.example/x"},
+		{ID: 2, CourseID: &dup, URL: "https://a.example/x"},
+		{ID: 3, CourseID: &dup, URL: "https://b.example/y"},
+	}
+
+	gotCourses, gotLinks := canonicalizeCoursesAndLinks(courses, links)
+	if len(gotCourses) != 2 {
+		t.Fatalf("courses: got %d want 2", len(gotCourses))
+	}
+	if gotCourses[0].ID != keep || gotCourses[1].ID != keep {
+		t.Fatalf("course ids: %+v", gotCourses)
+	}
+	if gotCourses[1].SemesterID != 20 {
+		t.Fatalf("second placement semester = %d", gotCourses[1].SemesterID)
+	}
+	if len(gotLinks) != 2 {
+		t.Fatalf("links: got %d want 2", len(gotLinks))
+	}
+	if gotLinks[0].CourseID == nil || *gotLinks[0].CourseID != keep {
+		t.Fatalf("link 0 course = %+v", gotLinks[0].CourseID)
+	}
+	if gotLinks[1].URL != "https://b.example/y" {
+		t.Fatalf("kept extra url = %q", gotLinks[1].URL)
+	}
+}
+
 func TestGuardDSN(t *testing.T) {
 	if err := guardDSN(defaultLocalDSN, false); err != nil {
 		t.Fatalf("local dsn: %v", err)

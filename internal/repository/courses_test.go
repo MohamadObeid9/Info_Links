@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
@@ -87,42 +88,54 @@ func TestCourseRepository_Delete(t *testing.T) {
 }
 
 func TestCourseRepository_Create(t *testing.T) {
-	tests := []struct {
-		name    string
-		course  models.Course
-		execErr error
-		err     error
-	}{
-		{
-			name:   "insert course",
-			course: models.Course{SemesterID: 3, Name: "BDD", Code: "nfa008", IsOptional: false, DisplayOrder: 55},
-		},
-		{
-			name:    "insert exec error",
-			course:  models.Course{SemesterID: 3, Name: "BDD", Code: "nfa008", IsOptional: false, DisplayOrder: 55},
-			execErr: errs.ErrDatabaseDown,
-			err:     errs.ErrDatabaseDown,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			repo, mock := newTestCourseRepo(t)
-			exp := mock.ExpectExec(insertCourseQuery).
-				WithArgs(tt.course.SemesterID, tt.course.Name, tt.course.Code, tt.course.IsOptional, tt.course.DisplayOrder)
-			if tt.execErr != nil {
-				exp.WillReturnError(tt.execErr)
-			} else {
-				exp.WillReturnResult(sqlmock.NewResult(1, 1))
-			}
+	course := models.Course{SemesterID: 3, Name: "BDD", Code: "nfa008", IsOptional: false, DisplayOrder: 55}
 
-			err := repo.Create(context.Background(), tt.course)
-			assertRepoErr(t, mock, err, tt.err)
-		})
-	}
+	t.Run("inserts a new course and placement", func(t *testing.T) {
+		repo, mock := newTestCourseRepo(t)
+		mock.ExpectBegin()
+		mock.ExpectQuery(findCourseIDByCodeQuery).WithArgs(course.Code).WillReturnError(sql.ErrNoRows)
+		mock.ExpectQuery(insertCanonicalCourseQuery).
+			WithArgs(course.Name, course.Code, course.IsOptional).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(12))
+		mock.ExpectExec(insertCoursePlacementQuery).
+			WithArgs(12, course.SemesterID, course.DisplayOrder).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		err := repo.Create(context.Background(), course)
+		assertRepoErr(t, mock, err, nil)
+	})
+
+	t.Run("attaches an existing code as a placement", func(t *testing.T) {
+		repo, mock := newTestCourseRepo(t)
+		mock.ExpectBegin()
+		mock.ExpectQuery(findCourseIDByCodeQuery).WithArgs(course.Code).
+			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(12))
+		mock.ExpectExec(insertCoursePlacementQuery).
+			WithArgs(12, course.SemesterID, course.DisplayOrder).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+		mock.ExpectCommit()
+
+		err := repo.Create(context.Background(), course)
+		assertRepoErr(t, mock, err, nil)
+	})
+
+	t.Run("insert exec error", func(t *testing.T) {
+		repo, mock := newTestCourseRepo(t)
+		mock.ExpectBegin()
+		mock.ExpectQuery(findCourseIDByCodeQuery).WithArgs(course.Code).WillReturnError(sql.ErrNoRows)
+		mock.ExpectQuery(insertCanonicalCourseQuery).
+			WithArgs(course.Name, course.Code, course.IsOptional).
+			WillReturnError(errs.ErrDatabaseDown)
+		mock.ExpectRollback()
+
+		err := repo.Create(context.Background(), course)
+		assertRepoErr(t, mock, err, errs.ErrDatabaseDown)
+	})
 }
 
 func TestCourseRepository_GetByID(t *testing.T) {
-	columns := []string{"id", "semester_id", "name", "code", "is_optional", "display_order"}
+	columns := []string{"id", "name", "code", "is_optional"}
 
 	tests := []struct {
 		name     string
@@ -149,27 +162,23 @@ func TestCourseRepository_GetByID(t *testing.T) {
 		{
 			name: "returns course",
 			id:   10,
-			rows: sqlmock.NewRows(columns).AddRow(10, 3, "Reseaux", "NFA009", false, 55),
+			rows: sqlmock.NewRows(columns).AddRow(10, "Reseaux", "NFA009", false),
 			want: models.Course{
-				ID:           10,
-				SemesterID:   3,
-				Name:         "Reseaux",
-				Code:         "NFA009",
-				IsOptional:   false,
-				DisplayOrder: 55,
+				ID:         10,
+				Name:       "Reseaux",
+				Code:       "NFA009",
+				IsOptional: false,
 			},
 		},
 		{
 			name: "returns optional course",
 			id:   11,
-			rows: sqlmock.NewRows(columns).AddRow(11, 3, "Elective", "OPT101", true, 0),
+			rows: sqlmock.NewRows(columns).AddRow(11, "Elective", "OPT101", true),
 			want: models.Course{
-				ID:           11,
-				SemesterID:   3,
-				Name:         "Elective",
-				Code:         "OPT101",
-				IsOptional:   true,
-				DisplayOrder: 0,
+				ID:         11,
+				Name:       "Elective",
+				Code:       "OPT101",
+				IsOptional: true,
 			},
 		},
 	}
@@ -211,7 +220,7 @@ func TestCourseRepository_Update(t *testing.T) {
 		{
 			name:         "course not found",
 			id:           10,
-			course:       models.Course{Name: "blabla", Code: "xhahafha55", IsOptional: false, SemesterID: 33},
+			course:       models.Course{Name: "blabla", Code: "xhahafha55", IsOptional: false},
 			rowsAffected: 0,
 			err:          errs.ErrCourseNotFound,
 		},
@@ -240,7 +249,7 @@ func TestCourseRepository_Update(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestCourseRepo(t)
 			exp := mock.ExpectExec(updateCourseQuery).
-				WithArgs(tt.course.Name, tt.course.Code, tt.course.SemesterID, tt.course.IsOptional, tt.id)
+				WithArgs(tt.course.Name, tt.course.Code, tt.course.IsOptional, tt.id)
 			switch {
 			case tt.execErr != nil:
 				exp.WillReturnError(tt.execErr)

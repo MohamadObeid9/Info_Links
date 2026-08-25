@@ -95,7 +95,7 @@ type linkService interface {
 }
 
 type courseService interface {
-	Delete(ctx context.Context, idStr string) error
+	Delete(ctx context.Context, idStr, placementStr string) error
 	Create(ctx context.Context, course models.Course) error
 	Update(ctx context.Context, patch models.CoursePatch, idStr string) error
 }

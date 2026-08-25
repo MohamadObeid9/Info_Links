@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"infolinks-backend/internal/models"
 )
@@ -86,10 +87,11 @@ func apply(ctx context.Context, db *sql.DB, b backup) error {
 	if err := insertSemesters(ctx, tx, b.Semesters); err != nil {
 		return err
 	}
-	if err := insertCourses(ctx, tx, b.Courses); err != nil {
+	courses, links := canonicalizeCoursesAndLinks(b.Courses, b.Links)
+	if err := insertCourses(ctx, tx, courses); err != nil {
 		return err
 	}
-	if err := insertLinks(ctx, tx, b.Links); err != nil {
+	if err := insertLinks(ctx, tx, links); err != nil {
 		return err
 	}
 	if err := insertExtraSections(ctx, tx, b.ExtraSections); err != nil {
@@ -99,7 +101,7 @@ func apply(ctx context.Context, db *sql.DB, b backup) error {
 		return err
 	}
 
-	tables := []string{"programs", "years", "semesters", "courses", "links", "extra_sections", "extra_links"}
+	tables := []string{"programs", "years", "semesters", "courses", "course_placements", "links", "extra_sections", "extra_links"}
 	for _, table := range tables {
 		q := fmt.Sprintf(
 			`SELECT setval(pg_get_serial_sequence('%s', 'id'), COALESCE((SELECT MAX(id) FROM %s), 1), true)`,
@@ -146,11 +148,69 @@ func insertSemesters(ctx context.Context, tx *sql.Tx, rows []models.Semester) er
 	return nil
 }
 
+func canonicalizeCoursesAndLinks(courses []models.Course, links []models.Link) ([]models.Course, []models.Link) {
+	keepByCode := map[string]int{}
+	idMap := map[int]int{}
+	outCourses := make([]models.Course, 0, len(courses))
+	for _, c := range courses {
+		key := strings.ToLower(strings.TrimSpace(c.Code))
+		if key != "" {
+			if keep, ok := keepByCode[key]; ok {
+				idMap[c.ID] = keep
+				c.ID = keep
+				outCourses = append(outCourses, c)
+				continue
+			}
+			keepByCode[key] = c.ID
+		}
+		idMap[c.ID] = c.ID
+		outCourses = append(outCourses, c)
+	}
+
+	seenURL := map[string]struct{}{}
+	outLinks := make([]models.Link, 0, len(links))
+	for _, l := range links {
+		if l.CourseID == nil {
+			continue
+		}
+		keep := idMap[*l.CourseID]
+		if keep == 0 {
+			keep = *l.CourseID
+		}
+		cid := keep
+		l.CourseID = &cid
+		ukey := fmt.Sprintf("%d|%s", cid, strings.ToLower(strings.TrimSpace(l.URL)))
+		if _, ok := seenURL[ukey]; ok {
+			continue
+		}
+		seenURL[ukey] = struct{}{}
+		outLinks = append(outLinks, l)
+	}
+	return outCourses, outLinks
+}
+
 func insertCourses(ctx context.Context, tx *sql.Tx, rows []models.Course) error {
-	const q = `INSERT INTO courses (id, semester_id, name, code, display_order, is_optional) OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4, $5, $6)`
+	const cq = `INSERT INTO courses (id, name, code, is_optional) OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4)`
+	const pq = `INSERT INTO course_placements (course_id, semester_id, display_order) VALUES ($1, $2, $3)`
+	seen := map[int]struct{}{}
+	seenPlacement := map[string]struct{}{}
 	for i, r := range rows {
-		if _, err := tx.ExecContext(ctx, q, r.ID, r.SemesterID, r.Name, r.Code, r.DisplayOrder, r.IsOptional); err != nil {
-			return fmt.Errorf("insert courses[%d] id=%d: %w", i, r.ID, err)
+		if _, ok := seen[r.ID]; !ok {
+			if _, err := tx.ExecContext(ctx, cq, r.ID, r.Name, r.Code, r.IsOptional); err != nil {
+				return fmt.Errorf("insert courses[%d] id=%d: %w", i, r.ID, err)
+			}
+			seen[r.ID] = struct{}{}
+		}
+		if r.SemesterID <= 0 {
+			continue
+		}
+		pkey := fmt.Sprintf("%d:%d", r.ID, r.SemesterID)
+		if _, ok := seenPlacement[pkey]; ok {
+			continue
+		}
+		seenPlacement[pkey] = struct{}{}
+		if _, err := tx.ExecContext(ctx, pq, r.ID, r.SemesterID, r.DisplayOrder); err != nil {
+			return fmt.Errorf("insert course_placements[%d] course_id=%d: %w", i, r.ID, err)
 		}
 	}
 	return nil

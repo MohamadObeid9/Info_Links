@@ -34,6 +34,9 @@ func (r *postgresLinkRepository) Delete(ctx context.Context, id int) error {
 
 func (r *postgresLinkRepository) Create(ctx context.Context, link models.Link) error {
 	if _, err := r.db.ExecContext(ctx, insertLinkQuery, link.CourseID, link.Type, link.URL, link.Label, link.Note, link.ContentType, link.DisplayOrder); err != nil {
+		if isUniqueViolation(err) {
+			return errs.ErrLinkURLTaken
+		}
 		return fmt.Errorf("insert link: %w", err)
 	}
 	return nil
@@ -42,6 +45,9 @@ func (r *postgresLinkRepository) Create(ctx context.Context, link models.Link) e
 func (r *postgresLinkRepository) Update(ctx context.Context, link models.Link, id int) error {
 	resp, err := r.db.ExecContext(ctx, updateLinkQuery, link.Type, link.URL, link.Label, link.Note, link.ContentType, id)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return errs.ErrLinkURLTaken
+		}
 		return fmt.Errorf("update link: %w", err)
 	}
 	affected, err := resp.RowsAffected()

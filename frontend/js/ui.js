@@ -107,38 +107,6 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") window.closeModal?.();
 });
 
-// Helper: find all courses that share the same code as the given courseId
-function _findSharedCourses(courseId) {
-  let targetCode = null;
-  AppState.dbPrograms.forEach((p) =>
-    p.years.forEach((y) =>
-      y.sems.forEach((s) =>
-        s.courses.forEach((c) => {
-          if (c.id === courseId) targetCode = c.code;
-        }),
-      ),
-    ),
-  );
-  if (!targetCode) return { code: null, siblings: [] };
-  const siblings = [];
-  AppState.dbPrograms.forEach((p) =>
-    p.years.forEach((y) =>
-      y.sems.forEach((s) =>
-        s.courses.forEach((c) => {
-          if (c.id !== courseId && c.code === targetCode)
-            siblings.push({
-              ...c,
-              prog: p.name,
-              year: y.name,
-              sem: s.name,
-            });
-        }),
-      ),
-    ),
-  );
-  return { code: targetCode, siblings };
-}
-
 // ===================== BADGE =====================
 function getLinkBadge(type) {
   if (type === "telegram") return '<span class="link-badge badge-tg">TG</span>';
@@ -311,7 +279,6 @@ window.isMobileView = isMobileView;
 export {
   esc,
   _buildCourseCard,
-  _findSharedCourses,
   getLinkBadge,
   getContentTypeChips,
   getContentTypeChip,

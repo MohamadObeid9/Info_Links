@@ -38,7 +38,7 @@ func (h *Handler) handleAdminPatchCourse(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) handleAdminDeleteCourse(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
-	if err := h.courseService.Delete(r.Context(), idStr); err != nil {
+	if err := h.courseService.Delete(r.Context(), idStr, r.URL.Query().Get("placement_id")); err != nil {
 		mapDeleteCourseErr(h, w, r, err)
 		return
 	}
@@ -53,6 +53,10 @@ func mapPostCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err er
 		writeJSONError(w, r, http.StatusBadRequest, "Course code and course name are required")
 	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
 		writeJSONError(w, r, http.StatusBadRequest, "Course invalid semestre id ")
+	case errors.Is(err, errs.ErrCourseAlreadyInSemester):
+		writeJSONError(w, r, http.StatusConflict, "This course is already in that semester")
+	case errors.Is(err, errs.ErrCourseCodeTaken):
+		writeJSONError(w, r, http.StatusConflict, "A course with this code already exists")
 	default:
 		h.LoggerWithID(r).Error("create course failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
@@ -63,6 +67,8 @@ func mapDeleteCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err 
 	switch {
 	case errors.Is(err, errs.ErrCourseInvalidID):
 		writeJSONError(w, r, http.StatusBadRequest, "Course invalid id")
+	case errors.Is(err, errs.ErrCourseInvalidPlacementID):
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid placement id")
 	case errors.Is(err, errs.ErrCourseNotFound):
 		writeJSONError(w, r, http.StatusNotFound, "Course not found")
 	default:
@@ -79,6 +85,12 @@ func mapUpdateCourseErr(h *Handler, w http.ResponseWriter, r *http.Request, err 
 		writeJSONError(w, r, http.StatusNotFound, "Course not found")
 	case errors.Is(err, errs.ErrCourseInvalidSemestreID):
 		writeJSONError(w, r, http.StatusBadRequest, "Course invalid semestre id ")
+	case errors.Is(err, errs.ErrCourseAlreadyInSemester):
+		writeJSONError(w, r, http.StatusConflict, "This course is already in that semester")
+	case errors.Is(err, errs.ErrCourseCodeTaken):
+		writeJSONError(w, r, http.StatusConflict, "A course with this code already exists")
+	case errors.Is(err, errs.ErrCourseInvalidPlacementID):
+		writeJSONError(w, r, http.StatusBadRequest, "Course invalid placement id")
 	case errors.Is(err, errs.ErrCoursePatchEmpty):
 		writeJSONError(w, r, http.StatusBadRequest, "Course invalid update parameters")
 	case errors.Is(err, errs.ErrCourseCodeAndNameRequired):

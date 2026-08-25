@@ -51,6 +51,7 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 		&summary.Inbox.Feedback,
 		&summary.Browse.ReachedYear,
 		&summary.Browse.ReachedList,
+		&summary.ActiveRegisteredInRange,
 	); err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics counts: %w", err)
 	}
@@ -307,7 +308,7 @@ func (r *postgresAnalyticsRepository) courseDemand(ctx context.Context, query st
 	out := []models.CourseDemand{}
 	for rows.Next() {
 		var c models.CourseDemand
-		if err := rows.Scan(&c.CourseID, &c.Name, &c.Code, &c.Count); err != nil {
+		if err := rows.Scan(&c.CourseID, &c.Name, &c.Code, &c.Count, &c.ProgramName); err != nil {
 			return nil, fmt.Errorf("rows scan: %w", err)
 		}
 		out = append(out, c)
@@ -328,7 +329,7 @@ func (r *postgresAnalyticsRepository) deadLinks(ctx context.Context, days int) (
 	out := []models.DeadLink{}
 	for rows.Next() {
 		var d models.DeadLink
-		if err := rows.Scan(&d.Kind, &d.ID, &d.Label, &d.CourseName); err != nil {
+		if err := rows.Scan(&d.Kind, &d.ID, &d.Label, &d.CourseName, &d.ProgramName); err != nil {
 			return nil, fmt.Errorf("rows scan: %w", err)
 		}
 		out = append(out, d)

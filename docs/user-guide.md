@@ -72,7 +72,7 @@ When you try one of these without an account, a short signup form appears and th
 ## For admins
 
 1. **Admin** → log in with your Supabase credentials (the API issues a JWT for the session).
-2. **Courses** — manage courses and links; when prompted, confirm **sibling sync** for courses shared across programs.
+2. **Courses** — manage offerings and links. The same course code is one catalog row; adding it to another program shares its links automatically. Deleting a course from one program leaves it in others.
 3. **Contributions**, **Reports**, and **Feedback** — review user submissions. Contributions can be **approved** (adds the link) or **rejected** (kept in the list, not deleted). Each row shows the **sender's handle**.
 4. **Analytics** — unique students per range alongside visit counts and top clicked links; export JSON when needed.
 5. **Students** — browse every registered student, search by name, and open one to see their full history.

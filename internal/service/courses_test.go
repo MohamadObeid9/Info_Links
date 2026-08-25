@@ -15,13 +15,14 @@ type fakeCourseRepo struct {
 	createCourse models.Course
 	createErr    error
 
-	deleteCalls int
-	deleteID    int
-	deleteErr   error
+	deleteCalls       int
+	deleteID          int
+	deletePlacementID int
+	deleteErr         error
 
-	getByIDCalls int
-	getByID      int
-	getByIDErr   error
+	getByIDCalls  int
+	getByID       int
+	getByIDErr    error
 	getByIDResult models.Course
 
 	updateCalls  int
@@ -39,6 +40,13 @@ func (f *fakeCourseRepo) Create(ctx context.Context, course models.Course) error
 func (f *fakeCourseRepo) Delete(ctx context.Context, id int) error {
 	f.deleteCalls++
 	f.deleteID = id
+	return f.deleteErr
+}
+
+func (f *fakeCourseRepo) DeletePlacement(ctx context.Context, courseID, placementID int) error {
+	f.deleteCalls++
+	f.deleteID = courseID
+	f.deletePlacementID = placementID
 	return f.deleteErr
 }
 
@@ -150,11 +158,13 @@ func TestCourseService_Create(t *testing.T) {
 
 func TestCourseService_Delete(t *testing.T) {
 	tests := []struct {
-		name      string
-		idStr     string
-		id        int
-		err       error
-		deleteErr error
+		name          string
+		idStr         string
+		placementStr  string
+		id            int
+		wantPlacement int
+		err           error
+		deleteErr     error
 	}{
 		{
 			name:  "reject non numerical id",
@@ -197,12 +207,19 @@ func TestCourseService_Delete(t *testing.T) {
 			idStr: "  10  ",
 			id:    10,
 		},
+		{
+			name:          "deletes a placement when placement_id is set",
+			idStr:         "10",
+			placementStr:  "7",
+			id:            10,
+			wantPlacement: 7,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &fakeCourseRepo{deleteErr: tt.deleteErr}
 			s := NewCourseService(repo)
-			err := s.Delete(context.Background(), tt.idStr)
+			err := s.Delete(context.Background(), tt.idStr, tt.placementStr)
 			if err != nil {
 				if !errors.Is(err, tt.err) {
 					t.Fatalf("got %v, want %v", err, tt.err)
@@ -225,6 +242,9 @@ func TestCourseService_Delete(t *testing.T) {
 			if repo.deleteID != tt.id {
 				t.Fatalf("repo.DeleteID: got %v, want %v", repo.deleteID, tt.id)
 			}
+			if repo.deletePlacementID != tt.wantPlacement {
+				t.Fatalf("repo.DeletePlacementID: got %v, want %v", repo.deletePlacementID, tt.wantPlacement)
+			}
 		})
 	}
 }
@@ -244,17 +264,17 @@ func TestCourseService_Update(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		idStr          string
-		id             int
-		patch          models.CoursePatch
-		existing       models.Course
-		getByIDErr     error
-		updateErr      error
-		err            error
-		resultWanted   *models.Course
-		wantGetByID    int
-		wantUpdate     int
+		name         string
+		idStr        string
+		id           int
+		patch        models.CoursePatch
+		existing     models.Course
+		getByIDErr   error
+		updateErr    error
+		err          error
+		resultWanted *models.Course
+		wantGetByID  int
+		wantUpdate   int
 	}{
 		{
 			name:  "reject non numerical id",
@@ -324,6 +344,15 @@ func TestCourseService_Update(t *testing.T) {
 			wantGetByID: 1,
 		},
 		{
+			name:        "reject semester_id without placement_id",
+			idStr:       "10",
+			id:          10,
+			patch:       models.CoursePatch{SemesterID: intPtr(5)},
+			existing:    existing,
+			err:         errs.ErrCourseInvalidPlacementID,
+			wantGetByID: 1,
+		},
+		{
 			name:        "reject empty name with spaces",
 			idStr:       "10",
 			id:          10,
@@ -353,10 +382,10 @@ func TestCourseService_Update(t *testing.T) {
 			wantUpdate:  1,
 		},
 		{
-			name:  "accept patch name",
-			idStr: "10",
-			id:    10,
-			patch: models.CoursePatch{Name: strPtr("  Reseaux 2  ")},
+			name:     "accept patch name",
+			idStr:    "10",
+			id:       10,
+			patch:    models.CoursePatch{Name: strPtr("  Reseaux 2  ")},
 			existing: existing,
 			resultWanted: &models.Course{
 				ID:           10,
@@ -370,10 +399,10 @@ func TestCourseService_Update(t *testing.T) {
 			wantUpdate:  1,
 		},
 		{
-			name:  "accept patch code",
-			idStr: "10",
-			id:    10,
-			patch: models.CoursePatch{Code: strPtr("  nfa010  ")},
+			name:     "accept patch code",
+			idStr:    "10",
+			id:       10,
+			patch:    models.CoursePatch{Code: strPtr("  nfa010  ")},
 			existing: existing,
 			resultWanted: &models.Course{
 				ID:           10,
@@ -387,14 +416,15 @@ func TestCourseService_Update(t *testing.T) {
 			wantUpdate:  1,
 		},
 		{
-			name:  "accept patch semester_id",
-			idStr: "10",
-			id:    10,
-			patch: models.CoursePatch{SemesterID: intPtr(5)},
+			name:     "accept patch semester_id",
+			idStr:    "10",
+			id:       10,
+			patch:    models.CoursePatch{SemesterID: intPtr(5), PlacementID: intPtr(9)},
 			existing: existing,
 			resultWanted: &models.Course{
 				ID:           10,
 				SemesterID:   5,
+				PlacementID:  9,
 				Name:         "Reseaux",
 				Code:         "NFA009",
 				IsOptional:   false,
@@ -404,10 +434,10 @@ func TestCourseService_Update(t *testing.T) {
 			wantUpdate:  1,
 		},
 		{
-			name:  "accept patch is_optional",
-			idStr: "10",
-			id:    10,
-			patch: models.CoursePatch{IsOptional: boolPtr(true)},
+			name:     "accept patch is_optional",
+			idStr:    "10",
+			id:       10,
+			patch:    models.CoursePatch{IsOptional: boolPtr(true)},
 			existing: existing,
 			resultWanted: &models.Course{
 				ID:           10,
@@ -421,10 +451,10 @@ func TestCourseService_Update(t *testing.T) {
 			wantUpdate:  1,
 		},
 		{
-			name:  "accept a valid id with spaces",
-			idStr: "  10  ",
-			id:    10,
-			patch: models.CoursePatch{Name: strPtr("Updated")},
+			name:     "accept a valid id with spaces",
+			idStr:    "  10  ",
+			id:       10,
+			patch:    models.CoursePatch{Name: strPtr("Updated")},
 			existing: existing,
 			resultWanted: &models.Course{
 				ID:           10,
