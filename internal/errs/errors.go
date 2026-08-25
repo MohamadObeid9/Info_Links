@@ -14,8 +14,10 @@ var (
 
 // Analytics errors
 var (
-	ErrAnalyticsInvalidRange         = errors.New("range must be 7, 30 or 90")
-	ErrAnalyticsInvalidVisitorsSort  = errors.New("visitors_sort must be clicks or name")
+	ErrAnalyticsInvalidRange        = errors.New("range must be 7, 30 or 90")
+	ErrAnalyticsInvalidVisitorsSort = errors.New("visitors_sort must be clicks or name")
+	ErrAnalyticsInvalidSearchQuery  = errors.New("search query is required")
+	ErrAnalyticsInvalidBrowseStep   = errors.New("browse step must be year or list")
 )
 
 // Link clicks errors

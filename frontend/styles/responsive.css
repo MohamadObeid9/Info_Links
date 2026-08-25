@@ -786,20 +786,20 @@
 
     .analytics-kpis {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0;
         background: var(--bg2);
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 12px 6px 10px;
-        margin-bottom: 14px;
+        margin-bottom: 0;
     }
 
     .analytics-kpis .stat-card {
         background: none;
         border: none;
         border-radius: 0;
-        padding: 0 6px;
+        padding: 8px 6px;
         min-width: 0;
         text-align: center;
         display: grid;
@@ -844,6 +844,33 @@
     .analytics-kpis .stat-sub {
         color: var(--muted);
         font-weight: 600;
+    }
+
+    .analytics-stack {
+        gap: 12px;
+    }
+
+    .analytics-two-col {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .analytics-stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .analytics-stat-val {
+        font-size: 1.15rem;
+    }
+
+    .heatmap-grid {
+        grid-template-columns: 32px repeat(var(--heatmap-cols, 12), minmax(28px, 1fr));
+        min-width: calc(32px + var(--heatmap-cols, 12) * 30px);
+        font-size: 0.7rem;
+    }
+
+    .heatmap-cell {
+        min-height: 30px;
     }
 
     .chart-wrap {

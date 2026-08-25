@@ -21,6 +21,8 @@ const (
 	reassignContributionsQuery  = `UPDATE contributions SET user_id = $2 WHERE user_id = $1`
 	reassignFeedbackQuery       = `UPDATE feedback SET user_id = $2 WHERE user_id = $1`
 	reassignFavoriteEventsQuery = `UPDATE favorite_events SET user_id = $2 WHERE user_id = $1`
+	reassignSearchEventsQuery   = `UPDATE search_events SET user_id = $2 WHERE user_id = $1`
+	reassignBrowseEventsQuery   = `UPDATE browse_events SET user_id = $2 WHERE user_id = $1`
 	deleteGuestQuery            = `DELETE FROM users WHERE id = $1 AND is_guest = true`
 	touchLastSeenQuery          = `UPDATE users SET last_seen_at = now() WHERE id = $1`
 )
@@ -105,8 +107,41 @@ const (
 			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '90 days'),
 			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())),
 			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= date_trunc('day', now())),
-			(SELECT COUNT(*) FILTER (WHERE device_type = 'phone') FROM page_views WHERE visited_at >= date_trunc('day', now()) AND device_type IS NOT NULL),
-			(SELECT COUNT(*) FILTER (WHERE device_type = 'laptop') FROM page_views WHERE visited_at >= date_trunc('day', now()) AND device_type IS NOT NULL)`
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'phone'),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'laptop'),
+			(SELECT COUNT(*) FROM (
+				SELECT user_id FROM page_views
+				WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type IS NOT NULL
+				GROUP BY user_id HAVING COUNT(DISTINCT device_type) > 1
+			) both_today),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(DISTINCT user_id) FROM link_clicks WHERE user_id IS NOT NULL AND clicked_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1 * 2) AND visited_at < now() - make_interval(days => $1)),
+			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= now() - make_interval(days => $1 * 2) AND clicked_at < now() - make_interval(days => $1)),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1) AND device_type = 'phone'),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1) AND device_type = 'laptop'),
+			(SELECT COUNT(*) FROM (
+				SELECT user_id FROM page_views
+				WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1) AND device_type IS NOT NULL
+				GROUP BY user_id HAVING COUNT(DISTINCT device_type) > 1
+			) both_range),
+			(SELECT COUNT(DISTINCT pv.user_id) FROM page_views pv
+				WHERE pv.user_id IS NOT NULL AND pv.visited_at >= now() - make_interval(days => $1)
+				AND EXISTS (SELECT 1 FROM page_views older WHERE older.user_id = pv.user_id AND older.visited_at < now() - make_interval(days => $1))),
+			(SELECT COUNT(DISTINCT pv.user_id) FROM page_views pv
+				WHERE pv.user_id IS NOT NULL AND pv.visited_at >= now() - make_interval(days => $1)
+				AND NOT EXISTS (SELECT 1 FROM page_views older WHERE older.user_id = pv.user_id AND older.visited_at < now() - make_interval(days => $1))),
+			(SELECT COUNT(*) FROM users WHERE created_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - make_interval(days => $1 * 2) AND created_at < now() - make_interval(days => $1)),
+			(SELECT COUNT(*) FROM users WHERE is_guest = true AND created_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(*) FROM users WHERE is_guest = true),
+			(SELECT COUNT(*) FROM reports WHERE status = 'open'),
+			(SELECT COUNT(*) FROM contributions WHERE status = 'pending'),
+			(SELECT COUNT(*) FROM feedback WHERE status = 'new'),
+			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'year' AND created_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'list' AND created_at >= now() - make_interval(days => $1))`
 
 	analyticsDailyUniqueVisitsQuery = `
 		SELECT to_char(visited_at, 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)
@@ -121,7 +156,7 @@ const (
 		WHERE clicked_at >= now() - make_interval(days => $1)
 		GROUP BY link_id, extra_link_id
 		ORDER BY clicks DESC
-		LIMIT 10`
+		LIMIT 50`
 
 	analyticsTopUsersQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(lc.id) AS clicks
@@ -130,7 +165,7 @@ const (
 		WHERE lc.clicked_at >= now() - make_interval(days => $1)
 		GROUP BY u.id, u.first_name, u.last_name, u.number
 		ORDER BY clicks DESC, u.first_name ASC
-		LIMIT 10`
+		LIMIT 50`
 
 	analyticsTopLinksTodayQuery = `
 		SELECT link_id, extra_link_id, COUNT(*) AS clicks
@@ -138,7 +173,7 @@ const (
 		WHERE clicked_at >= date_trunc('day', now())
 		GROUP BY link_id, extra_link_id
 		ORDER BY clicks DESC
-		LIMIT 10`
+		LIMIT 50`
 
 	analyticsDailyRosterQuery = `
 		WITH days AS (
@@ -170,6 +205,79 @@ const (
 		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
 		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT $1 OFFSET $2`
+
+	analyticsTopCoursesQuery = `
+		SELECT c.id, c.name, c.code, COUNT(*)::int
+		FROM link_clicks lc
+		JOIN links l ON l.id = lc.link_id
+		JOIN courses c ON c.id = l.course_id
+		WHERE lc.clicked_at >= now() - make_interval(days => $1)
+		GROUP BY c.id, c.name, c.code
+		ORDER BY COUNT(*) DESC, c.name ASC
+		LIMIT 50`
+
+	analyticsZeroClickCoursesQuery = `
+		SELECT c.id, c.name, c.code, 0
+		FROM courses c
+		WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id)
+		  AND NOT EXISTS (
+			SELECT 1 FROM links l
+			JOIN link_clicks lc ON lc.link_id = l.id AND lc.clicked_at >= now() - make_interval(days => $1)
+			WHERE l.course_id = c.id
+		  )
+		ORDER BY c.name ASC
+		LIMIT 50`
+
+	analyticsZeroClickLinksQuery = `
+		SELECT kind, id, label, course_name FROM (
+			SELECT 'link'::text AS kind, l.id, COALESCE(l.label, 'Link') AS label, c.name AS course_name
+			FROM links l
+			JOIN courses c ON c.id = l.course_id
+			WHERE NOT EXISTS (
+				SELECT 1 FROM link_clicks lc
+				WHERE lc.link_id = l.id AND lc.clicked_at >= now() - make_interval(days => $1)
+			)
+			UNION ALL
+			SELECT 'extra_link', el.id, COALESCE(el.label, 'Link'), es.title
+			FROM extra_links el
+			JOIN extra_sections es ON es.id = el.section_id
+			WHERE NOT EXISTS (
+				SELECT 1 FROM link_clicks lc
+				WHERE lc.extra_link_id = el.id AND lc.clicked_at >= now() - make_interval(days => $1)
+			)
+		) gaps
+		ORDER BY course_name ASC, label ASC
+		LIMIT 50`
+
+	analyticsTopFavoritesQuery = `
+		SELECT c.id, c.name, c.code, COUNT(*)::int
+		FROM users u
+		CROSS JOIN LATERAL unnest(u.favorite_course_ids) AS cid
+		JOIN courses c ON c.id = cid
+		WHERE u.is_guest = false
+		GROUP BY c.id, c.name, c.code
+		ORDER BY COUNT(*) DESC, c.name ASC
+		LIMIT 50`
+
+	analyticsHeatmapQuery = `
+		SELECT EXTRACT(DOW FROM ts)::int, EXTRACT(HOUR FROM ts)::int, COUNT(*)::int
+		FROM (
+			SELECT clicked_at AS ts FROM link_clicks WHERE clicked_at >= now() - make_interval(days => $1)
+			UNION ALL
+			SELECT visited_at FROM page_views WHERE visited_at >= now() - make_interval(days => $1)
+		) activity
+		GROUP BY 1, 2`
+
+	analyticsSearchTermsQuery = `
+		SELECT query, COUNT(*)::int
+		FROM search_events
+		WHERE created_at >= now() - make_interval(days => $1)
+		GROUP BY query
+		ORDER BY COUNT(*) DESC, query ASC
+		LIMIT 50`
+
+	insertSearchEventQuery = `INSERT INTO search_events (user_id, query) VALUES ($1, $2)`
+	insertBrowseEventQuery = `INSERT INTO browse_events (user_id, step) VALUES ($1, $2)`
 )
 
 // Page Views Queries

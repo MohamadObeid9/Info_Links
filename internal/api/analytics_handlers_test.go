@@ -13,11 +13,19 @@ import (
 )
 
 type fakeAnalyticsService struct {
-	summaryCalls int
-	summaryRange string
+	summaryCalls    int
+	summaryRange    string
 	summaryVisitors service.AnalyticsVisitorsParams
-	summary      models.AnalyticsSummary
-	summaryErr   error
+	summary         models.AnalyticsSummary
+	summaryErr      error
+
+	searchCalls int
+	searchQuery string
+	searchErr   error
+
+	browseCalls int
+	browseStep  string
+	browseErr   error
 }
 
 func (f *fakeAnalyticsService) GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error) {
@@ -28,6 +36,18 @@ func (f *fakeAnalyticsService) GetSummary(ctx context.Context, rangeStr string, 
 		return models.AnalyticsSummary{}, f.summaryErr
 	}
 	return f.summary, nil
+}
+
+func (f *fakeAnalyticsService) TrackSearch(ctx context.Context, userID int, query string) error {
+	f.searchCalls++
+	f.searchQuery = query
+	return f.searchErr
+}
+
+func (f *fakeAnalyticsService) TrackBrowse(ctx context.Context, userID int, step string) error {
+	f.browseCalls++
+	f.browseStep = step
+	return f.browseErr
 }
 
 func TestHandleAdminGetAnalyticsSummary(t *testing.T) {
@@ -136,5 +156,33 @@ func TestHandleAdminGetAnalyticsSummary(t *testing.T) {
 				t.Fatalf("top users = %+v, want the seeded student", got.TopUsers)
 			}
 		})
+	}
+}
+
+func TestHandlePostSearchEvent(t *testing.T) {
+	fake := &fakeAnalyticsService{}
+	h := testHandler(t, withAnalytics(fake))
+	req := studentRequest(http.MethodPost, "/api/search_events", `{"query":"nfa035"}`)
+	rr := httptest.NewRecorder()
+	h.handlePostSearchEvent(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", rr.Code)
+	}
+	if fake.searchCalls != 1 || fake.searchQuery != "nfa035" {
+		t.Fatalf("search = %d %q", fake.searchCalls, fake.searchQuery)
+	}
+}
+
+func TestHandlePostBrowseEvent(t *testing.T) {
+	fake := &fakeAnalyticsService{}
+	h := testHandler(t, withAnalytics(fake))
+	req := studentRequest(http.MethodPost, "/api/browse_events", `{"step":"list"}`)
+	rr := httptest.NewRecorder()
+	h.handlePostBrowseEvent(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", rr.Code)
+	}
+	if fake.browseCalls != 1 || fake.browseStep != "list" {
+		t.Fatalf("browse = %d %q", fake.browseCalls, fake.browseStep)
 	}
 }

@@ -322,6 +322,7 @@ function selectMobileProg(id) {
   }
 
   AppState.mobileStep = "year";
+  window.trackBrowse?.("year");
   renderMobileYearPicker();
 }
 
@@ -329,6 +330,7 @@ function selectMobileSem(yearId, semId) {
   AppState.currentYear = coerceId(yearId);
   AppState.currentSem = coerceId(semId);
   AppState.mobileStep = "list";
+  window.trackBrowse?.("list");
   renderMobileList();
 }
 

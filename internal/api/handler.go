@@ -74,6 +74,8 @@ type userService interface {
 
 type analyticsService interface {
 	GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error)
+	TrackSearch(ctx context.Context, userID int, query string) error
+	TrackBrowse(ctx context.Context, userID int, step string) error
 }
 
 type pageViewService interface {

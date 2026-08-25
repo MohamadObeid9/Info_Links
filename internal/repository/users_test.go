@@ -168,6 +168,8 @@ func TestUserRepository_AdoptGuest(t *testing.T) {
 		reassignContributionsQuery,
 		reassignFeedbackQuery,
 		reassignFavoriteEventsQuery,
+		reassignSearchEventsQuery,
+		reassignBrowseEventsQuery,
 	}
 
 	t.Run("reassigns activity then deletes the guest", func(t *testing.T) {

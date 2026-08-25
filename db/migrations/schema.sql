@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ARubgEUTEUEvYQmCoxvtf2WBFdVHwFLCBVtf7qtn09SEwpJuYJgJrLTtPvY8Re6
+\restrict VTDcJzbHLvSzivTtLYMXC2Gh8IFXpTaTwB1YAIJsErST6Kzfuy3Mtj1biLgcArq
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -69,6 +69,33 @@ $$;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: browse_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.browse_events (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    step text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT browse_events_step_chk CHECK ((step = ANY (ARRAY['year'::text, 'list'::text])))
+);
+
+
+--
+-- Name: browse_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.browse_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.browse_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
 
 --
 -- Name: contributions; Type: TABLE; Schema: public; Owner: -
@@ -397,6 +424,32 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: search_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.search_events (
+    id integer NOT NULL,
+    user_id integer NOT NULL,
+    query text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: search_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.search_events ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.search_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: semesters; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -481,6 +534,14 @@ ALTER TABLE public.years ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     NO MAXVALUE
     CACHE 1
 );
+
+
+--
+-- Name: browse_events browse_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browse_events
+    ADD CONSTRAINT browse_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -588,6 +649,14 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: search_events search_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.search_events
+    ADD CONSTRAINT search_events_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: semesters semesters_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -609,6 +678,20 @@ ALTER TABLE ONLY public.users
 
 ALTER TABLE ONLY public.years
     ADD CONSTRAINT years_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: browse_events_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX browse_events_created_at_idx ON public.browse_events USING btree (created_at DESC);
+
+
+--
+-- Name: browse_events_step_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX browse_events_step_created_at_idx ON public.browse_events USING btree (step, created_at DESC);
 
 
 --
@@ -668,10 +751,32 @@ CREATE INDEX reports_user_id_created_at_idx ON public.reports USING btree (user_
 
 
 --
+-- Name: search_events_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX search_events_created_at_idx ON public.search_events USING btree (created_at DESC);
+
+
+--
+-- Name: search_events_query_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX search_events_query_created_at_idx ON public.search_events USING btree (query, created_at DESC);
+
+
+--
 -- Name: users_unique_username; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX users_unique_username ON public.users USING btree (first_name, last_name, number) WHERE (is_guest = false);
+
+
+--
+-- Name: browse_events browse_events_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.browse_events
+    ADD CONSTRAINT browse_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -768,6 +873,14 @@ ALTER TABLE ONLY public.page_views
 
 ALTER TABLE ONLY public.reports
     ADD CONSTRAINT reports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: search_events search_events_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.search_events
+    ADD CONSTRAINT search_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -932,6 +1045,12 @@ CREATE POLICY anon_insert_link_clicks ON public.link_clicks FOR INSERT TO anon W
 
 CREATE POLICY auth_select_link_clicks ON public.link_clicks FOR SELECT TO authenticated USING (true);
 
+
+--
+-- Name: browse_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.browse_events ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: contributions; Type: ROW SECURITY; Schema: public; Owner: -
@@ -1160,6 +1279,12 @@ CREATE POLICY reports_auth_update ON public.reports FOR UPDATE TO authenticated 
 ALTER TABLE public.schema_migrations ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: search_events; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.search_events ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: semesters; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1181,4 +1306,5 @@ ALTER TABLE public.years ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ARubgEUTEUEvYQmCoxvtf2WBFdVHwFLCBVtf7qtn09SEwpJuYJgJrLTtPvY8Re6
+\unrestrict VTDcJzbHLvSzivTtLYMXC2Gh8IFXpTaTwB1YAIJsErST6Kzfuy3Mtj1biLgcArq
+

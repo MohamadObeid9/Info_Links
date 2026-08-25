@@ -62,6 +62,8 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 	// Visits are the guest tracking path, everything else is gated behind signup.
 	mux.HandleFunc("POST /api/page_views", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostPageView)))
 	mux.HandleFunc("POST /api/link_clicks", h.skipForAdmin(middleware.RequireRegisteredUser(jwtSecret, h.handlePostLinkClick)))
+	mux.HandleFunc("POST /api/search_events", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostSearchEvent)))
+	mux.HandleFunc("POST /api/browse_events", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostBrowseEvent)))
 	mux.HandleFunc("POST /api/reports", middleware.RequireRegisteredUser(jwtSecret, h.handlePostReport))
 	mux.HandleFunc("POST /api/feedback", middleware.RequireRegisteredUser(jwtSecret, h.handlePostFeedback))
 	mux.HandleFunc("POST /api/contributions", middleware.RequireRegisteredUser(jwtSecret, h.handlePostContribution))

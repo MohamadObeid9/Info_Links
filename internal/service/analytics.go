@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
@@ -13,6 +14,8 @@ import (
 const defaultAnalyticsRangeDays = 7
 
 const defaultVisitorsLimit = 12
+
+const maxSearchQueryLen = 80
 
 type AnalyticsVisitorsParams struct {
 	Limit  int
@@ -64,6 +67,31 @@ func (s *AnalyticsService) GetSummary(ctx context.Context, rangeStr string, visi
 		return models.AnalyticsSummary{}, fmt.Errorf("get analytics summary: %w", err)
 	}
 	return summary, nil
+}
+
+func (s *AnalyticsService) TrackSearch(ctx context.Context, userID int, query string) error {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return errs.ErrAnalyticsInvalidSearchQuery
+	}
+	if utf8.RuneCountInString(q) > maxSearchQueryLen {
+		q = string([]rune(q)[:maxSearchQueryLen])
+	}
+	if err := s.repo.InsertSearch(ctx, userID, q); err != nil {
+		return fmt.Errorf("track search: %w", err)
+	}
+	return nil
+}
+
+func (s *AnalyticsService) TrackBrowse(ctx context.Context, userID int, step string) error {
+	step = strings.TrimSpace(step)
+	if step != "year" && step != "list" {
+		return errs.ErrAnalyticsInvalidBrowseStep
+	}
+	if err := s.repo.InsertBrowse(ctx, userID, step); err != nil {
+		return fmt.Errorf("track browse: %w", err)
+	}
+	return nil
 }
 
 func parseAnalyticsRange(rangeStr string) (int, error) {

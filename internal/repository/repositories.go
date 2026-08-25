@@ -32,6 +32,8 @@ type AnalyticsSummaryParams struct {
 
 type AnalyticsRepository interface {
 	GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error)
+	InsertSearch(ctx context.Context, userID int, query string) error
+	InsertBrowse(ctx context.Context, userID int, step string) error
 }
 
 type SEORepository interface {

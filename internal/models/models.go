@@ -73,12 +73,82 @@ type AnalyticsSummary struct {
 	TopLinksToday     []LinkClickCount   `json:"top_links_today"`
 	TopUsers          []UserClickCount   `json:"top_users"`
 	VisitorsToday     VisitorsTodayPage  `json:"visitors_today"`
+	ActiveInRange     int                `json:"active_in_range"`
+	ClicksInRange     int                `json:"clicks_in_range"`
+	ClickersInRange   int                `json:"clickers_in_range"`
+	ClicksPerActive   float64            `json:"clicks_per_active"`
+	PrevActiveInRange int                `json:"prev_active_in_range"`
+	PrevClicksInRange int                `json:"prev_clicks_in_range"`
+	PrevStudentsGained int               `json:"prev_students_gained"`
+	DevicesInRange    DeviceSplit        `json:"devices_in_range"`
+	ReturningInRange  int                `json:"returning_in_range"`
+	NewInRange        int                `json:"new_in_range"`
+	Funnel            SignupFunnel       `json:"funnel"`
+	Inbox             AnalyticsInbox     `json:"inbox"`
+	Browse            BrowseDepth        `json:"browse"`
+	TopCourses        []CourseDemand     `json:"top_courses"`
+	ZeroClickCourses  []CourseDemand     `json:"zero_click_courses"`
+	ZeroClickLinks    []DeadLink         `json:"zero_click_links"`
+	TopFavorites      []CourseDemand     `json:"top_favorites"`
+	Heatmap           []HeatmapCell      `json:"heatmap"`
+	SearchTerms       []SearchTermCount  `json:"search_terms"`
 }
 
-// DeviceSplit counts today's visits by coarse device class (NULL rows omitted).
+// DeviceSplit counts unique students by coarse device class.
 type DeviceSplit struct {
 	Phone  int `json:"phone"`
 	Laptop int `json:"laptop"`
+	Both   int `json:"both"`
+}
+
+// SignupFunnel is guest creation vs signup in the selected range.
+type SignupFunnel struct {
+	Arrivals     int `json:"arrivals"`
+	SignedUp     int `json:"signed_up"`
+	StillGuest   int `json:"still_guest"`
+	GuestsOpen   int `json:"guests_open"`
+}
+
+// AnalyticsInbox is open admin work, not scoped to the chart range.
+type AnalyticsInbox struct {
+	Reports       int `json:"reports"`
+	Contributions int `json:"contributions"`
+	Feedback      int `json:"feedback"`
+}
+
+// BrowseDepth is unique students who reached each mobile/desktop picker step.
+type BrowseDepth struct {
+	ReachedYear int `json:"reached_year"`
+	ReachedList int `json:"reached_list"`
+}
+
+// CourseDemand is a course ranked by clicks or stars.
+type CourseDemand struct {
+	CourseID int    `json:"course_id"`
+	Name     string `json:"name"`
+	Code     string `json:"code"`
+	Count    int    `json:"count"`
+}
+
+// DeadLink is a resource with no clicks in the selected range.
+type DeadLink struct {
+	Kind       string `json:"kind"` // link or extra_link
+	ID         int    `json:"id"`
+	Label      string `json:"label"`
+	CourseName string `json:"course_name"`
+}
+
+// HeatmapCell is activity (visits + clicks) for one weekday hour.
+type HeatmapCell struct {
+	Dow   int `json:"dow"` // 0 = Sunday, matching Postgres EXTRACT(DOW)
+	Hour  int `json:"hour"`
+	Count int `json:"count"`
+}
+
+// SearchTermCount is how often a search string was submitted in range.
+type SearchTermCount struct {
+	Query string `json:"query"`
+	Count int    `json:"count"`
 }
 
 // DailyRosterDay is the cumulative registered student count at end of day.

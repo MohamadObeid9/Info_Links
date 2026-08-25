@@ -13,8 +13,9 @@ db/
     ├── 000001_initial_schema.up.sql    # Executable bootstrap (golang-migrate)
     ├── 000002_link_clicks_support_extra_links.up.sql
     ├── 000003_normalize_schema_style.up.sql
-    ├── 000004_add_user_system.up.sql
-    └── 000005_add_cascade_deletes_to_foreign_keys.up.sql
+    ├── 000006_add_page_views_device_type.up.sql
+    ├── 000007_add_rejected_feedback_status.up.sql
+    └── 000008_add_search_and_browse_events.up.sql
 ```
 
 - **`schema.sql`** — human-readable export for review and diffs; not meant to be executed directly.
