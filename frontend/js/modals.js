@@ -1,5 +1,5 @@
 import { AppState } from "./state.js";
-import { esc, _findSharedCourses } from "./ui.js";
+import { esc } from "./ui.js";
 import { sb, trackLinkClick } from "./supabase.js";
 import { loadAll } from "./data.js";
 import { _clearCache } from "./cache.js";
@@ -229,6 +229,7 @@ function openAddCourseModal() {
   <label>Semester</label><select id="mSem"></select>
   <label>Course Name</label><input type="text" id="mName" placeholder="e.g. Machine Learning"/>
   <label>Course Code</label><input type="text" id="mCode" placeholder="e.g. ML101"/>
+  <p style="color:var(--muted);font-size:.85rem;margin-top:8px;">If this code already exists, it is added to this program and shares the same links.</p>
   <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="addCourse()">Add</button></div>`);
   updateYearSemOpts();
 }
@@ -278,13 +279,13 @@ async function addCourse() {
 }
 
 // Edit Course
-function openEditCourseModal(id) {
+function openEditCourseModal(id, placementId) {
   let c, currentProgId, currentYearId, currentSemId;
   AppState.dbPrograms.forEach((p) =>
     p.years.forEach((y) =>
       y.sems.forEach((s) =>
         s.courses.forEach((co) => {
-          if (co.id === id) {
+          if (co.id === id && (!placementId || co.placement_id === placementId)) {
             c = co;
             currentProgId = p.id;
             currentYearId = y.id;
@@ -325,7 +326,7 @@ function openEditCourseModal(id) {
   <label>Program</label><select id="eProg" onchange="updateEditYearOpts()">${progOpts}</select>
   <label>Year</label><select id="eYear" onchange="updateEditSemOpts()">${yearOpts}</select>
   <label>Semester</label><select id="eSem">${semOpts}</select>
-  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCourse(${id})">Save</button></div>`);
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCourse(${id}, ${Number(c.placement_id) || 0})">Save</button></div>`);
 }
 function updateEditYearOpts() {
   const pi = parseInt(document.getElementById("eProg").value);
@@ -344,7 +345,7 @@ function updateEditSemOpts() {
     .map((s) => `<option value="${s.id}">${esc(s.name)}</option>`)
     .join("");
 }
-async function saveCourse(id) {
+async function saveCourse(id, placementId) {
   const name = document.getElementById("eName").value.trim();
   const code = document.getElementById("eCode").value.trim();
   const semId = parseInt(document.getElementById("eSem").value);
@@ -352,99 +353,19 @@ async function saveCourse(id) {
     showToast("Name and code required.", true);
     return;
   }
-
-  let originalCode = null;
-  AppState.dbPrograms.forEach((p) =>
-    p.years.forEach((y) =>
-      y.sems.forEach((s) =>
-        s.courses.forEach((c) => {
-          if (c.id === id) originalCode = c.code;
-        }),
-      ),
-    ),
-  );
-
-  const duplicates = [];
-  if (originalCode) {
-    AppState.dbPrograms.forEach((p) =>
-      p.years.forEach((y) =>
-        y.sems.forEach((s) =>
-          s.courses.forEach((c) => {
-            if (c.id !== id && c.code === originalCode)
-              duplicates.push({
-                id: c.id,
-                name: c.name,
-                prog: p.name,
-                year: y.name,
-                sem: s.name,
-              });
-          }),
-        ),
-      ),
-    );
-  }
-
-  AppState._pendingCourseEdit = {
-    id,
-    name,
-    code,
-    semId,
-    duplicateIds: duplicates.map((d) => d.id),
-  };
-
-  if (duplicates.length > 0) {
-    const dupList = duplicates
-      .map(
-        (d) =>
-          `<li style="margin-bottom:6px;"><strong>${esc(d.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(d.prog)} › ${esc(d.year)} › ${esc(d.sem)}</span></li>`,
-      )
-      .join("");
-    openModal(`<h2>🔁 Shared Course Detected</h2>
-  <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;">
-      <strong>${duplicates.length}</strong> other course(s) share the code <strong>${esc(originalCode)}</strong>:
-  </p>
-  <ul style="font-size:.83rem;margin-bottom:14px;padding-left:18px;list-style:disc;">${dupList}</ul>
-  <p style="font-size:.85rem;margin-bottom:6px;">Update <strong>name &amp; code</strong> on all of them too?</p>
-  <p style="font-size:.75rem;color:var(--muted);margin-bottom:16px;">The location change only applies to this course.</p>
-  <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-ghost" onclick="applySaveCourse(false)">Just this one</button>
-      <button class="btn btn-primary" onclick="applySaveCourse(true)">All ${duplicates.length + 1} occurrences</button>
-  </div>`);
-  } else {
-    await applySaveCourse(false);
-  }
-}
-
-async function applySaveCourse(updateAll) {
-  const { id, name, code, semId, duplicateIds } = AppState._pendingCourseEdit;
   const btn = document.querySelector("#modalBox .btn-primary");
   setBtnLoading(btn, true, "Saving…");
   try {
-    await sb(`courses?id=eq.${id}`, "PATCH", {
-      name,
-      code,
-      semester_id: semId,
-    });
-    if (updateAll && duplicateIds.length) {
-      await Promise.all(
-        duplicateIds.map((did) =>
-          sb(`courses?id=eq.${did}`, "PATCH", { name, code }),
-        ),
-      );
-    }
+    const body = { name, code, semester_id: semId };
+    if (placementId) body.placement_id = placementId;
+    await sb(`courses?id=eq.${id}`, "PATCH", body);
     closeModal();
     _clearCache();
     loadAll();
-    showToast(
-      updateAll
-        ? `Updated all ${duplicateIds.length + 1} occurrences!`
-        : "Course updated!",
-    );
+    showToast("Course updated!");
   } catch (e) {
     showToast(e.message, true);
   } finally {
-    AppState._pendingCourseEdit = null;
     setBtnLoading(btn, false);
   }
 }
@@ -483,36 +404,22 @@ async function addLink(courseId) {
   const label = document.getElementById("lLabel").value.trim() || "Link";
   const note = document.getElementById("lNote").value.trim();
   const contentType = _readContentTypeCheckboxes("lct");
-
-  const { code, siblings } = _findSharedCourses(courseId);
-  AppState._pendingLinkOp = {
-    courseId,
-    url,
-    type,
-    label,
-    note,
-    contentType,
-    siblingCourseIds: siblings.map((s) => s.id),
-  };
-
-  if (siblings.length) {
-    const list = siblings
-      .map(
-        (s) =>
-          `<li style="margin-bottom:4px;"><strong>${esc(s.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(s.prog)} › ${esc(s.year)} › ${esc(s.sem)}</span></li>`,
-      )
-      .join("");
-    openModal(`<h2>🔁 Shared Course</h2>
-  <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${siblings.length}</strong> other course(s) share code <strong>${esc(code)}</strong>:</p>
-  <ul style="font-size:.83rem;margin-bottom:16px;padding-left:18px;list-style:disc;">${list}</ul>
-  <p style="font-size:.85rem;margin-bottom:16px;">Add this link to all of them too?</p>
-  <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-ghost" onclick="applyAddLink(false)">Just this one</button>
-      <button class="btn btn-primary" onclick="applyAddLink(true)">All ${siblings.length + 1} courses</button>
-  </div>`);
-  } else {
-    await applyAddLink(false);
+  try {
+    await sb("links", "POST", {
+      course_id: courseId,
+      type,
+      url,
+      label,
+      note,
+      content_type: contentType,
+      display_order: _getNextDisplayOrder(courseId),
+    });
+    closeModal();
+    _clearCache();
+    loadAll();
+    showToast("Link added!");
+  } catch (e) {
+    showToast(e.message, true);
   }
 }
 function _getNextDisplayOrder(courseId) {
@@ -530,47 +437,6 @@ function _getNextDisplayOrder(courseId) {
     ),
   );
   return max + 1;
-}
-async function applyAddLink(addToAll) {
-  const { courseId, url, type, label, note, contentType, siblingCourseIds } =
-    AppState._pendingLinkOp;
-  try {
-    await sb("links", "POST", {
-      course_id: courseId,
-      type,
-      url,
-      label,
-      note,
-      content_type: contentType,
-      display_order: _getNextDisplayOrder(courseId),
-    });
-    if (addToAll && siblingCourseIds.length)
-      await Promise.all(
-        siblingCourseIds.map((sid) =>
-          sb("links", "POST", {
-            course_id: sid,
-            type,
-            url,
-            label,
-            note,
-            content_type: contentType,
-            display_order: _getNextDisplayOrder(sid),
-          }),
-        ),
-      );
-    closeModal();
-    _clearCache();
-    loadAll();
-    showToast(
-      addToAll
-        ? `Link added to all ${siblingCourseIds.length + 1} courses!`
-        : "Link added!",
-    );
-  } catch (e) {
-    showToast(e.message, true);
-  } finally {
-    AppState._pendingLinkOp = null;
-  }
 }
 
 // Edit Link
@@ -611,68 +477,6 @@ async function saveLink(linkId, courseId) {
   const label = document.getElementById("elLabel").value.trim() || "Link";
   const note = document.getElementById("elNote").value.trim();
   const contentType = _readContentTypeCheckboxes("elct");
-
-  let originalUrl = null;
-  AppState.dbPrograms.forEach((p) =>
-    p.years.forEach((y) =>
-      y.sems.forEach((s) =>
-        s.courses.forEach((c) =>
-          c.links.forEach((lk) => {
-            if (lk.id === linkId) originalUrl = lk.url;
-          }),
-        ),
-      ),
-    ),
-  );
-
-  const { siblings } = _findSharedCourses(courseId);
-  const matchingLinks = [];
-  siblings.forEach((sib) =>
-    sib.links.forEach((lk) => {
-      if (lk.url === originalUrl)
-        matchingLinks.push({
-          id: lk.id,
-          sibName: sib.name,
-          prog: sib.prog,
-          year: sib.year,
-          sem: sib.sem,
-        });
-    }),
-  );
-
-  AppState._pendingLinkOp = {
-    linkId,
-    url,
-    type,
-    label,
-    note,
-    contentType,
-    matchingLinkIds: matchingLinks.map((m) => m.id),
-  };
-
-  if (matchingLinks.length) {
-    const list = matchingLinks
-      .map(
-        (m) =>
-          `<li style="margin-bottom:4px;"><strong>${esc(m.sibName)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(m.prog)} › ${esc(m.year)} › ${esc(m.sem)}</span></li>`,
-      )
-      .join("");
-    openModal(`<h2>🔁 Shared Link</h2>
-  <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${matchingLinks.length}</strong> sibling course(s) share the same link:</p>
-  <ul style="font-size:.83rem;margin-bottom:16px;padding-left:18px;list-style:disc;">${list}</ul>
-  <p style="font-size:.85rem;margin-bottom:16px;">Update all matching links too?</p>
-  <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-ghost" onclick="applySaveLink(false)">Just this one</button>
-      <button class="btn btn-primary" onclick="applySaveLink(true)">All ${matchingLinks.length + 1} links</button>
-  </div>`);
-  } else {
-    await applySaveLink(false);
-  }
-}
-async function applySaveLink(updateAll) {
-  const { linkId, url, type, label, note, contentType, matchingLinkIds } =
-    AppState._pendingLinkOp;
   try {
     await sb(`links?id=eq.${linkId}`, "PATCH", {
       type,
@@ -681,30 +485,12 @@ async function applySaveLink(updateAll) {
       note,
       content_type: contentType,
     });
-    if (updateAll && matchingLinkIds.length)
-      await Promise.all(
-        matchingLinkIds.map((mid) =>
-          sb(`links?id=eq.${mid}`, "PATCH", {
-            type,
-            url,
-            label,
-            note,
-            content_type: contentType,
-          }),
-        ),
-      );
     closeModal();
     _clearCache();
     loadAll();
-    showToast(
-      updateAll
-        ? `Updated ${matchingLinkIds.length + 1} links!`
-        : "Link updated!",
-    );
+    showToast("Link updated!");
   } catch (e) {
     showToast(e.message, true);
-  } finally {
-    AppState._pendingLinkOp = null;
   }
 }
 
@@ -842,17 +628,14 @@ Object.assign(window, {
   openEditCourseModal,
   addCourse,
   saveCourse,
-  applySaveCourse,
   updateYearSemOpts,
   updateSemOpts,
   updateEditYearOpts,
   updateEditSemOpts,
   openAddLinkModal,
   addLink,
-  applyAddLink,
   openEditLinkModal,
   saveLink,
-  applySaveLink,
   openAddExtraSectionModal,
   addExtraSection,
   openEditExtraSectionModal,

@@ -1,6 +1,6 @@
 import { AppState } from "./state.js";
-import { sb, sbAuth, sbLogout } from "./supabase.js";
-import { esc, setBtnLoading, getLinkBadge, getContentTypeChips, _findSharedCourses, adminCell, isMobileView } from "./ui.js";
+import { sb, sbAuth, sbLogout, apiRequest } from "./supabase.js";
+import { esc, setBtnLoading, getLinkBadge, getContentTypeChips, adminCell, isMobileView } from "./ui.js";
 import { getAdminTableSkeleton, getAdminAnalyticsSkeleton } from "./skeleton.js";
 import { loadAll, loadReportsBadges } from "./data.js";
 import { _clearCache } from "./cache.js";
@@ -176,11 +176,11 @@ function _refocusSearch() {
 
 // ===================== ANALYTICS =====================
 function resolveLinkInfo(kind, linkId) {
-  let info = { label: "Unknown Link", courseName: "Unknown Course" };
+  let info = { label: "Unknown Link", courseName: "Unknown Course", programName: "" };
   if (kind === "extra_link") {
     AppState.dbExtra.forEach((r) =>
       r.links.forEach((l) => {
-        if (l.id == linkId) info = { label: l.label, courseName: r.title };
+        if (l.id == linkId) info = { label: l.label, courseName: r.title, programName: "" };
       }),
     );
     return info;
@@ -190,13 +190,37 @@ function resolveLinkInfo(kind, linkId) {
       y.sems.forEach((s) =>
         s.courses.forEach((c) =>
           c.links.forEach((l) => {
-            if (l.id == linkId) info = { label: l.label, courseName: c.name };
+            if (l.id == linkId) info = { label: l.label, courseName: c.name, programName: p.name || "" };
           }),
         ),
       ),
     ),
   );
   return info;
+}
+
+function _shortProgramName(programName) {
+  const raw = String(programName || "").trim();
+  if (!raw) return "";
+  return raw
+    .split(/\s*[·/,]\s*/)
+    .map((part) => {
+      const name = part.trim();
+      if (!name) return "";
+      const lower = name.toLowerCase();
+      if (lower.includes("aisl")) return "AISL";
+      if (lower.includes("irsm")) return "IRSM";
+      if (lower.includes("licence") || lower.includes("license")) return "License";
+      return name.replace(/^master\s+/i, "").trim() || name;
+    })
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function _programSuffix(programName) {
+  const name = _shortProgramName(programName);
+  if (!name) return "";
+  return ` ${esc(name)}`;
 }
 
 function _num(value) {
@@ -225,7 +249,7 @@ function buildTopLinksList(topLinks, expandKey = null) {
   const items = visible
     .map((row) => {
       const info = resolveLinkInfo(row.kind, row.id);
-      return `<li><strong>${_num(row.clicks)}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})</span></li>`;
+      return `<li><strong>${_num(row.clicks)}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})${_programSuffix(info.programName)}</span></li>`;
     })
     .join("");
 
@@ -314,7 +338,7 @@ function buildVisitorChipsSection(summary) {
   const sortButtons = ["clicks", "name"]
     .map((s) => {
       const label = s === "clicks" ? "Most clicks" : "Name";
-      return `<button type="button" class="filter-btn ${sort === s ? "active" : ""}" onclick="AppState.analyticsVisitorsSort='${s}';AppState.analyticsVisitorsOffset=0;renderAdminAnalytics()">${label}</button>`;
+      return `<button type="button" class="filter-btn ${sort === s ? "active" : ""}" onclick="AppState.analyticsVisitorsSort='${s}';AppState.analyticsVisitorsOffset=0;analyticsPaintLocal()">${label}</button>`;
     })
     .join("");
 
@@ -348,9 +372,9 @@ function buildVisitorChipsSection(summary) {
     : "";
 
   const pager = `<div class="admin-pager">
-    ${_pagerButton("← Prev", hasPrev, `AppState.analyticsVisitorsOffset=Math.max(0,${offset}-${pageSize});renderAdminAnalytics()`)}
+    ${_pagerButton("← Prev", hasPrev, `AppState.analyticsVisitorsOffset=Math.max(0,${offset}-${pageSize});analyticsPaintLocal()`)}
     <span>Page ${pageNum}</span>
-    ${_pagerButton("Next →", hasMore, `AppState.analyticsVisitorsOffset=${offset + pageSize};renderAdminAnalytics()`)}
+    ${_pagerButton("Next →", hasMore, `AppState.analyticsVisitorsOffset=${offset + pageSize};analyticsPaintLocal()`)}
   </div>`;
 
   return `<div class="chart-wrap analytics-card">
@@ -388,6 +412,13 @@ function _pctDelta(current, previous) {
   return `${pct > 0 ? "+" : ""}${pct}%`;
 }
 
+function _pctGrowth(added, base) {
+  const a = Number(added) || 0;
+  const b = Number(base) || 0;
+  if (b <= 0) return a > 0 ? "+new" : "—";
+  return `+${Math.round((a / b) * 100)}%`;
+}
+
 function _pctOfTotal(part, total) {
   const p = Number(part) || 0;
   const t = Number(total) || 0;
@@ -412,14 +443,16 @@ function _showAllList(rows, expandKey, emptyMsg, renderItem) {
 
 function _courseDemandList(rows, emptyMsg, countLabel = "clicks", expandKey = null) {
   return _showAllList(rows, expandKey, emptyMsg, (row) =>
-    `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.name)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.code)})</span></li>`,
+    `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.name)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.code)})${_programSuffix(row.program_name)}</span></li>`,
   );
 }
 
 function _deadLinksList(rows, expandKey = null) {
-  return _showAllList(rows, expandKey, "Every link got at least one click in this range.", (row) =>
-    `<li style="margin-bottom:8px;">${esc(row.label)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.course_name)})</span></li>`,
-  );
+  return _showAllList(rows, expandKey, "Every link got at least one click in this range.", (row) => {
+    const fromTree = row.kind === "link" ? resolveLinkInfo("link", row.id) : { programName: "" };
+    const program = row.program_name || fromTree.programName;
+    return `<li style="margin-bottom:8px;">${esc(row.label)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.course_name)})${_programSuffix(program)}</span></li>`;
+  });
 }
 
 function _searchTermsList(rows, expandKey = null) {
@@ -518,9 +551,9 @@ function _formatGain(value) {
 function _statsInRangeSection(summary, range) {
   const total = Number(summary.total_students) || 0;
   const newStudents = Number(summary.funnel?.signed_up) || 0;
-  const prevNew = Number(summary.prev_students_gained) || 0;
-  const active = Number(summary.active_in_range) || 0;
-  const newPct = _pctDelta(newStudents, prevNew);
+  const rosterAtStart = Math.max(0, total - newStudents);
+  const active = Number(summary.active_registered_in_range) || 0;
+  const newPct = _pctGrowth(newStudents, rosterAtStart);
   const activePct = _pctOfTotal(active, total);
 
   return `<div class="chart-wrap analytics-card analytics-stats-range">
@@ -528,11 +561,11 @@ function _statsInRangeSection(summary, range) {
     <div class="analytics-stats-grid">
       <div class="analytics-stat-tile">
         <div class="analytics-stat-val">${_num(newStudents)} <span class="analytics-stat-pct">(${esc(newPct)})</span></div>
-        <div class="analytics-stat-label">New students vs prior ${esc(range)}d</div>
+        <div class="analytics-stat-label">New students vs roster at start</div>
       </div>
       <div class="analytics-stat-tile">
         <div class="analytics-stat-val">${_num(active)} <span class="analytics-stat-pct">(${esc(activePct)})</span></div>
-        <div class="analytics-stat-label">Active students of total roster</div>
+        <div class="analytics-stat-label">Active registered students of total roster</div>
       </div>
     </div>
   </div>`;
@@ -590,7 +623,92 @@ function _buildBarChart(days, range, todayStr) {
     .join("");
 }
 
-let _analyticsSummaryCache = null;
+let _analyticsRangeCache = Object.create(null);
+let _analyticsVisitorsAll = null;
+let _analyticsFetchGen = 0;
+const _analyticsRangeInflight = Object.create(null);
+
+function _analyticsRangeKey() {
+  return ["7", "30", "90"].includes(String(AppState.analyticsRange))
+    ? String(AppState.analyticsRange)
+    : "30";
+}
+
+function _sortVisitorsToday(visitors, sort) {
+  const list = (visitors || []).slice();
+  const byHandle = (a, b) =>
+    String(a.handle || "").localeCompare(String(b.handle || ""), undefined, { sensitivity: "base", numeric: true });
+  if (sort === "name") {
+    list.sort(byHandle);
+  } else {
+    list.sort((a, b) => (Number(b.clicks) || 0) - (Number(a.clicks) || 0) || byHandle(a, b));
+  }
+  return list;
+}
+
+function _withLocalVisitors(summary) {
+  const all = Array.isArray(_analyticsVisitorsAll) ? _analyticsVisitorsAll : null;
+  if (!all) return summary;
+  const sort = AppState.analyticsVisitorsSort === "name" ? "name" : "clicks";
+  const sorted = _sortVisitorsToday(all, sort);
+  const pageSize = ANALYTICS_VISITORS_PAGE_SIZE;
+  let offset = Math.max(0, Number(AppState.analyticsVisitorsOffset) || 0);
+  if (sorted.length && offset >= sorted.length) {
+    offset = Math.max(0, Math.floor((sorted.length - 1) / pageSize) * pageSize);
+    AppState.analyticsVisitorsOffset = offset;
+  }
+  return {
+    ...summary,
+    visitors_today: {
+      visitors: sorted.slice(offset, offset + pageSize),
+      has_more: offset + pageSize < sorted.length,
+    },
+  };
+}
+
+async function _fetchAnalyticsSummary(range, gen) {
+  const key = String(range);
+  const inflightKey = `${gen}:${key}`;
+  if (_analyticsRangeInflight[inflightKey]) return _analyticsRangeInflight[inflightKey];
+  const req = (async () => {
+    const query = new URLSearchParams({
+      range: key,
+      visitors_limit: "100",
+      visitors_offset: "0",
+      visitors_sort: "clicks",
+    });
+    const summary = (await sb(`analytics/summary?${query}`, "GET")) || {};
+    if (gen === _analyticsFetchGen) _analyticsRangeCache[key] = summary;
+    return summary;
+  })();
+  _analyticsRangeInflight[inflightKey] = req;
+  try {
+    return await req;
+  } finally {
+    if (_analyticsRangeInflight[inflightKey] === req) delete _analyticsRangeInflight[inflightKey];
+  }
+}
+
+function _prefetchAnalyticsRanges(currentRange, gen) {
+  for (const r of ["7", "30", "90"]) {
+    if (r === currentRange || _analyticsRangeCache[r]) continue;
+    _fetchAnalyticsSummary(r, gen).catch(() => {});
+  }
+}
+
+function analyticsSelectRange(range) {
+  if (["7", "30", "90"].includes(String(range))) AppState.analyticsRange = String(range);
+  const key = _analyticsRangeKey();
+  if (_analyticsRangeCache[key]) {
+    analyticsPaintLocal();
+    return;
+  }
+  const gen = _analyticsFetchGen;
+  const pending = _analyticsRangeInflight[`${gen}:${key}`] || _fetchAnalyticsSummary(key, gen);
+  pending.then(() => {
+    if (_analyticsRangeKey() === key && _analyticsRangeCache[key]) analyticsPaintLocal();
+  }).catch(() => {});
+}
 
 function analyticsToggleExpand(key) {
   AppState[key] = !AppState[key];
@@ -598,14 +716,15 @@ function analyticsToggleExpand(key) {
 }
 
 function analyticsPaintLocal() {
-  if (!_analyticsSummaryCache) {
+  const summary = _analyticsRangeCache[_analyticsRangeKey()];
+  if (!summary) {
     renderAdminAnalytics();
     return;
   }
   const y = window.scrollY;
   const heat = document.querySelector(".heatmap-scroll");
   const hx = heat ? heat.scrollLeft : 0;
-  paintAdminAnalytics(_analyticsSummaryCache);
+  paintAdminAnalytics(_withLocalVisitors(summary));
   window.scrollTo(0, y);
   const heatAfter = document.querySelector(".heatmap-scroll");
   if (heatAfter) heatAfter.scrollLeft = hx;
@@ -625,7 +744,7 @@ function paintAdminAnalytics(summary) {
     const barsHtml = _buildBarChart(chartDays, range, todayStr);
 
     const rangeButtons = ["7", "30", "90"]
-      .map((r) => `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="AppState.analyticsRange='${r}';renderAdminAnalytics()">${r} days</button>`)
+      .map((r) => `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="analyticsSelectRange('${r}')">${r} days</button>`)
       .join("");
 
     const seriesButtons = ["visitors", "roster"]
@@ -737,30 +856,20 @@ function paintAdminAnalytics(summary) {
 
 async function renderAdminAnalytics() {
   document.getElementById("adminContent").innerHTML = getAdminAnalyticsSkeleton();
-  const range = ["7", "30", "90"].includes(String(AppState.analyticsRange))
-    ? String(AppState.analyticsRange)
-    : "30";
-  const visitorsSort = AppState.analyticsVisitorsSort === "name" ? "name" : "clicks";
-  const visitorsOffset = Math.max(0, Number(AppState.analyticsVisitorsOffset) || 0);
+  const gen = ++_analyticsFetchGen;
+  _analyticsRangeCache = Object.create(null);
+  _analyticsVisitorsAll = null;
+  const range = _analyticsRangeKey();
   try {
-    const query = new URLSearchParams({
-      range,
-      visitors_limit: String(ANALYTICS_VISITORS_PAGE_SIZE),
-      visitors_offset: String(visitorsOffset),
-      visitors_sort: visitorsSort,
-    });
-    const summary = (await sb(`analytics/summary?${query}`, "GET")) || {};
-
-    if (visitorsOffset > 0 && !_visitorsTodayPage(summary).visitors.length) {
-      AppState.analyticsVisitorsOffset = Math.max(0, visitorsOffset - ANALYTICS_VISITORS_PAGE_SIZE);
-      renderAdminAnalytics();
-      return;
-    }
-
-    _analyticsSummaryCache = summary;
-    paintAdminAnalytics(summary);
+    const summary = await _fetchAnalyticsSummary(range, gen);
+    if (gen !== _analyticsFetchGen) return;
+    _analyticsVisitorsAll = _visitorsTodayPage(summary).visitors.slice();
+    paintAdminAnalytics(_withLocalVisitors(summary));
+    _prefetchAnalyticsRanges(range, gen);
   } catch (e) {
-    _analyticsSummaryCache = null;
+    if (gen !== _analyticsFetchGen) return;
+    _analyticsRangeCache = Object.create(null);
+    _analyticsVisitorsAll = null;
     document.getElementById("adminContent").innerHTML = `<div class="empty">⚠️ Could not load analytics: ${esc(e.message)}</div>`;
   }
 }
@@ -843,9 +952,9 @@ function renderAdminCourses() {
               </button>
               <div class="action-btns">
                 <button class="action-btn" onclick="toggleOptional(${c.id},${c.is_optional})">${c.is_optional ? "✅ Optional" : "⬜ Optional"}</button>
-                <button class="action-btn" onclick="openEditCourseModal(${c.id})">✏️ Edit</button>
+                <button class="action-btn" onclick="openEditCourseModal(${c.id}, ${Number(c.placement_id) || 0})">✏️ Edit</button>
                 <button class="action-btn" onclick="openAddLinkModal(${c.id})">+ Link</button>
-                <button class="action-btn del" onclick="confirmAction('Delete this course and all its links?',()=>deleteCourse(${c.id}))">🗑 Delete</button>
+                <button class="action-btn del" onclick="confirmAction('Remove this course from this program? Links stay if it is still offered elsewhere.',()=>deleteCourse(${c.id}, ${Number(c.placement_id) || 0}))">🗑 Delete</button>
               </div>
             </div>
             <div class="admin-link-list">
@@ -1204,10 +1313,13 @@ function openAutoApproveContribModal(c) {
   }))));
 
   let courseOpts = "";
+  const seenCourseIds = new Set();
   AppState.dbPrograms.forEach(p => {
     courseOpts += `<optgroup label="${esc(p.name)}">`;
     p.years.forEach(y => y.sems.forEach(s => s.courses.forEach(course => {
-      courseOpts += `<option value="${course.id}" ${course.id === suggestedCourseId ? "selected" : ""}>${esc(course.name)} (${esc(course.code)}) — ${esc(y.name)} › ${esc(s.name)}</option>`;
+      if (seenCourseIds.has(course.id)) return;
+      seenCourseIds.add(course.id);
+      courseOpts += `<option value="${course.id}" ${course.id === suggestedCourseId ? "selected" : ""}>${esc(course.name)} (${esc(course.code)})</option>`;
     })));
     courseOpts += `</optgroup>`;
   });
@@ -1241,59 +1353,28 @@ async function applyAutoApproveContrib(contribId) {
 
   if (!courseId || !url) { showToast("Course and URL required.", true); return; }
 
-  const { siblings } = _findSharedCourses(courseId);
-
-  if (siblings.length) {
-    AppState._pendingLinkOp = { contribId, courseId, url, type, label, note, contentType, siblingCourseIds: siblings.map(s => s.id) };
-    const list = siblings
-      .map(s => `<li style="margin-bottom:4px;"><strong>${esc(s.name)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(s.prog)} › ${esc(s.year)} › ${esc(s.sem)}</span></li>`)
-      .join("");
-    window.openModal(`<h2>🔁 Shared Course</h2>
-    <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${siblings.length}</strong> other course(s) share the same code:</p>
-    <ul style="font-size:.83rem;margin-bottom:16px;padding-left:18px;list-style:disc;">${list}</ul>
-    <p style="font-size:.85rem;margin-bottom:16px;">Add this link to all of them too?</p>
-    <div class="modal-actions">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-ghost" onclick="_applyAutoApproveWithSiblings(false)">Just this one</button>
-        <button class="btn btn-primary" onclick="_applyAutoApproveWithSiblings(true)">All ${siblings.length + 1} courses</button>
-    </div>`);
-  } else {
-    const btn = document.querySelector("#modalBox .btn-primary");
-    setBtnLoading(btn, true, "Saving…");
-    try {
-      await sb("links", "POST", {
-        course_id: courseId, type, url, label, note, content_type: contentType, display_order: _getNextDisplayOrder(courseId)
-      });
-      await sb(`contributions?id=eq.${contribId}`, "PATCH", { status: "approved" });
-      window.closeModal(); _clearCache(); loadAll(); renderAdminContributions();
-      showToast("Contribution approved and link added!");
-    } catch (e) { showToast(e.message, true); }
-    finally { setBtnLoading(btn, false); }
-  }
-}
-
-async function _applyAutoApproveWithSiblings(addToAll) {
-  const { contribId, courseId, url, type, label, note, contentType, siblingCourseIds } = AppState._pendingLinkOp;
   const btn = document.querySelector("#modalBox .btn-primary");
   setBtnLoading(btn, true, "Saving…");
   try {
-    await sb("links", "POST", { course_id: courseId, type, url, label, note, content_type: contentType, display_order: _getNextDisplayOrder(courseId) });
-    if (addToAll && siblingCourseIds.length)
-      await Promise.all(siblingCourseIds.map(sid => sb("links", "POST", { course_id: sid, type, url, label, note, content_type: contentType, display_order: _getNextDisplayOrder(sid) })));
+    await sb("links", "POST", {
+      course_id: courseId, type, url, label, note, content_type: contentType, display_order: _getNextDisplayOrder(courseId)
+    });
     await sb(`contributions?id=eq.${contribId}`, "PATCH", { status: "approved" });
     window.closeModal(); _clearCache(); loadAll(); renderAdminContributions();
-    showToast(addToAll ? `Link added to all ${siblingCourseIds.length + 1} courses!` : "Contribution approved and link added!");
+    showToast("Contribution approved and link added!");
   } catch (e) { showToast(e.message, true); }
-  finally { AppState._pendingLinkOp = null; setBtnLoading(btn, false); }
+  finally { setBtnLoading(btn, false); }
 }
 
 // ===================== DB MUTATIONS =====================
-async function deleteCourse(id) {
+async function deleteCourse(id, placementId) {
   try {
-    await sb(`courses?id=eq.${id}`, "DELETE");
+    let url = `/api/admin/courses/${id}`;
+    if (placementId) url += `?placement_id=${placementId}`;
+    await apiRequest(url, { method: "DELETE" });
     _clearCache();
     loadAll();
-    showToast("Course deleted.");
+    showToast("Course removed from this program.");
   } catch (e) { showToast(e.message, true); }
 }
 async function toggleOptional(id, current) {
@@ -1306,44 +1387,23 @@ async function toggleOptional(id, current) {
   } catch (e) { showToast(e.message, true); }
 }
 function confirmDeleteLink(linkId, courseId) {
-  let linkUrl = null;
-  AppState.dbPrograms.forEach((p) => p.years.forEach((y) => y.sems.forEach((s) => s.courses.forEach((c) => c.links.forEach((lk) => { if (lk.id === linkId) linkUrl = lk.url; })))));
-  const { siblings } = _findSharedCourses(courseId);
-  const matchingLinks = [];
-  siblings.forEach((sib) => sib.links.forEach((lk) => { if (lk.url === linkUrl) matchingLinks.push({ id: lk.id, sibName: sib.name, prog: sib.prog, year: sib.year, sem: sib.sem }); }));
-
-  AppState._pendingLinkOp = { linkId, matchingLinkIds: matchingLinks.map((m) => m.id) };
-
-  if (matchingLinks.length) {
-    const list = matchingLinks.map((m) => `<li style="margin-bottom:4px;"><strong>${esc(m.sibName)}</strong> <span style="color:var(--muted);font-size:.8rem;">— ${esc(m.prog)} › ${esc(m.year)} › ${esc(m.sem)}</span></li>`).join("");
-    window.openModal(`<h2>🗑 Delete Link</h2>
-    <p style="font-size:.85rem;color:var(--muted);margin:10px 0 12px;"><strong>${matchingLinks.length}</strong> sibling course(s) have the same link:</p>
-    <ul style="font-size:.83rem;margin-bottom:16px;padding-left:18px;list-style:disc;">${list}</ul>
-    <p style="font-size:.85rem;margin-bottom:16px;">Remove from all of them too?</p>
+  window.openModal(`<h2>⚠️ Confirm</h2>
+    <p style="color:var(--muted);font-size:.9rem;margin-top:8px;">Remove this link from the course in every program that offers it?</p>
     <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-ghost" onclick="applyDeleteLink(false)">Just this one</button>
-        <button class="btn" style="background:var(--danger);color:#fff;" onclick="applyDeleteLink(true)">All ${matchingLinks.length + 1} links</button>
+        <button class="btn" style="background:var(--danger);color:#fff;" onclick="applyDeleteLink()">Delete</button>
     </div>`);
-  } else {
-    window.openModal(`<h2>⚠️ Confirm</h2>
-    <p style="color:var(--muted);font-size:.9rem;margin-top:8px;">Remove this link?</p>
-    <div class="modal-actions">
-        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn" style="background:var(--danger);color:#fff;" onclick="applyDeleteLink(false)">Delete</button>
-    </div>`);
-  }
+  AppState._pendingLinkOp = { linkId };
 }
-async function applyDeleteLink(deleteAll) {
-  const { linkId, matchingLinkIds } = AppState._pendingLinkOp;
+async function applyDeleteLink() {
+  const { linkId } = AppState._pendingLinkOp || {};
   try {
     await sb(`links?id=eq.${linkId}`, "DELETE");
-    if (deleteAll && matchingLinkIds.length) await Promise.all(matchingLinkIds.map((mid) => sb(`links?id=eq.${mid}`, "DELETE")));
     window.closeModal();
     _clearCache();
     loadAll();
     renderAdminCourses();
-    showToast(deleteAll ? `Removed ${matchingLinkIds.length + 1} links!` : "Link removed.");
+    showToast("Link removed.");
   } catch (e) { showToast(e.message, true); } finally { AppState._pendingLinkOp = null; }
 }
 async function deleteExtraSection(id) {
@@ -1434,6 +1494,7 @@ Object.assign(window, {
   renderAdminAnalytics,
   analyticsToggleExpand,
   analyticsPaintLocal,
+  analyticsSelectRange,
   renderAdminCourses,
   renderAdminExtra,
   toggleOptional,
@@ -1447,7 +1508,6 @@ Object.assign(window, {
   deleteReport,
   openAutoApproveContribModal,
   applyAutoApproveContrib,
-  _applyAutoApproveWithSiblings,
   rejectContrib,
   setContributionStatus,
   deleteContrib,

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict VTDcJzbHLvSzivTtLYMXC2Gh8IFXpTaTwB1YAIJsErST6Kzfuy3Mtj1biLgcArq
+\restrict Vx14eV1gKROdF6JRPf88ilnzJ9u5xR8PmH6s6S6b5ctnVRbfGGi4sm6fdY1ZsLJ
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4
@@ -127,15 +127,39 @@ ALTER TABLE public.contributions ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
 
 
 --
+-- Name: course_placements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.course_placements (
+    id integer NOT NULL,
+    course_id integer NOT NULL,
+    semester_id integer NOT NULL,
+    display_order integer DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: course_placements_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.course_placements ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.course_placements_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: courses; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.courses (
     id integer NOT NULL,
-    semester_id integer,
     name text NOT NULL,
     code text NOT NULL,
-    display_order integer DEFAULT 0,
     is_optional boolean DEFAULT false
 );
 
@@ -553,6 +577,22 @@ ALTER TABLE ONLY public.contributions
 
 
 --
+-- Name: course_placements course_placements_course_semester_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course_placements
+    ADD CONSTRAINT course_placements_course_semester_key UNIQUE (course_id, semester_id);
+
+
+--
+-- Name: course_placements course_placements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course_placements
+    ADD CONSTRAINT course_placements_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: courses courses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -702,6 +742,13 @@ CREATE INDEX contributions_user_id_created_at_idx ON public.contributions USING 
 
 
 --
+-- Name: courses_code_lower_uidx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX courses_code_lower_uidx ON public.courses USING btree (lower(TRIM(BOTH FROM code))) WHERE ((code IS NOT NULL) AND (TRIM(BOTH FROM code) <> ''::text));
+
+
+--
 -- Name: favorite_events_user_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -734,6 +781,13 @@ CREATE INDEX idx_feedback_status ON public.feedback USING btree (status);
 --
 
 CREATE INDEX link_clicks_user_id_clicked_at_idx ON public.link_clicks USING btree (user_id, clicked_at DESC);
+
+
+--
+-- Name: links_course_url_lower_uidx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX links_course_url_lower_uidx ON public.links USING btree (course_id, lower(TRIM(BOTH FROM url))) WHERE (course_id IS NOT NULL);
 
 
 --
@@ -788,11 +842,19 @@ ALTER TABLE ONLY public.contributions
 
 
 --
--- Name: courses courses_semester_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: course_placements course_placements_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.courses
-    ADD CONSTRAINT courses_semester_id_fkey FOREIGN KEY (semester_id) REFERENCES public.semesters(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.course_placements
+    ADD CONSTRAINT course_placements_course_id_fkey FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
+
+
+--
+-- Name: course_placements course_placements_semester_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.course_placements
+    ADD CONSTRAINT course_placements_semester_id_fkey FOREIGN KEY (semester_id) REFERENCES public.semesters(id) ON DELETE CASCADE;
 
 
 --
@@ -1087,6 +1149,12 @@ CREATE POLICY contributions_auth_update ON public.contributions FOR UPDATE TO au
 
 
 --
+-- Name: course_placements; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.course_placements ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: courses; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -1306,5 +1374,5 @@ ALTER TABLE public.years ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict VTDcJzbHLvSzivTtLYMXC2Gh8IFXpTaTwB1YAIJsErST6Kzfuy3Mtj1biLgcArq
+\unrestrict Vx14eV1gKROdF6JRPf88ilnzJ9u5xR8PmH6s6S6b5ctnVRbfGGi4sm6fdY1ZsLJ
 

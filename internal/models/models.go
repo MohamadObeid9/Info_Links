@@ -60,38 +60,39 @@ type UserDetail struct {
 
 // AnalyticsSummary holds the server-side aggregated usage metrics for admins.
 type AnalyticsSummary struct {
-	TotalStudents     int                `json:"total_students"`
-	StudentsGained7d  int                `json:"students_gained_7d"`
-	StudentsGained30d int                `json:"students_gained_30d"`
-	StudentsGained90d int                `json:"students_gained_90d"`
-	ActiveToday       int                `json:"active_today"`
-	ClicksToday       int                `json:"clicks_today"`
-	DevicesToday      DeviceSplit        `json:"devices_today"`
-	DailyUniqueVisits []DailyUniqueDay   `json:"daily_unique_visits"`
-	DailyRoster       []DailyRosterDay   `json:"daily_roster"`
-	TopLinks          []LinkClickCount   `json:"top_links"`
-	TopLinksToday     []LinkClickCount   `json:"top_links_today"`
-	TopUsers          []UserClickCount   `json:"top_users"`
-	VisitorsToday     VisitorsTodayPage  `json:"visitors_today"`
-	ActiveInRange     int                `json:"active_in_range"`
-	ClicksInRange     int                `json:"clicks_in_range"`
-	ClickersInRange   int                `json:"clickers_in_range"`
-	ClicksPerActive   float64            `json:"clicks_per_active"`
-	PrevActiveInRange int                `json:"prev_active_in_range"`
-	PrevClicksInRange int                `json:"prev_clicks_in_range"`
-	PrevStudentsGained int               `json:"prev_students_gained"`
-	DevicesInRange    DeviceSplit        `json:"devices_in_range"`
-	ReturningInRange  int                `json:"returning_in_range"`
-	NewInRange        int                `json:"new_in_range"`
-	Funnel            SignupFunnel       `json:"funnel"`
-	Inbox             AnalyticsInbox     `json:"inbox"`
-	Browse            BrowseDepth        `json:"browse"`
-	TopCourses        []CourseDemand     `json:"top_courses"`
-	ZeroClickCourses  []CourseDemand     `json:"zero_click_courses"`
-	ZeroClickLinks    []DeadLink         `json:"zero_click_links"`
-	TopFavorites      []CourseDemand     `json:"top_favorites"`
-	Heatmap           []HeatmapCell      `json:"heatmap"`
-	SearchTerms       []SearchTermCount  `json:"search_terms"`
+	TotalStudents           int               `json:"total_students"`
+	StudentsGained7d        int               `json:"students_gained_7d"`
+	StudentsGained30d       int               `json:"students_gained_30d"`
+	StudentsGained90d       int               `json:"students_gained_90d"`
+	ActiveToday             int               `json:"active_today"`
+	ClicksToday             int               `json:"clicks_today"`
+	DevicesToday            DeviceSplit       `json:"devices_today"`
+	DailyUniqueVisits       []DailyUniqueDay  `json:"daily_unique_visits"`
+	DailyRoster             []DailyRosterDay  `json:"daily_roster"`
+	TopLinks                []LinkClickCount  `json:"top_links"`
+	TopLinksToday           []LinkClickCount  `json:"top_links_today"`
+	TopUsers                []UserClickCount  `json:"top_users"`
+	VisitorsToday           VisitorsTodayPage `json:"visitors_today"`
+	ActiveInRange           int               `json:"active_in_range"`
+	ActiveRegisteredInRange int               `json:"active_registered_in_range"`
+	ClicksInRange           int               `json:"clicks_in_range"`
+	ClickersInRange         int               `json:"clickers_in_range"`
+	ClicksPerActive         float64           `json:"clicks_per_active"`
+	PrevActiveInRange       int               `json:"prev_active_in_range"`
+	PrevClicksInRange       int               `json:"prev_clicks_in_range"`
+	PrevStudentsGained      int               `json:"prev_students_gained"`
+	DevicesInRange          DeviceSplit       `json:"devices_in_range"`
+	ReturningInRange        int               `json:"returning_in_range"`
+	NewInRange              int               `json:"new_in_range"`
+	Funnel                  SignupFunnel      `json:"funnel"`
+	Inbox                   AnalyticsInbox    `json:"inbox"`
+	Browse                  BrowseDepth       `json:"browse"`
+	TopCourses              []CourseDemand    `json:"top_courses"`
+	ZeroClickCourses        []CourseDemand    `json:"zero_click_courses"`
+	ZeroClickLinks          []DeadLink        `json:"zero_click_links"`
+	TopFavorites            []CourseDemand    `json:"top_favorites"`
+	Heatmap                 []HeatmapCell     `json:"heatmap"`
+	SearchTerms             []SearchTermCount `json:"search_terms"`
 }
 
 // DeviceSplit counts unique students by coarse device class.
@@ -103,10 +104,10 @@ type DeviceSplit struct {
 
 // SignupFunnel is guest creation vs signup in the selected range.
 type SignupFunnel struct {
-	Arrivals     int `json:"arrivals"`
-	SignedUp     int `json:"signed_up"`
-	StillGuest   int `json:"still_guest"`
-	GuestsOpen   int `json:"guests_open"`
+	Arrivals   int `json:"arrivals"`
+	SignedUp   int `json:"signed_up"`
+	StillGuest int `json:"still_guest"`
+	GuestsOpen int `json:"guests_open"`
 }
 
 // AnalyticsInbox is open admin work, not scoped to the chart range.
@@ -124,18 +125,20 @@ type BrowseDepth struct {
 
 // CourseDemand is a course ranked by clicks or stars.
 type CourseDemand struct {
-	CourseID int    `json:"course_id"`
-	Name     string `json:"name"`
-	Code     string `json:"code"`
-	Count    int    `json:"count"`
+	CourseID    int    `json:"course_id"`
+	Name        string `json:"name"`
+	Code        string `json:"code"`
+	Count       int    `json:"count"`
+	ProgramName string `json:"program_name"`
 }
 
 // DeadLink is a resource with no clicks in the selected range.
 type DeadLink struct {
-	Kind       string `json:"kind"` // link or extra_link
-	ID         int    `json:"id"`
-	Label      string `json:"label"`
-	CourseName string `json:"course_name"`
+	Kind        string `json:"kind"` // link or extra_link
+	ID          int    `json:"id"`
+	Label       string `json:"label"`
+	CourseName  string `json:"course_name"`
+	ProgramName string `json:"program_name"`
 }
 
 // HeatmapCell is activity (visits + clicks) for one weekday hour.
@@ -216,22 +219,25 @@ type Semester struct {
 	DisplayOrder int    `json:"display_order"`
 }
 
-// Course represents a class within a semester
+// Course is a canonical catalog row. SemesterID and PlacementID are the
+// offering: the same id can appear under several programs via placements.
 type Course struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
 	Code         string `json:"code"`
 	IsOptional   bool   `json:"is_optional"`
 	SemesterID   int    `json:"semester_id"`
+	PlacementID  int    `json:"placement_id,omitempty"`
 	DisplayOrder int    `json:"display_order"`
 }
 
 // CoursePatch represents an updating course
 type CoursePatch struct {
-	Name       *string `json:"name"`
-	Code       *string `json:"code"`
-	IsOptional *bool   `json:"is_optional"`
-	SemesterID *int    `json:"semester_id"`
+	Name        *string `json:"name"`
+	Code        *string `json:"code"`
+	IsOptional  *bool   `json:"is_optional"`
+	SemesterID  *int    `json:"semester_id"`
+	PlacementID *int    `json:"placement_id"`
 }
 
 // Link represents a useful resource for a course or extra section

@@ -15,7 +15,8 @@ db/
     ├── 000003_normalize_schema_style.up.sql
     ├── 000006_add_page_views_device_type.up.sql
     ├── 000007_add_rejected_feedback_status.up.sql
-    └── 000008_add_search_and_browse_events.up.sql
+    ├── 000008_add_search_and_browse_events.up.sql
+    └── 000009_canonical_courses_and_placements.up.sql
 ```
 
 - **`schema.sql`** — human-readable export for review and diffs; not meant to be executed directly.
@@ -58,15 +59,16 @@ migrate -path db/migrations -database "$DATABASE_URL" down 1
 
 ## Tables
 
-Application-owned tables (14):
+Application-owned tables (15):
 
 | Table | Purpose |
 |-------|---------|
 | `programs` | Degree programs (e.g. Licence, Master) |
 | `years` | Academic years within a program |
 | `semesters` | Semesters within a year |
-| `courses` | Courses with codes (e.g. INF101) |
-| `links` | Resource links attached to courses |
+| `courses` | Canonical courses (one row per code) |
+| `course_placements` | Course offerings (program / year / semester) |
+| `links` | Resource links attached to canonical courses |
 | `extra_sections` | Non-course link groupings |
 | `extra_links` | Links inside extra sections |
 | `reports` | User-submitted broken-link reports |

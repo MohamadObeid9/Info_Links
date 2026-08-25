@@ -80,31 +80,32 @@ func TestAnalyticsRepository_GetSummary(t *testing.T) {
 			name:   "aggregates every metric",
 			params: params,
 			want: models.AnalyticsSummary{
-				TotalStudents:     4,
-				StudentsGained7d:  1,
-				StudentsGained30d: 2,
-				StudentsGained90d: 3,
-				ActiveToday:       1,
-				ClicksToday:       10,
-				DevicesToday:      models.DeviceSplit{Phone: 2, Laptop: 1, Both: 0},
-				ActiveInRange:     8,
-				ClicksInRange:     40,
-				ClickersInRange:   5,
-				ClicksPerActive:   5,
-				PrevActiveInRange: 6,
-				PrevClicksInRange: 30,
-				DevicesInRange:    models.DeviceSplit{Phone: 4, Laptop: 3, Both: 1},
-				ReturningInRange:  5,
-				NewInRange:        3,
-				Funnel:            models.SignupFunnel{Arrivals: 10, SignedUp: 2, StillGuest: 8, GuestsOpen: 20},
-				PrevStudentsGained: 1,
-				Inbox:             models.AnalyticsInbox{Reports: 1, Contributions: 2, Feedback: 3},
-				Browse:            models.BrowseDepth{ReachedYear: 7, ReachedList: 4},
-				DailyUniqueVisits: []models.DailyUniqueDay{{Day: "2026-08-18", Users: 12}},
-				DailyRoster:       []models.DailyRosterDay{{Day: "2026-08-18", Total: 4}},
-				TopLinks:          []models.LinkClickCount{{LinkID: &linkID, Clicks: 9}},
-				TopUsers:          []models.UserClickCount{{UserID: 1, Handle: "mohamad_hassan_55", Clicks: 9}},
-				TopLinksToday:     []models.LinkClickCount{{LinkID: &linkID, Clicks: 3}},
+				TotalStudents:           4,
+				StudentsGained7d:        1,
+				StudentsGained30d:       2,
+				StudentsGained90d:       3,
+				ActiveToday:             1,
+				ClicksToday:             10,
+				DevicesToday:            models.DeviceSplit{Phone: 2, Laptop: 1, Both: 0},
+				ActiveInRange:           8,
+				ActiveRegisteredInRange: 3,
+				ClicksInRange:           40,
+				ClickersInRange:         5,
+				ClicksPerActive:         5,
+				PrevActiveInRange:       6,
+				PrevClicksInRange:       30,
+				DevicesInRange:          models.DeviceSplit{Phone: 4, Laptop: 3, Both: 1},
+				ReturningInRange:        5,
+				NewInRange:              3,
+				Funnel:                  models.SignupFunnel{Arrivals: 10, SignedUp: 2, StillGuest: 8, GuestsOpen: 20},
+				PrevStudentsGained:      1,
+				Inbox:                   models.AnalyticsInbox{Reports: 1, Contributions: 2, Feedback: 3},
+				Browse:                  models.BrowseDepth{ReachedYear: 7, ReachedList: 4},
+				DailyUniqueVisits:       []models.DailyUniqueDay{{Day: "2026-08-18", Users: 12}},
+				DailyRoster:             []models.DailyRosterDay{{Day: "2026-08-18", Total: 4}},
+				TopLinks:                []models.LinkClickCount{{LinkID: &linkID, Clicks: 9}},
+				TopUsers:                []models.UserClickCount{{UserID: 1, Handle: "mohamad_hassan_55", Clicks: 9}},
+				TopLinksToday:           []models.LinkClickCount{{LinkID: &linkID, Clicks: 3}},
 				VisitorsToday: models.VisitorsTodayPage{
 					Visitors: []models.UserClickCount{
 						{UserID: 2, Handle: "guest_2", Clicks: 0},
@@ -122,10 +123,10 @@ func TestAnalyticsRepository_GetSummary(t *testing.T) {
 					},
 					HasMore: true,
 				},
-				TopCourses:       []models.CourseDemand{{CourseID: 9, Name: "Réseaux", Code: "NFA035", Count: 12}},
-				ZeroClickCourses: []models.CourseDemand{{CourseID: 3, Name: "Quiet Course", Code: "QC01", Count: 0}},
-				ZeroClickLinks:   []models.DeadLink{{Kind: "link", ID: 4, Label: "Link 1", CourseName: "Quiet Course"}},
-				TopFavorites:     []models.CourseDemand{{CourseID: 9, Name: "Réseaux", Code: "NFA035", Count: 6}},
+				TopCourses:       []models.CourseDemand{{CourseID: 9, Name: "Réseaux", Code: "NFA035", Count: 12, ProgramName: "Licence Info"}},
+				ZeroClickCourses: []models.CourseDemand{{CourseID: 3, Name: "Quiet Course", Code: "QC01", Count: 0, ProgramName: "AISL"}},
+				ZeroClickLinks:   []models.DeadLink{{Kind: "link", ID: 4, Label: "Link 1", CourseName: "Quiet Course", ProgramName: "IRSM"}},
+				TopFavorites:     []models.CourseDemand{{CourseID: 9, Name: "Réseaux", Code: "NFA035", Count: 6, ProgramName: "Licence Info"}},
 				Heatmap:          []models.HeatmapCell{{Dow: 1, Hour: 14, Count: 7}},
 				SearchTerms:      []models.SearchTermCount{{Query: "nfa035", Count: 4}},
 			},
@@ -198,10 +199,10 @@ func TestAnalyticsRepository_GetSummary_visitorsSortName(t *testing.T) {
 		sqlmock.NewRows([]string{"id", "first_name", "last_name", "number", "clicks"}).
 			AddRow(1, "ali", "ahmad", 1, 0),
 	)
-	mock.ExpectQuery(analyticsTopCoursesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count"}))
-	mock.ExpectQuery(analyticsZeroClickCoursesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count"}))
-	mock.ExpectQuery(analyticsZeroClickLinksQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"kind", "id", "label", "course_name"}))
-	mock.ExpectQuery(analyticsTopFavoritesQuery).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count"}))
+	mock.ExpectQuery(analyticsTopCoursesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}))
+	mock.ExpectQuery(analyticsZeroClickCoursesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}))
+	mock.ExpectQuery(analyticsZeroClickLinksQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"kind", "id", "label", "course_name", "program_name"}))
+	mock.ExpectQuery(analyticsTopFavoritesQuery).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}))
 	mock.ExpectQuery(analyticsHeatmapQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"dow", "hour", "count"}))
 	mock.ExpectQuery(analyticsSearchTermsQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"query", "count"}))
 
@@ -239,6 +240,7 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			"arrivals", "signed_up", "prev_students_gained", "still_guest", "guests_open",
 			"reports", "contributions", "feedback",
 			"reached_year", "reached_list",
+			"active_registered_in_range",
 		}).AddRow(
 			4, 1, 2, 3,
 			1, 10, 2, 1, 0,
@@ -249,6 +251,7 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			10, 2, 1, 8, 20,
 			1, 2, 3,
 			7, 4,
+			3,
 		)
 	case analyticsDailyUniqueVisitsQuery:
 		return sqlmock.NewRows([]string{"day", "users"}).AddRow("2026-08-18", 12)
@@ -262,13 +265,13 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 	case analyticsTopLinksTodayQuery:
 		return sqlmock.NewRows([]string{"link_id", "extra_link_id", "clicks"}).AddRow(1, nil, 3)
 	case analyticsTopCoursesQuery:
-		return sqlmock.NewRows([]string{"id", "name", "code", "count"}).AddRow(9, "Réseaux", "NFA035", 12)
+		return sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}).AddRow(9, "Réseaux", "NFA035", 12, "Licence Info")
 	case analyticsZeroClickCoursesQuery:
-		return sqlmock.NewRows([]string{"id", "name", "code", "count"}).AddRow(3, "Quiet Course", "QC01", 0)
+		return sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}).AddRow(3, "Quiet Course", "QC01", 0, "AISL")
 	case analyticsZeroClickLinksQuery:
-		return sqlmock.NewRows([]string{"kind", "id", "label", "course_name"}).AddRow("link", 4, "Link 1", "Quiet Course")
+		return sqlmock.NewRows([]string{"kind", "id", "label", "course_name", "program_name"}).AddRow("link", 4, "Link 1", "Quiet Course", "IRSM")
 	case analyticsTopFavoritesQuery:
-		return sqlmock.NewRows([]string{"id", "name", "code", "count"}).AddRow(9, "Réseaux", "NFA035", 6)
+		return sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}).AddRow(9, "Réseaux", "NFA035", 6, "Licence Info")
 	case analyticsHeatmapQuery:
 		return sqlmock.NewRows([]string{"dow", "hour", "count"}).AddRow(1, 14, 7)
 	case analyticsSearchTermsQuery:

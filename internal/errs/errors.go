@@ -38,6 +38,7 @@ var (
 	ErrLinkNotFound            = errors.New("link not found")
 	ErrLinkInvalidID           = errors.New("invalid link id")
 	ErrLinkURLAndLabelRequired = errors.New("link url and link label are required")
+	ErrLinkURLTaken            = errors.New("this course already has that URL")
 )
 
 // Extra section errors
@@ -62,6 +63,9 @@ var (
 	ErrCourseInvalidSemestreID   = errors.New("course invalid semestre id")
 	ErrCoursePatchEmpty          = errors.New("course invalid update parameters")
 	ErrCourseCodeAndNameRequired = errors.New("course code and course name are required")
+	ErrCourseAlreadyInSemester   = errors.New("course is already in that semester")
+	ErrCourseInvalidPlacementID  = errors.New("course invalid placement id")
+	ErrCourseCodeTaken           = errors.New("a course with this code already exists")
 )
 
 // Contributions Errors

@@ -18,14 +18,15 @@ type fakeCourseService struct {
 	createCourse models.Course
 	createErr    error
 
-	deleteCalls int
-	deleteID    string
-	deleteErr   error
+	deleteCalls     int
+	deleteID        string
+	deletePlacement string
+	deleteErr       error
 
-	updateCalls  int
-	updatePatch  models.CoursePatch
-	updateID     string
-	updateErr    error
+	updateCalls int
+	updatePatch models.CoursePatch
+	updateID    string
+	updateErr   error
 }
 
 func (f *fakeCourseService) Create(ctx context.Context, course models.Course) error {
@@ -34,9 +35,10 @@ func (f *fakeCourseService) Create(ctx context.Context, course models.Course) er
 	return f.createErr
 }
 
-func (f *fakeCourseService) Delete(ctx context.Context, idStr string) error {
+func (f *fakeCourseService) Delete(ctx context.Context, idStr, placementStr string) error {
 	f.deleteCalls++
 	f.deleteID = idStr
+	f.deletePlacement = placementStr
 	return f.deleteErr
 }
 
@@ -85,6 +87,14 @@ func TestHandleAdminPostCourse(t *testing.T) {
 			createErr:    errs.ErrCourseInvalidSemestreID,
 			statusWanted: http.StatusBadRequest,
 			errMsg:       "Course invalid semestre id ",
+			wantCalls:    1,
+		},
+		{
+			name:         "409 when the course is already in that semester",
+			body:         `{"name":"BDD","code":"nfa008","semester_id":3}`,
+			createErr:    errs.ErrCourseAlreadyInSemester,
+			statusWanted: http.StatusConflict,
+			errMsg:       "This course is already in that semester",
 			wantCalls:    1,
 		},
 		{

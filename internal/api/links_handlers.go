@@ -50,6 +50,8 @@ func mapPostLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err erro
 	switch {
 	case errors.Is(err, errs.ErrLinkURLAndLabelRequired):
 		writeJSONError(w, r, http.StatusBadRequest, "Link url and link label are required")
+	case errors.Is(err, errs.ErrLinkURLTaken):
+		writeJSONError(w, r, http.StatusConflict, "This course already has that URL")
 	default:
 		h.LoggerWithID(r).Error("create link failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
@@ -74,6 +76,8 @@ func mapUpdateLinkErr(h *Handler, w http.ResponseWriter, r *http.Request, err er
 		writeJSONError(w, r, http.StatusNotFound, "Link not found")
 	case errors.Is(err, errs.ErrLinkInvalidID):
 		writeJSONError(w, r, http.StatusBadRequest, "Invalid link id")
+	case errors.Is(err, errs.ErrLinkURLTaken):
+		writeJSONError(w, r, http.StatusConflict, "This course already has that URL")
 	default:
 		h.LoggerWithID(r).Error("update link failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")

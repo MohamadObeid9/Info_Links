@@ -141,7 +141,19 @@ const (
 			(SELECT COUNT(*) FROM contributions WHERE status = 'pending'),
 			(SELECT COUNT(*) FROM feedback WHERE status = 'new'),
 			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'year' AND created_at >= now() - make_interval(days => $1)),
-			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'list' AND created_at >= now() - make_interval(days => $1))`
+			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'list' AND created_at >= now() - make_interval(days => $1)),
+			(SELECT COUNT(DISTINCT u.id) FROM users u
+				WHERE u.is_guest = false
+				AND (
+					EXISTS (
+						SELECT 1 FROM page_views pv
+						WHERE pv.user_id = u.id AND pv.visited_at >= now() - make_interval(days => $1)
+					)
+					OR EXISTS (
+						SELECT 1 FROM link_clicks lc
+						WHERE lc.user_id = u.id AND lc.clicked_at >= now() - make_interval(days => $1)
+					)
+				))`
 
 	analyticsDailyUniqueVisitsQuery = `
 		SELECT to_char(visited_at, 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)
@@ -207,7 +219,14 @@ const (
 		LIMIT $1 OFFSET $2`
 
 	analyticsTopCoursesQuery = `
-		SELECT c.id, c.name, c.code, COUNT(*)::int
+		SELECT c.id, c.name, c.code, COUNT(*)::int, COALESCE((
+			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+			FROM course_placements pl
+			JOIN semesters s ON s.id = pl.semester_id
+			JOIN years y ON y.id = s.year_id
+			JOIN programs pr ON pr.id = y.program_id
+			WHERE pl.course_id = c.id
+		), '')
 		FROM link_clicks lc
 		JOIN links l ON l.id = lc.link_id
 		JOIN courses c ON c.id = l.course_id
@@ -217,7 +236,14 @@ const (
 		LIMIT 50`
 
 	analyticsZeroClickCoursesQuery = `
-		SELECT c.id, c.name, c.code, 0
+		SELECT c.id, c.name, c.code, 0, COALESCE((
+			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+			FROM course_placements pl
+			JOIN semesters s ON s.id = pl.semester_id
+			JOIN years y ON y.id = s.year_id
+			JOIN programs pr ON pr.id = y.program_id
+			WHERE pl.course_id = c.id
+		), '')
 		FROM courses c
 		WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id)
 		  AND NOT EXISTS (
@@ -229,8 +255,16 @@ const (
 		LIMIT 50`
 
 	analyticsZeroClickLinksQuery = `
-		SELECT kind, id, label, course_name FROM (
-			SELECT 'link'::text AS kind, l.id, COALESCE(l.label, 'Link') AS label, c.name AS course_name
+		SELECT kind, id, label, course_name, program_name FROM (
+			SELECT 'link'::text AS kind, l.id, COALESCE(l.label, 'Link') AS label, c.name AS course_name,
+			       COALESCE((
+				SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+				FROM course_placements pl
+				JOIN semesters s ON s.id = pl.semester_id
+				JOIN years y ON y.id = s.year_id
+				JOIN programs pr ON pr.id = y.program_id
+				WHERE pl.course_id = c.id
+			       ), '') AS program_name
 			FROM links l
 			JOIN courses c ON c.id = l.course_id
 			WHERE NOT EXISTS (
@@ -238,7 +272,7 @@ const (
 				WHERE lc.link_id = l.id AND lc.clicked_at >= now() - make_interval(days => $1)
 			)
 			UNION ALL
-			SELECT 'extra_link', el.id, COALESCE(el.label, 'Link'), es.title
+			SELECT 'extra_link', el.id, COALESCE(el.label, 'Link'), es.title, ''
 			FROM extra_links el
 			JOIN extra_sections es ON es.id = el.section_id
 			WHERE NOT EXISTS (
@@ -250,7 +284,14 @@ const (
 		LIMIT 50`
 
 	analyticsTopFavoritesQuery = `
-		SELECT c.id, c.name, c.code, COUNT(*)::int
+		SELECT c.id, c.name, c.code, COUNT(*)::int, COALESCE((
+			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+			FROM course_placements pl
+			JOIN semesters s ON s.id = pl.semester_id
+			JOIN years y ON y.id = s.year_id
+			JOIN programs pr ON pr.id = y.program_id
+			WHERE pl.course_id = c.id
+		), '')
 		FROM users u
 		CROSS JOIN LATERAL unnest(u.favorite_course_ids) AS cid
 		JOIN courses c ON c.id = cid
@@ -295,10 +336,25 @@ const (
 
 // Courses Queries
 const (
-	getCourseByIDQuery = `SELECT id, semester_id, name, code, is_optional, display_order FROM courses WHERE id = $1`
-	deleteCourseQuery  = `DELETE FROM courses WHERE id = $1`
-	updateCourseQuery  = `UPDATE courses SET name = $1, code = $2, semester_id = $3, is_optional = $4 WHERE id = $5`
-	insertCourseQuery  = `INSERT INTO courses (semester_id, name, code, is_optional, display_order) VALUES ($1, $2, $3, $4, $5)`
+	getCourseByIDQuery      = `SELECT id, name, code, is_optional FROM courses WHERE id = $1`
+	deleteCourseQuery       = `DELETE FROM courses WHERE id = $1`
+	updateCourseQuery       = `UPDATE courses SET name = $1, code = $2, is_optional = $3 WHERE id = $4`
+	findCourseIDByCodeQuery = `
+		SELECT id FROM courses
+		WHERE lower(trim(code)) = lower(trim($1))
+		LIMIT 1`
+	insertCanonicalCourseQuery = `INSERT INTO courses (name, code, is_optional) VALUES ($1, $2, $3) RETURNING id`
+	insertCoursePlacementQuery = `
+		INSERT INTO course_placements (course_id, semester_id, display_order)
+		VALUES ($1, $2, $3)`
+	updateCoursePlacementQuery = `
+		UPDATE course_placements SET semester_id = $1, display_order = $2
+		WHERE id = $3 AND course_id = $4`
+	deleteCoursePlacementQuery = `DELETE FROM course_placements WHERE id = $1 AND course_id = $2`
+	deleteOrphanCourseQuery    = `
+		DELETE FROM courses c
+		WHERE c.id = $1
+		  AND NOT EXISTS (SELECT 1 FROM course_placements p WHERE p.course_id = c.id)`
 )
 
 // Links Queries
@@ -370,11 +426,12 @@ const (
 		SELECT c.id, c.name, c.code, c.is_optional,
 		       p.id, p.name, y.name, s.name
 		FROM courses c
-		JOIN semesters s ON c.semester_id = s.id
+		JOIN course_placements pl ON pl.course_id = c.id
+		JOIN semesters s ON pl.semester_id = s.id
 		JOIN years y ON s.year_id = y.id
 		JOIN programs p ON y.program_id = p.id
 		WHERE LOWER(TRIM(c.code)) = LOWER(TRIM($1))
-		ORDER BY p.display_order, y.display_order, s.display_order, c.display_order`
+		ORDER BY p.display_order, y.display_order, s.display_order, pl.display_order`
 
 	listSEOLinksByCourseIDsQuery = `
 		SELECT l.id, l.label, l.url, COALESCE(l.note, ''),
@@ -395,19 +452,21 @@ const (
 		SELECT DISTINCT ON (LOWER(TRIM(c.code)))
 		       LOWER(TRIM(c.code)), c.name, p.name
 		FROM courses c
-		JOIN semesters s ON c.semester_id = s.id
+		JOIN course_placements pl ON pl.course_id = c.id
+		JOIN semesters s ON pl.semester_id = s.id
 		JOIN years y ON s.year_id = y.id
 		JOIN programs p ON y.program_id = p.id
 		WHERE c.code IS NOT NULL AND TRIM(c.code) <> ''
-		ORDER BY LOWER(TRIM(c.code)), p.display_order, c.display_order`
+		ORDER BY LOWER(TRIM(c.code)), p.display_order, pl.display_order`
 
 	listSEOProgramCoursesQuery = `
 		SELECT DISTINCT ON (LOWER(TRIM(c.code))) LOWER(TRIM(c.code)), c.name
 		FROM courses c
-		JOIN semesters s ON c.semester_id = s.id
+		JOIN course_placements pl ON pl.course_id = c.id
+		JOIN semesters s ON pl.semester_id = s.id
 		JOIN years y ON s.year_id = y.id
 		WHERE y.program_id = $1 AND c.code IS NOT NULL AND TRIM(c.code) <> ''
-		ORDER BY LOWER(TRIM(c.code)), c.display_order`
+		ORDER BY LOWER(TRIM(c.code)), pl.display_order`
 )
 
 // Contents Queries
@@ -416,7 +475,11 @@ const (
 	WITH content AS (
 		SELECT
 			(SELECT COALESCE(json_agg(y ORDER BY display_order ASC), '[]') FROM years y) as years,
-			(SELECT COALESCE(json_agg(c ORDER BY display_order ASC), '[]') FROM courses c) as courses,
+			(SELECT COALESCE(json_agg(c ORDER BY c.display_order ASC), '[]') FROM (
+				SELECT c.id, pl.id AS placement_id, pl.semester_id, c.name, c.code, c.is_optional, pl.display_order
+				FROM course_placements pl
+				JOIN courses c ON c.id = pl.course_id
+			) c) as courses,
 			(SELECT COALESCE(json_agg(p ORDER BY display_order ASC), '[]') FROM programs p) as programs,
 			(SELECT COALESCE(json_agg(s ORDER BY display_order ASC), '[]') FROM semesters s) as semesters,
 			(SELECT COALESCE(json_agg(el ORDER BY display_order ASC), '[]') FROM extra_links el) as extra_links,
