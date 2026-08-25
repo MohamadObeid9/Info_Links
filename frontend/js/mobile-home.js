@@ -1,7 +1,6 @@
 import { AppState } from "./state.js";
 import { esc, isMobileView, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref } from "./ui.js";
 
-const MOBILE_BROWSE_KEY = "infolinks_mobile_browse";
 const MOBILE_MQ = "(max-width: 768px)";
 
 function coerceId(raw) {
@@ -361,9 +360,6 @@ function toggleCourseCard(courseId) {
 
 function initMobileHomeState() {
   if (!isMobileView()) return;
-  try {
-    localStorage.removeItem(MOBILE_BROWSE_KEY);
-  } catch { }
   AppState.currentProg = "all";
   AppState.currentYear = "all";
   AppState.currentSem = "all";

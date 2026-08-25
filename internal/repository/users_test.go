@@ -536,7 +536,7 @@ func TestUserRepository_ListStudents(t *testing.T) {
 }
 
 func TestUserRepository_ListActivity(t *testing.T) {
-	columns := []string{"type", "at", "summary", "ref_id"}
+	columns := []string{"type", "at", "summary", "ref_id", "device_type"}
 
 	tests := []struct {
 		name     string
@@ -548,12 +548,12 @@ func TestUserRepository_ListActivity(t *testing.T) {
 		{
 			name: "returns the merged timeline",
 			rows: [][]any{
-				{"favorite_added", "2026-08-18T11:00:00Z", "added Algorithms to favorites", 9},
-				{"visit", "2026-08-18T10:00:00Z", "visited home", 4},
+				{"favorite_added", "2026-08-18T11:00:00Z", "added Algorithms to favorites", 9, ""},
+				{"visit", "2026-08-18T10:00:00Z", "visited home from phone", 4, "phone"},
 			},
 			want: []models.UserActivityEvent{
 				{Type: "favorite_added", At: "2026-08-18T11:00:00Z", Summary: "added Algorithms to favorites", RefID: 9},
-				{Type: "visit", At: "2026-08-18T10:00:00Z", Summary: "visited home", RefID: 4},
+				{Type: "visit", At: "2026-08-18T10:00:00Z", Summary: "visited home from phone", RefID: 4, DeviceType: "phone"},
 			},
 		},
 		{
@@ -591,6 +591,55 @@ func TestUserRepository_ListActivity(t *testing.T) {
 			assertRepoErr(t, mock, err, nil)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("got %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserRepository_GetLastDeviceType(t *testing.T) {
+	tests := []struct {
+		name     string
+		queryErr error
+		rows     *sqlmock.Rows
+		want     string
+		err      error
+	}{
+		{
+			name: "returns the latest classified visit",
+			rows: sqlmock.NewRows([]string{"device_type"}).AddRow("laptop"),
+			want: "laptop",
+		},
+		{
+			name:     "no classified visits",
+			queryErr: sql.ErrNoRows,
+			want:     "",
+		},
+		{
+			name:     "query error",
+			queryErr: errs.ErrDatabaseDown,
+			err:      errs.ErrDatabaseDown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, mock := newTestUserRepo(t)
+
+			exp := mock.ExpectQuery(getLastDeviceTypeQuery).WithArgs(7)
+			if tt.queryErr != nil {
+				exp.WillReturnError(tt.queryErr)
+			} else {
+				exp.WillReturnRows(tt.rows)
+			}
+
+			got, err := repo.GetLastDeviceType(context.Background(), 7)
+			if tt.err != nil {
+				assertRepoErr(t, mock, err, tt.err)
+				return
+			}
+			assertRepoErr(t, mock, err, nil)
+			if got != tt.want {
+				t.Fatalf("got %q, want %q", got, tt.want)
 			}
 		})
 	}

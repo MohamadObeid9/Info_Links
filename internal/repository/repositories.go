@@ -20,6 +20,7 @@ type UserRepository interface {
 	RemoveFavorite(ctx context.Context, userID int, courseID int) error
 	ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error)
 	ListActivity(ctx context.Context, userID int, limit int, offset int) ([]models.UserActivityEvent, error)
+	GetLastDeviceType(ctx context.Context, userID int) (string, error)
 }
 
 type AnalyticsSummaryParams struct {

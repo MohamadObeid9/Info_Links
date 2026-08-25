@@ -83,7 +83,7 @@ Admin login is unchanged and stays separate from student accounts: admins sign i
 
 - Alphabetical list of registered students with first seen and last seen dates
 - Search by handle
-- Detail view with a single activity timeline — visits, links opened, reports, contributions, feedback, and favorites added or removed, newest first
+- Detail view with a single activity timeline — visits (e.g. “visited home from phone”), links opened, reports, contributions, feedback, and favorites added or removed, newest first. The profile card shows the device from their most recent classified visit.
 
 Activity from before a student signed up is kept and appears in their timeline, because the visitor record is claimed at signup rather than replaced. If they already have an account and sign in instead, that first guest visit is moved onto their student row so it shows their handle, not `guest_<id>`.
 

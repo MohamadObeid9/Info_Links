@@ -247,7 +247,7 @@ func allowedOrigins(rawOrigins string) []string {
 }
 
 func contentSecurityPolicy(allowedOrigins []string) string {
-	connectSrcValues := []string{"'self'"}
+	connectSrcValues := []string{"'self'", "https://cloudflareinsights.com"}
 	for _, origin := range allowedOrigins {
 		if origin != "" {
 			connectSrcValues = append(connectSrcValues, origin)
@@ -256,7 +256,7 @@ func contentSecurityPolicy(allowedOrigins []string) string {
 
 	return strings.Join([]string{
 		"default-src 'self'",
-		"script-src 'self' 'unsafe-inline'",
+		"script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data:",
 		"font-src 'self'",

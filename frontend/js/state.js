@@ -71,6 +71,7 @@ const AppState = {
 // state paints instantly on reload. The legacy shared key is dropped so one
 // student never inherits another's favorites on the same browser.
 localStorage.removeItem("infolinks_favorites");
+localStorage.removeItem("infolinks_mobile_browse");
 
 function _favoritesCacheKey() {
   const id = AppState.studentUser?.id ?? AppState.studentUserId;

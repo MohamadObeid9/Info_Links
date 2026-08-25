@@ -45,16 +45,21 @@ const (
 	listStudentsWithQQuery = listStudentsBaseQuery + ` AND (u.first_name ILIKE $1 OR u.last_name ILIKE $1)` + listStudentsOrderQuery + `$2 OFFSET $3`
 
 	// listUserTimelineQuery merges every activity table into one chronological feed.
+	// device_type is only stored on page_views; other event types return ''.
 	listUserTimelineQuery = `
-		SELECT type, at, summary, ref_id FROM (
+		SELECT type, at, summary, ref_id, device_type FROM (
 			SELECT 'visit' AS type, pv.visited_at AS at,
-			       'visited ' || COALESCE(pv.page, 'home') AS summary, pv.id AS ref_id
+			       'visited ' || COALESCE(pv.page, 'home')
+			           || CASE WHEN pv.device_type IN ('phone', 'laptop')
+			                   THEN ' from ' || pv.device_type ELSE '' END AS summary,
+			       pv.id AS ref_id,
+			       COALESCE(pv.device_type, '') AS device_type
 			FROM page_views pv WHERE pv.user_id = $1
 			UNION ALL
 			SELECT 'link_click', lc.clicked_at,
 			       'opened ' || COALESCE(l.label, el.label, 'a link')
 			           || COALESCE(' in ' || co.name, ' in ' || es.title, ''),
-			       lc.id
+			       lc.id, ''
 			FROM link_clicks lc
 			LEFT JOIN links l ON l.id = lc.link_id
 			LEFT JOIN courses co ON co.id = l.course_id
@@ -63,15 +68,15 @@ const (
 			WHERE lc.user_id = $1
 			UNION ALL
 			SELECT 'report', r.created_at,
-			       'reported a link in ' || r.course_name, r.id
+			       'reported a link in ' || r.course_name, r.id, ''
 			FROM reports r WHERE r.user_id = $1
 			UNION ALL
 			SELECT 'contribution', c.created_at,
-			       'suggested a link for ' || c.course_name, c.id
+			       'suggested a link for ' || c.course_name, c.id, ''
 			FROM contributions c WHERE c.user_id = $1
 			UNION ALL
 			SELECT 'feedback', f.created_at,
-			       'sent ' || f.category || ' feedback rated ' || f.rating || '/5', f.id
+			       'sent ' || f.category || ' feedback rated ' || f.rating || '/5', f.id, ''
 			FROM feedback f WHERE f.user_id = $1
 			UNION ALL
 			SELECT CASE WHEN fe.action = 'added' THEN 'favorite_added' ELSE 'favorite_removed' END,
@@ -79,13 +84,15 @@ const (
 			       CASE WHEN fe.action = 'added'
 			            THEN 'added ' || co.name || ' to favorites'
 			            ELSE 'removed ' || co.name || ' from favorites' END,
-			       fe.id
+			       fe.id, ''
 			FROM favorite_events fe
 			JOIN courses co ON co.id = fe.course_id
 			WHERE fe.user_id = $1
 		) timeline
 		ORDER BY at DESC
 		LIMIT $2 OFFSET $3`
+
+	getLastDeviceTypeQuery = `SELECT device_type FROM page_views WHERE user_id = $1 AND device_type IS NOT NULL ORDER BY visited_at DESC LIMIT 1`
 )
 
 // Admin Analytics Queries

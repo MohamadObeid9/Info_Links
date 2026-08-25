@@ -44,16 +44,18 @@ type UserListItem struct {
 
 // UserActivityEvent is one entry of a student activity timeline.
 type UserActivityEvent struct {
-	Type    string `json:"type"` // visit, link_click, report, contribution, feedback, favorite_added, favorite_removed
-	At      string `json:"at"`
-	Summary string `json:"summary"`
-	RefID   int    `json:"ref_id"`
+	Type       string `json:"type"` // visit, link_click, report, contribution, feedback, favorite_added, favorite_removed
+	At         string `json:"at"`
+	Summary    string `json:"summary"`
+	RefID      int    `json:"ref_id"`
+	DeviceType string `json:"device_type,omitempty"` // phone or laptop; only set on visits
 }
 
 // UserDetail is a student profile plus a page of their activity timeline.
 type UserDetail struct {
-	User     User                `json:"user"`
-	Timeline []UserActivityEvent `json:"timeline"`
+	User           User                `json:"user"`
+	LastDeviceType string              `json:"last_device_type,omitempty"`
+	Timeline       []UserActivityEvent `json:"timeline"`
 }
 
 // AnalyticsSummary holds the server-side aggregated usage metrics for admins.

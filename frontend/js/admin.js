@@ -372,6 +372,12 @@ function _deviceTodayParts(devices) {
   return { val: "0", sub: "" };
 }
 
+function _deviceLabel(type) {
+  if (type === "phone") return "📱 Phone";
+  if (type === "laptop") return "💻 Laptop";
+  return "—";
+}
+
 function _formatGain(value) {
   const n = Number(value) || 0;
   return `+${_num(n)}`;
@@ -939,6 +945,7 @@ async function renderAdminStudentDetail() {
         <div class="stat-card"><div class="stat-val" style="font-size:1.2rem;word-break:break-all;">${esc(studentHandleOf(user))}</div><div class="stat-label">Student</div></div>
         <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.created_at))}</div><div class="stat-label">Signed up</div></div>
         <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.last_seen_at))}</div><div class="stat-label">Last seen</div></div>
+        <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(_deviceLabel(data.last_device_type))}</div><div class="stat-label">Device</div></div>
       </div>
       <div class="chart-wrap" style="margin-bottom:20px;">
         <div class="chart-title">⭐ Current favorites</div>
