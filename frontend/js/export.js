@@ -120,10 +120,10 @@ function applyHighlightFromURL() {
 }
 
 async function initApp() {
-  // Session and content load in parallel; the page view needs the student token,
-  // so it waits for the session while course data keeps streaming in.
+  // Session and content load in parallel. bootstrapStudentSession records the
+  // page view once the student profile (and user id) is known.
   const sessionReady = window.bootstrapStudentSession
-    ? window.bootstrapStudentSession().then(() => trackVisit())
+    ? window.bootstrapStudentSession()
     : Promise.resolve(trackVisit());
 
   await loadAll();

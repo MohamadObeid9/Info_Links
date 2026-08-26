@@ -3,8 +3,10 @@ package middleware
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -21,7 +23,28 @@ var (
 	errNoToken       = errors.New("no token provided")
 	errInvalidToken  = errors.New("invalid token")
 	errInvalidClaims = errors.New("invalid token claims")
+
+	resourceMetadataMu  sync.RWMutex
+	resourceMetadataURL = "/.well-known/oauth-protected-resource"
 )
+
+// SetResourceMetadataURL sets the absolute (preferred) or path-only URI used in
+// WWW-Authenticate resource_metadata on 401 responses (RFC 9728).
+func SetResourceMetadataURL(url string) {
+	url = strings.TrimSpace(url)
+	if url == "" {
+		url = "/.well-known/oauth-protected-resource"
+	}
+	resourceMetadataMu.Lock()
+	resourceMetadataURL = url
+	resourceMetadataMu.Unlock()
+}
+
+func resourceMetadataParam() string {
+	resourceMetadataMu.RLock()
+	defer resourceMetadataMu.RUnlock()
+	return resourceMetadataURL
+}
 
 // RequireAdmin middleware verifies the JWT token in the Authorization header.
 func RequireAdmin(jwtSecret string, next http.HandlerFunc) http.HandlerFunc {
@@ -155,6 +178,10 @@ func userFromClaims(claims jwt.MapClaims) (authenticatedUser, bool) {
 }
 
 func writeAuthErr(w http.ResponseWriter, err error) {
+	w.Header().Set("WWW-Authenticate", fmt.Sprintf(
+		`Bearer FAKESECRET_g3h4i5j6k7l8m9n0o1p2="%s"`,
+		resourceMetadataParam(),
+	))
 	switch {
 	case errors.Is(err, errNoToken):
 		writeJSONErr(w, http.StatusUnauthorized, "Unauthorized: No token provided")

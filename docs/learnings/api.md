@@ -66,6 +66,22 @@ Three registration functions in `router.go`:
 **Public (`registerPublicRoutes`)** — no JWT required:
 
 - `GET /api/content` — main navigation JSON
+- `GET /.well-known/api-catalog` — RFC 9727 API catalog (`application/linkset+json`)
+- `GET /.well-known/oauth-protected-resource` — RFC 9728 PRM for student API auth
+- `GET /.well-known/oauth-authorization-server` — AS metadata + `agent_auth` (anonymous guest → claim)
+- `GET /.well-known/openid-configuration` — OIDC Discovery (same core fields, includes `jwks_uri`)
+- `GET /.well-known/jwks.json` — JWKS (empty `keys`; tokens are HS256 shared-secret)
+- `GET /.well-known/agent-card.json` — A2A Agent Card (HTTP+JSON skills for the public API)
+- `GET /.well-known/agents-index.json` — DNS-AID / ANS-style org index (A2A + MCP cards for `info-links`)
+- `GET /.well-known/agent-skills/index.json` — Agent Skills Discovery index (v0.2.0)
+- `GET /.well-known/agent-skills/{name}/SKILL.md` — individual skill artifacts (+ digests in the index)
+- `GET /.well-known/mcp/server-card.json` — MCP Server Card (SEP-1649 discovery)
+- `GET /.well-known/http-message-signatures-directory` — Web Bot Auth JWKS (Ed25519), response signed with HTTP Message Signatures
+- `GET|POST|DELETE /mcp` — advertised MCP Streamable HTTP endpoint (stub until full MCP is implemented)
+- Browser **WebMCP** — `navigator.modelContext.registerTool` on homepage load (`frontend/js/webmcp.js`: search, programs, course lookup, navigate)
+- `GET /auth.md` — Auth.md skill document for agents
+- `GET /openapi.json` — OpenAPI 3.1 description (`service-desc`)
+- `GET /api/docs` — human API docs in markdown (`service-doc`)
 - `POST /api/reports`, `/api/feedback`, `/api/page_views`, … — user submissions
 - `POST /api/auth/login` — admin login, returns JWT
 - `GET /healthz`, `GET /readyz` — probes for Render/load balancers
@@ -84,7 +100,7 @@ Three registration functions in `router.go`:
 
 SEO is separate because crawlers need server-rendered pages with meta tags and JSON-LD, not the SPA's client-side routing.
 
-**Static files** — `mux.Handle("/", …)` serves the frontend. SPA paths (`/`, `/admin`, …) fall back to `index.html`. SEO paths are excluded so they always hit the SEO handler.
+**Static files** — `mux.Handle("/", …)` serves the frontend. SPA paths (`/`, `/admin`, …) fall back to `index.html`. SEO paths are excluded so they always hit the SEO handler. The homepage (`/`) also sends RFC 8288 `Link` headers (`api-catalog`, `service-desc`, `service-doc`, `describedby`) so agents can discover the API catalog without scraping HTML.
 
 ---
 

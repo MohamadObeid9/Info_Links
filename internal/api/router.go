@@ -17,12 +17,17 @@ import (
 )
 
 func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Handler) http.Handler {
+	base := strings.TrimSuffix(strings.TrimSpace(cfg.SiteBaseURL), "/")
+	if base != "" {
+		middleware.SetResourceMetadataURL(base + "/.well-known/oauth-protected-resource")
+	}
+
 	mux := http.NewServeMux()
 
 	registerPublicRoutes(mux, h, cfg)
 	registerAdminRoutes(mux, h, cfg.JWTSecret)
 	registerSEORoutes(mux, seoH)
-	mux.Handle("/", newStaticFileHandler(resolveStaticDir()))
+	mux.Handle("/", newStaticFileHandler(resolveStaticDir(), cfg.SiteBaseURL))
 
 	origins := allowedOrigins(cfg.CorsAllowedOrigins)
 	securedHandler := withSecurityHeaders(mux, contentSecurityPolicy(origins))
@@ -46,6 +51,24 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 
 	mux.HandleFunc("GET /api", h.handleApiRoot)
 	mux.HandleFunc("GET /api/", h.handleApiRoot)
+	mux.HandleFunc("GET /api/docs", h.handleAPIDocs)
+	mux.HandleFunc("GET /auth.md", h.handleAuthMD)
+	mux.HandleFunc("GET /openapi.json", h.handleOpenAPI)
+	mux.HandleFunc("GET /.well-known/api-catalog", h.handleAPICatalog)
+	mux.HandleFunc("HEAD /.well-known/api-catalog", h.handleAPICatalog)
+	mux.HandleFunc("GET /.well-known/oauth-protected-resource", h.handleOAuthProtectedResource)
+	mux.HandleFunc("GET /.well-known/oauth-authorization-server", h.handleOAuthAuthorizationServer)
+	mux.HandleFunc("GET /.well-known/openid-configuration", h.handleOpenIDConfiguration)
+	mux.HandleFunc("GET /.well-known/jwks.json", h.handleJWKS)
+	mux.HandleFunc("GET /.well-known/agent-card.json", h.handleAgentCard)
+	mux.HandleFunc("GET /.well-known/agents-index.json", h.handleAgentsIndex)
+	mux.HandleFunc("GET /.well-known/agent-skills/index.json", h.handleAgentSkillsIndex)
+	mux.HandleFunc("GET /.well-known/agent-skills/{name}/SKILL.md", h.handleAgentSkillMD)
+	mux.HandleFunc("GET /.well-known/mcp/server-card.json", h.handleMCPServerCard)
+	mux.HandleFunc("GET /.well-known/http-message-signatures-directory", h.handleHTTPMessageSignaturesDirectory)
+	mux.HandleFunc("GET /mcp", h.handleMCPEndpoint)
+	mux.HandleFunc("POST /mcp", h.handleMCPEndpoint)
+	mux.HandleFunc("DELETE /mcp", h.handleMCPEndpoint)
 	mux.HandleFunc("GET /readyz", h.handleReadyz)
 	mux.HandleFunc("GET /healthz", h.handleHealthz)
 	mux.HandleFunc("GET /api/content", h.handleGetContent)
@@ -164,13 +187,25 @@ func staticCacheControl(urlPath string, servingHTML bool) string {
 	return cacheControlStatic
 }
 
-func newStaticFileHandler(staticDir string) http.Handler {
+func newStaticFileHandler(staticDir, baseURL string) http.Handler {
 	fs := http.FileServer(http.Dir(staticDir))
 	indexPath := filepath.Join(staticDir, "index.html")
+	baseURL = strings.TrimSuffix(strings.TrimSpace(baseURL), "/")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if isSEOPath(r.URL.Path) {
 			http.NotFound(w, r)
+			return
+		}
+
+		if r.URL.Path == "/" {
+			setHomepageLinkHeaders(w)
+		}
+
+		// Agents requesting Accept: text/markdown get a clean page summary
+		// instead of the SPA HTML shell.
+		if seo.WantsMarkdown(r) && (r.URL.Path == "/" || r.URL.Path == "/about") {
+			seo.ServeSPAMarkdown(w, baseURL, r.URL.Path)
 			return
 		}
 
@@ -206,6 +241,16 @@ func newStaticFileHandler(staticDir string) http.Handler {
 		w.Header().Set("Cache-Control", staticCacheControl(r.URL.Path, servingHTML))
 		fs.ServeHTTP(w, r)
 	})
+}
+
+// setHomepageLinkHeaders advertises machine-readable discovery links on "/"
+// (RFC 8288 + RFC 9727 api-catalog relation).
+func setHomepageLinkHeaders(w http.ResponseWriter) {
+	w.Header().Add("Link", `</.well-known/api-catalog>; rel="api-catalog"`)
+	w.Header().Add("Link", `</openapi.json>; rel="service-desc"; type="application/openapi+json"`)
+	w.Header().Add("Link", `</api/docs>; rel="service-doc"; type="text/markdown"`)
+	w.Header().Add("Link", `</openapi.json>; rel="describedby"; type="application/openapi+json"`)
+	w.Header().Add("Link", `</auth.md>; rel="http://auth.md/rel#auth.md"; type="text/markdown"`)
 }
 
 func isSPAPath(path string) bool {

@@ -40,16 +40,10 @@ func (h *Handler) loggerWithID(r *http.Request) *slog.Logger {
 	return h.logger
 }
 
-func (h *Handler) writeHTML(w http.ResponseWriter, status int, payload string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	_, _ = w.Write([]byte(payload))
-}
-
 func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(r.PathValue("code"))
 	if code == "" {
-		h.serve404(w)
+		h.serve404(w, r)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -58,11 +52,21 @@ func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
 	data, err := h.service.GetCoursePageByCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, errs.ErrCourseNotFound) {
-			h.serve404(w)
+			h.serve404(w, r)
 			return
 		}
 		h.loggerWithID(r).Error("course page failed", "error", err, "code", code)
 		h.serve500HTML(w, r)
+		return
+	}
+	if WantsMarkdown(r) {
+		md, err := renderCourseMarkdown(h.baseURL, data)
+		if err != nil {
+			h.loggerWithID(r).Error("render course markdown failed", "error", err, "code", code)
+			h.serve500HTML(w, r)
+			return
+		}
+		h.writeMarkdown(w, http.StatusOK, md)
 		return
 	}
 	html, err := renderCoursePage(h.baseURL, data)
@@ -86,11 +90,21 @@ func (h *Handler) HandleProgram(w http.ResponseWriter, r *http.Request) {
 	data, err := h.service.GetProgramBySlug(ctx, slug, ProgramSlug)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			h.serve404(w)
+			h.serve404(w, r)
 			return
 		}
 		h.loggerWithID(r).Error("program page failed", "error", err, "slug", slug)
 		h.serve500HTML(w, r)
+		return
+	}
+	if WantsMarkdown(r) {
+		md, err := renderProgramMarkdown(h.baseURL, data)
+		if err != nil {
+			h.loggerWithID(r).Error("render program markdown failed", "error", err, "slug", slug)
+			h.serve500HTML(w, r)
+			return
+		}
+		h.writeMarkdown(w, http.StatusOK, md)
 		return
 	}
 	html, err := renderProgramPage(h.baseURL, data)
@@ -110,6 +124,16 @@ func (h *Handler) HandleCoursesIndex(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.loggerWithID(r).Error("courses index failed", "error", err)
 		h.serve500HTML(w, r)
+		return
+	}
+	if WantsMarkdown(r) {
+		md, err := renderCoursesIndexMarkdown(h.baseURL, entries)
+		if err != nil {
+			h.loggerWithID(r).Error("render courses index markdown failed", "error", err)
+			h.serve500HTML(w, r)
+			return
+		}
+		h.writeMarkdown(w, http.StatusOK, md)
 		return
 	}
 	html, err := renderCoursesIndex(h.baseURL, entries)
@@ -188,7 +212,11 @@ func (h *Handler) HandleRobots(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(body))
 }
 
-func (h *Handler) serve404(w http.ResponseWriter) {
+func (h *Handler) serve404(w http.ResponseWriter, r *http.Request) {
+	if WantsMarkdown(r) {
+		h.writeMarkdown(w, http.StatusNotFound, render404Markdown(h.baseURL))
+		return
+	}
 	html, err := render404(h.baseURL)
 	if err != nil {
 		http.NotFound(w, nil)

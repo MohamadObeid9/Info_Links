@@ -170,13 +170,21 @@ async function sbLogout() {
 async function trackVisit() {
   if (AppState.adminLoggedIn) return;
   if (!AppState.studentToken) return;
-  if (sessionStorage.getItem("pv_tracked")) return;
+  const uid = AppState.studentUser?.id;
+  const tracked = sessionStorage.getItem("pv_tracked");
+  // Guard is per user id so a re-bootstrapped guest still gets a page view.
+  if (uid != null && tracked === String(uid)) return;
+  if (tracked === "1" && uid == null) return;
+  if (tracked === "1" && uid != null) {
+    sessionStorage.setItem("pv_tracked", String(uid));
+    return;
+  }
   try {
     await apiRequest(`/api/page_views`, {
       method: "POST",
       body: { page: "home" },
     });
-    sessionStorage.setItem("pv_tracked", "1");
+    sessionStorage.setItem("pv_tracked", uid != null ? String(uid) : "1");
   } catch (e) {
     if (e?.status === 401) window.onStudentTokenRejected?.();
   }

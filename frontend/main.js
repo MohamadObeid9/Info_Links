@@ -12,6 +12,7 @@ import "./js/admin.js";
 import "./js/views.js";
 import "./js/modals.js";
 import "./js/session.js";
+import { initWebMCP } from "./js/webmcp.js";
 
 // --- EVENT ROUTER (Professional Event Delegation) ---
 document.addEventListener("click", (e) => {
@@ -136,11 +137,16 @@ document.addEventListener("mouseout", (e) => {
 });
 
 async function init() {
+  // Register WebMCP tools as early as possible so agent scanners see them on load.
+  const webmcp = initWebMCP().catch((err) => {
+    console.warn("WebMCP registration skipped:", err);
+  });
   try {
     await window.initApp();
   } catch (err) {
     console.error("Critical: App initialization failed:", err);
   }
+  await webmcp;
 }
 
 window.addEventListener("DOMContentLoaded", init);

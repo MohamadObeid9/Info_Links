@@ -39,7 +39,13 @@ func isNoisyPath(path, method string) bool {
 	}
 
 	switch path {
-	case "/metrics", "/healthz", "/readyz", "/robots.txt", "/sitemap.xml":
+	case "/metrics", "/healthz", "/readyz", "/robots.txt", "/sitemap.xml", "/.well-known/api-catalog", "/.well-known/oauth-protected-resource", "/.well-known/oauth-authorization-server", "/.well-known/openid-configuration", "/.well-known/jwks.json", "/.well-known/agent-card.json", "/.well-known/agents-index.json", "/.well-known/agent-skills/index.json", "/.well-known/mcp/server-card.json", "/.well-known/http-message-signatures-directory", "/openapi.json", "/auth.md", "/mcp":
+		return true
+	}
+	if strings.HasPrefix(path, "/.well-known/agent-skills/") {
+		return true
+	}
+	if strings.HasPrefix(path, "/.well-known/mcp/") {
 		return true
 	}
 

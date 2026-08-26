@@ -56,6 +56,15 @@ function _forgetStudentIdentity() {
   } catch (e) { }
 }
 
+/** Clear once-per-tab analytics guards so a new guest identity can record activity. */
+function _clearSessionAnalyticsGuards() {
+  try {
+    sessionStorage.removeItem("pv_tracked");
+    sessionStorage.removeItem("browse_year");
+    sessionStorage.removeItem("browse_list");
+  } catch (e) { }
+}
+
 function applyStudentUser(user) {
   const previousId = AppState.studentUser?.id ?? AppState.studentUserId;
   if (previousId && user?.id && previousId !== user.id) _forgetStudentIdentity();
@@ -104,10 +113,13 @@ async function refreshStudentProfile() {
 async function resetToGuest() {
   _forgetStudentIdentity();
   _clearStudentToken();
+  _clearSessionAnalyticsGuards();
   renderStudentBanner();
   repaintFavoriteStars();
   try {
     await createGuestSession();
+    // New guest id — record a visit (the old pv_tracked guard would skip this).
+    await window.trackVisit?.();
   } catch (err) {
     logApiError(err, "guestBootstrap");
   }
@@ -129,6 +141,8 @@ async function bootstrapStudentSession() {
       renderStudentBanner();
       if (!AppState.studentToken) await createGuestSession();
       if (AppState.studentToken) await refreshStudentProfile();
+      // Bind or record the visit now that studentUser.id is known.
+      await window.trackVisit?.();
     } catch (err) {
       logApiError(err, "studentSession");
     }
@@ -282,6 +296,21 @@ async function submitStudentAuth(mode) {
         ? `Profile created — welcome, ${handle || "student"}!`
         : `Signed in as ${handle || "student"}`,
     );
+
+    if (isSignup) {
+      // Claim keeps the same id (visit already recorded). Fallthrough create is a
+      // new id with no page_views yet — trackVisit records one when needed.
+      await window.trackVisit?.();
+    } else {
+      // Login adopts guest page_views onto the student; bind the guard so this
+      // tab does not insert a duplicate visit for the same session.
+      const id = AppState.studentUser?.id;
+      if (id != null) {
+        try {
+          sessionStorage.setItem("pv_tracked", String(id));
+        } catch (e) { }
+      }
+    }
 
     const action = _pendingAction;
     _pendingAction = null;
