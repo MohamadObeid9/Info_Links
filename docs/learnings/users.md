@@ -61,6 +61,8 @@ The row is updated, not replaced. Same `id`, same `created_at`, and the page vie
 
 A returning student signs in instead — `POST /api/users/login` looks up the triple, returns a token on hit, `404` on miss. If this browser still has a guest token (first visit already recorded), the handler passes that guest id in and the service **adopts** it: every `page_views` / activity row moves from the guest onto the student, then the empty guest is deleted. Admin "Who visited today" then shows `mohamad_hassan_55` instead of `guest_42`. The browser does not send a second page view (`sessionStorage` already marked this tab), so without adopt the visit would stay a ghost guest forever.
 
+The once-per-tab visit guard (`sessionStorage.pv_tracked`) is keyed to the **user id**, not a bare boolean. If the guest token is rejected and a fresh guest is bootstrapped, the old guard is cleared and a new page view is recorded for the new id. Otherwise the visit stays on a dead `guest_N` row while the student who later signs up looks active (link clicks, last seen) but never appears in "Who visited today". That list also counts people with a link click today, not only `page_views`, so a click without a visit row still surfaces the person.
+
 ---
 
 ### Why the claim decision must come from the JWT

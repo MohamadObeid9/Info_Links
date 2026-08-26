@@ -72,6 +72,53 @@ func TestStaticHandler_spaPathsReturn200(t *testing.T) {
 	}
 }
 
+func TestStaticHandler_markdownNegotiation(t *testing.T) {
+	handler := testStaticRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Accept", "text/markdown")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rr.Code)
+	}
+	if !strings.HasPrefix(rr.Header().Get("Content-Type"), "text/markdown") {
+		t.Fatalf("Content-Type: got %q", rr.Header().Get("Content-Type"))
+	}
+	if rr.Header().Get("x-markdown-tokens") == "" {
+		t.Fatal("missing x-markdown-tokens")
+	}
+	if !strings.Contains(rr.Body.String(), "# Info Links") {
+		t.Fatalf("body: %s", rr.Body.String())
+	}
+}
+
+func TestStaticHandler_homepageLinkHeaders(t *testing.T) {
+	handler := testStaticRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d", rr.Code)
+	}
+	links := rr.Header().Values("Link")
+	joined := strings.Join(links, ", ")
+	for _, want := range []string{
+		`rel="api-catalog"`,
+		`rel="service-desc"`,
+		`rel="service-doc"`,
+		`rel="describedby"`,
+		`/.well-known/api-catalog`,
+		`/openapi.json`,
+		`/api/docs`,
+	} {
+		if !strings.Contains(joined, want) {
+			t.Fatalf("Link headers missing %q; got %q", want, joined)
+		}
+	}
+}
+
 func TestStaticCacheControl(t *testing.T) {
 	tests := []struct {
 		path string
@@ -113,7 +160,7 @@ func TestStaticHandler_assetCacheControl(t *testing.T) {
 		}
 	}
 
-	handler := newStaticFileHandler(dir)
+	handler := newStaticFileHandler(dir, "https://example.com")
 	tests := []struct {
 		path string
 		want string

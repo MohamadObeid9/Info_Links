@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"infolinks-backend/internal/middleware"
+	"infolinks-backend/internal/webbotauth"
 )
 
 // testStudentID is the student id the auth middleware would put in the context.
@@ -112,11 +113,18 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 		opt(&deps)
 	}
 
+	webBot, err := webbotauth.NewDirectory("test-jwt-secret", "https://example.com")
+	if err != nil {
+		t.Fatalf("webbotauth.NewDirectory: %v", err)
+	}
+
 	h, err := NewHandler(Dependencies{
 		Logger:              slog.New(slog.NewTextHandler(io.Discard, nil)),
 		JWTSecret:           []byte("test-jwt-secret"),
+		SiteBaseURL:         "https://example.com",
 		SupabaseURL:         "https://random.supabase.co",
 		SupabaseAnonKey:     "a-random-generated-key",
+		WebBotAuth:          webBot,
 		DB:                  deps.db,
 		UserService:         deps.user,
 		AnalyticsService:    deps.analytics,

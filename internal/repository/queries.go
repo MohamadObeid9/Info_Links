@@ -105,7 +105,13 @@ const (
 			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '7 days'),
 			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '30 days'),
 			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '90 days'),
-			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())),
+			(SELECT COUNT(DISTINCT uid) FROM (
+				SELECT user_id AS uid FROM page_views
+				WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())
+				UNION
+				SELECT user_id AS uid FROM link_clicks
+				WHERE user_id IS NOT NULL AND clicked_at >= date_trunc('day', now())
+			) active_today),
 			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= date_trunc('day', now())),
 			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'phone'),
 			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'laptop'),
@@ -202,11 +208,15 @@ const (
 		GROUP BY d.day
 		ORDER BY d.day ASC`
 
+	// A visitor is anyone with a page view or a link click today. Link opens are
+	// gated behind signup, so a click without a page_views row still means the
+	// person was on the site (e.g. visit POST failed or session was re-bootstrapped).
 	analyticsVisitorsTodayByClicksQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
 		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())) AS clicks
 		FROM users u
 		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
+		   OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
 		ORDER BY clicks DESC, u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT $1 OFFSET $2`
 
@@ -215,6 +225,7 @@ const (
 		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())) AS clicks
 		FROM users u
 		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
+		   OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
 		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT $1 OFFSET $2`
 
@@ -330,7 +341,7 @@ const (
 
 // Link Clicks Queries
 const (
-	insertLinkClickQuery = `INSERT INTO link_clicks (link_id,extra_link_id,user_id) VALUES ($1,$2,$3)`
+	insertLinkClickQuery = `WITH click AS (INSERT INTO link_clicks (link_id,extra_link_id,user_id) VALUES ($1,$2,$3)) UPDATE users SET last_seen_at = now() WHERE id = $3`
 	GetLinkClickQuery    = `SELECT id, link_id, extra_link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC`
 )
 

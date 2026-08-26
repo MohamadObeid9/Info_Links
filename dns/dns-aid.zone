@@ -1,0 +1,38 @@
+; DNS-AID records for infolinks.app
+; Source of truth for dashboard paste when CLOUDFLARE_API_TOKEN is unavailable.
+; Prefer: CLOUDFLARE_API_TOKEN=... ./scripts/publish-dns-aid.sh
+;
+; Spec: draft-mozleywilliams-dnsop-dnsaid-02 + RFC 9460 (SVCB/HTTPS).
+; Private-use params until IANA registration:
+;   key65400 = cap (capability / index URL)
+;   key65402 = bap (agent protocol: a2a|mcp)
+;   key65409 = well-known (path under /.well-known/)
+;
+; DNSSEC checklist (required for DoH AD=1 / stronger isitagentready dnsAid):
+;   1. Cloudflare Dashboard → DNS → Settings → DNSSEC → Enable
+;   2. Copy the DS record Cloudflare shows
+;   3. Add that DS at the .app registrar (wherever the domain is registered)
+;   4. Wait for DS propagation, then: dig +dnssec DS infolinks.app
+;
+; Owner names are relative to the apex. TTL 3600. TargetName is apex
+; (cert-safe — no underscores). Also publish matching HTTPS RRsets.
+
+$ORIGIN infolinks.app.
+$TTL 3600
+
+; Organization index (HTTP agents-index + TXT agent list)
+_index._agents          IN  SVCB  1 infolinks.app. alpn="h2" port=443 key65400="https://infolinks.app/.well-known/agents-index.json" key65409="agents-index.json" mandatory=alpn,port
+_index._agents          IN  HTTPS 1 infolinks.app. alpn="h2" port=443 key65400="https://infolinks.app/.well-known/agents-index.json" key65409="agents-index.json" mandatory=alpn,port
+_index._agents          IN  TXT   "agents=info-links:a2a,info-links:mcp"
+
+; Protocol-level discovery
+_a2a._agents            IN  SVCB  1 infolinks.app. alpn="h2" port=443 key65402="a2a" key65409="agent-card.json" mandatory=alpn,port
+_a2a._agents            IN  HTTPS 1 infolinks.app. alpn="h2" port=443 key65402="a2a" key65409="agent-card.json" mandatory=alpn,port
+_mcp._agents            IN  SVCB  1 infolinks.app. alpn="h2" port=443 key65402="mcp" key65409="mcp/server-card.json" mandatory=alpn,port
+_mcp._agents            IN  HTTPS 1 infolinks.app. alpn="h2" port=443 key65402="mcp" key65409="mcp/server-card.json" mandatory=alpn,port
+
+; Per-agent names (TXT-index follow-ups)
+info-links._a2a._agents IN  SVCB  1 infolinks.app. alpn="h2" port=443 key65402="a2a" key65409="agent-card.json" mandatory=alpn,port
+info-links._a2a._agents IN  HTTPS 1 infolinks.app. alpn="h2" port=443 key65402="a2a" key65409="agent-card.json" mandatory=alpn,port
+info-links._mcp._agents IN  SVCB  1 infolinks.app. alpn="h2" port=443 key65402="mcp" key65409="mcp/server-card.json" mandatory=alpn,port
+info-links._mcp._agents IN  HTTPS 1 infolinks.app. alpn="h2" port=443 key65402="mcp" key65409="mcp/server-card.json" mandatory=alpn,port

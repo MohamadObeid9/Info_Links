@@ -1,0 +1,262 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Info Links API",
+    "description": "Public HTTP API for Info Links — CNAM Liban student course materials hub. Browse content, student identity, analytics events, and submissions.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Same origin as the site"
+    }
+  ],
+  "tags": [
+    { "name": "content", "description": "Course navigation tree" },
+    { "name": "users", "description": "Student guest / register / login" },
+    { "name": "analytics", "description": "Page views, clicks, search, browse" },
+    { "name": "submissions", "description": "Reports, feedback, contributions" },
+    { "name": "system", "description": "Health and discovery" }
+  ],
+  "paths": {
+    "/api": {
+      "get": {
+        "tags": ["system"],
+        "summary": "API directory",
+        "operationId": "getApiRoot",
+        "responses": {
+          "200": {
+            "description": "Human-oriented list of public and admin endpoints",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/content": {
+      "get": {
+        "tags": ["content"],
+        "summary": "Full navigation tree",
+        "operationId": "getContent",
+        "responses": {
+          "200": {
+            "description": "Programs, years, semesters, courses, and links",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/guest": {
+      "post": {
+        "tags": ["users"],
+        "summary": "Create a guest student session",
+        "operationId": "createGuest",
+        "responses": {
+          "201": {
+            "description": "Guest JWT issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/register": {
+      "post": {
+        "tags": ["users"],
+        "summary": "Register (claim guest) with name + number",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["first_name", "last_name", "number"],
+                "properties": {
+                  "first_name": { "type": "string" },
+                  "last_name": { "type": "string" },
+                  "number": { "type": "integer", "minimum": 1, "maximum": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Registered student JWT and profile" }
+        }
+      }
+    },
+    "/api/users/login": {
+      "post": {
+        "tags": ["users"],
+        "summary": "Sign in with name + number",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["first_name", "last_name", "number"],
+                "properties": {
+                  "first_name": { "type": "string" },
+                  "last_name": { "type": "string" },
+                  "number": { "type": "integer", "minimum": 1, "maximum": 100 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Student JWT and profile" },
+          "404": { "description": "Unknown credentials" }
+        }
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Current student profile",
+        "operationId": "getMe",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "200": { "description": "Student user object" },
+          "401": { "description": "Missing or invalid student token" }
+        }
+      }
+    },
+    "/api/page_views": {
+      "post": {
+        "tags": ["analytics"],
+        "summary": "Record a page view",
+        "operationId": "postPageView",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Recorded" }
+        }
+      }
+    },
+    "/api/link_clicks": {
+      "post": {
+        "tags": ["analytics"],
+        "summary": "Record a link click",
+        "operationId": "postLinkClick",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Recorded" }
+        }
+      }
+    },
+    "/api/search_events": {
+      "post": {
+        "tags": ["analytics"],
+        "summary": "Record a search query",
+        "operationId": "postSearchEvent",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Recorded" }
+        }
+      }
+    },
+    "/api/browse_events": {
+      "post": {
+        "tags": ["analytics"],
+        "summary": "Record browse depth",
+        "operationId": "postBrowseEvent",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Recorded" }
+        }
+      }
+    },
+    "/api/reports": {
+      "post": {
+        "tags": ["submissions"],
+        "summary": "Submit a link/course report",
+        "operationId": "postReport",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Created" }
+        }
+      }
+    },
+    "/api/feedback": {
+      "post": {
+        "tags": ["submissions"],
+        "summary": "Submit feedback",
+        "operationId": "postFeedback",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Created" }
+        }
+      }
+    },
+    "/api/contributions": {
+      "post": {
+        "tags": ["submissions"],
+        "summary": "Suggest a new link",
+        "operationId": "postContribution",
+        "security": [{ "studentBearer": [] }],
+        "responses": {
+          "201": { "description": "Created" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": ["system"],
+        "summary": "Admin login (Supabase)",
+        "operationId": "adminLogin",
+        "responses": {
+          "200": { "description": "Admin JWT" }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Liveness probe",
+        "operationId": "healthz",
+        "responses": {
+          "200": { "description": "ok" }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "tags": ["system"],
+        "summary": "Readiness probe (database)",
+        "operationId": "readyz",
+        "responses": {
+          "200": { "description": "ready" },
+          "503": { "description": "database unreachable" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "studentBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Student session JWT from /api/users/guest, register, or login"
+      }
+    }
+  }
+}
