@@ -1,6 +1,26 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Cloudflare Rocket Loader rewrites type="module" to a fake type and then
+// never runs the bundle (CSP also blocks its eval path). The page chrome
+// still loads, but #coursesOutput stays empty. data-cfasync="false" opts
+// scripts out; turning Rocket Loader off in the dashboard is the live fix.
+function disableCloudflareRocketLoader() {
+  return {
+    name: 'disable-cloudflare-rocket-loader',
+    enforce: 'post',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        return html.replace(
+          /<script(?![^>]*\bdata-cfasync=)/gi,
+          '<script data-cfasync="false"',
+        );
+      },
+    },
+  };
+}
+
 export default defineConfig({
   root: './',
   build: {
@@ -55,5 +75,6 @@ export default defineConfig({
         ],
       },
     }),
+    disableCloudflareRocketLoader(),
   ],
 });

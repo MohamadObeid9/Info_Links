@@ -826,6 +826,13 @@ CREATE UNIQUE INDEX users_unique_username ON public.users USING btree (first_nam
 
 
 --
+-- Name: users_stale_guests_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX users_stale_guests_idx ON public.users USING btree (last_seen_at) WHERE (is_guest = true);
+
+
+--
 -- Name: browse_events browse_events_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 

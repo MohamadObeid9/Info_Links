@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	"infolinks-backend/internal/models"
 )
 
@@ -14,6 +16,7 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, u models.User) (models.User, error)
 	ClaimGuest(ctx context.Context, guestID int, u models.User) (models.User, error)
 	AdoptGuest(ctx context.Context, guestID int, userID int) error
+	DeleteStaleGuests(ctx context.Context, olderThan time.Time) (int64, error)
 	GetByID(ctx context.Context, id int) (models.User, error)
 	GetByCredentials(ctx context.Context, u models.User) (models.User, error)
 	AddFavorite(ctx context.Context, userID int, courseID int) error

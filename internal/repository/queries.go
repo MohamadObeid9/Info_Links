@@ -24,7 +24,9 @@ const (
 	reassignSearchEventsQuery   = `UPDATE search_events SET user_id = $2 WHERE user_id = $1`
 	reassignBrowseEventsQuery   = `UPDATE browse_events SET user_id = $2 WHERE user_id = $1`
 	deleteGuestQuery            = `DELETE FROM users WHERE id = $1 AND is_guest = true`
-	touchLastSeenQuery          = `UPDATE users SET last_seen_at = now() WHERE id = $1`
+	// Cascades page_views / search / browse for those guests; registered rows are untouched.
+	deleteStaleGuestsQuery = `DELETE FROM users WHERE is_guest = true AND last_seen_at < $1`
+	touchLastSeenQuery     = `UPDATE users SET last_seen_at = now() WHERE id = $1`
 )
 
 // Favorites Queries

@@ -817,8 +817,10 @@ function paintAdminAnalytics(summary) {
           <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
       </div>
       ${_statsInRangeSection(summary, range)}
-      ${buildVisitorChipsSection(summary)}
-      ${buildTabbedTopLinksCard(summary)}
+      <div class="analytics-two-col">
+        ${buildVisitorChipsSection(summary)}
+        ${buildTabbedTopLinksCard(summary)}
+      </div>
       <div class="analytics-two-col">
         <div class="chart-wrap analytics-card">
           <div class="chart-title">📚 Top courses (in range)</div>

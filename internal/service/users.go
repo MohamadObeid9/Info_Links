@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 	"infolinks-backend/internal/repository"
 )
+
+// StaleGuestTTL is how long an unclaimed guest may sit idle before cleanup.
+const StaleGuestTTL = 24 * time.Hour
 
 type UserService struct {
 	repo repository.UserRepository
@@ -26,6 +30,18 @@ func (s *UserService) CreateGuest(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("create guest: %w", err)
 	}
 	return id, nil
+}
+
+// DeleteStaleGuests drops unclaimed guests idle longer than ttl (defaults to StaleGuestTTL).
+func (s *UserService) DeleteStaleGuests(ctx context.Context, ttl time.Duration) (int64, error) {
+	if ttl <= 0 {
+		ttl = StaleGuestTTL
+	}
+	n, err := s.repo.DeleteStaleGuests(ctx, time.Now().Add(-ttl))
+	if err != nil {
+		return 0, fmt.Errorf("delete stale guests: %w", err)
+	}
+	return n, nil
 }
 
 // RegisterUser claims the guest row identified by guestID so pre-signup activity

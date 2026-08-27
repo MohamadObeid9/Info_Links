@@ -203,3 +203,4 @@ Admin requests keep skipping analytics inserts, so admin browsing does not pollu
 - Writing `favorite_course_ids` and `favorite_events` outside one transaction
 - Treating `COUNT(*) FROM users` as the student count — filter `WHERE is_guest = false`
 - Accepting a guest token on a route that must attribute activity to a named person
+- Assuming unclaimed guests live forever — idle guests (`last_seen_at` older than 24h) are deleted by the server cleanup job; their analytics cascade away

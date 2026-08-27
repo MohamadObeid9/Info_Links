@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"infolinks-backend/internal/api"
 	"infolinks-backend/internal/config"
@@ -32,7 +34,7 @@ func main() {
 	}
 	defer func() { _ = dbClient.Close() }()
 
-	services := handleServices(dbClient.DB)
+	services, userService := handleServices(dbClient.DB)
 
 	webBotDir, err := webbotauth.NewDirectory(cfg.JWTSecret, cfg.SiteBaseURL)
 	if err != nil {
@@ -78,6 +80,9 @@ func main() {
 		apiHandler,
 		seoHandler,
 	)
+
+	startStaleGuestCleanup(userService, logger.With("component", "guest-cleanup"))
+
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
 
 	addr := ":" + cfg.Port
@@ -85,6 +90,34 @@ func main() {
 		logger.Error("server failed to start", "error", err)
 		os.Exit(1)
 	}
+}
+
+// startStaleGuestCleanup deletes unclaimed guests idle for StaleGuestTTL, once
+// at boot and then hourly. Cascaded analytics for those guests go with them.
+func startStaleGuestCleanup(svc *service.UserService, logger *slog.Logger) {
+	const every = time.Hour
+
+	run := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		n, err := svc.DeleteStaleGuests(ctx, service.StaleGuestTTL)
+		if err != nil {
+			logger.Error("stale guest cleanup failed", "error", err)
+			return
+		}
+		if n > 0 {
+			logger.Info("deleted stale unclaimed guests", "count", n, "ttl", service.StaleGuestTTL.String())
+		}
+	}
+
+	run()
+	go func() {
+		ticker := time.NewTicker(every)
+		defer ticker.Stop()
+		for range ticker.C {
+			run()
+		}
+	}()
 }
 
 func newLogger(appEnv, logLevel string) *slog.Logger {
@@ -100,7 +133,7 @@ func newLogger(appEnv, logLevel string) *slog.Logger {
 	return logger
 }
 
-func handleServices(db *sql.DB) *api.Dependencies {
+func handleServices(db *sql.DB) (*api.Dependencies, *service.UserService) {
 
 	userRepo := repository.NewPostgresUserRepository(db)
 	userService := service.NewUserService(userRepo)
@@ -151,5 +184,5 @@ func handleServices(db *sql.DB) *api.Dependencies {
 		ContributionService: contributionsService,
 		ExtraSectionService: extraSectionService,
 		ExtraLinkService:    extraLinkService,
-	}
+	}, userService
 }
