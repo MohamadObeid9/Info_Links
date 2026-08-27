@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
@@ -90,6 +91,20 @@ func (r *postgresUserRepository) AdoptGuest(ctx context.Context, guestID int, us
 		return fmt.Errorf("commit adopt guest: %w", err)
 	}
 	return nil
+}
+
+// DeleteStaleGuests removes unclaimed guests whose last_seen_at is older than
+// the cutoff. Related analytics rows cascade; registered students are never matched.
+func (r *postgresUserRepository) DeleteStaleGuests(ctx context.Context, olderThan time.Time) (int64, error) {
+	res, err := r.db.ExecContext(ctx, deleteStaleGuestsQuery, olderThan)
+	if err != nil {
+		return 0, fmt.Errorf("delete stale guests: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("delete stale guests rows affected: %w", err)
+	}
+	return n, nil
 }
 
 func (r *postgresUserRepository) CreateUser(ctx context.Context, u models.User) (models.User, error) {

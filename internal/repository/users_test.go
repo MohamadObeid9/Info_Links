@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"reflect"
 	"testing"
+	"time"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
@@ -645,4 +646,29 @@ func TestUserRepository_GetLastDeviceType(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUserRepository_DeleteStaleGuests(t *testing.T) {
+	cutoff := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
+
+	t.Run("deletes matching guests", func(t *testing.T) {
+		repo, mock := newTestUserRepo(t)
+		mock.ExpectExec(deleteStaleGuestsQuery).WithArgs(cutoff).
+			WillReturnResult(sqlmock.NewResult(0, 12))
+
+		got, err := repo.DeleteStaleGuests(context.Background(), cutoff)
+		assertRepoErr(t, mock, err, nil)
+		if got != 12 {
+			t.Fatalf("deleted = %d, want 12", got)
+		}
+	})
+
+	t.Run("query error", func(t *testing.T) {
+		repo, mock := newTestUserRepo(t)
+		mock.ExpectExec(deleteStaleGuestsQuery).WithArgs(cutoff).
+			WillReturnError(errs.ErrDatabaseDown)
+
+		_, err := repo.DeleteStaleGuests(context.Background(), cutoff)
+		assertRepoErr(t, mock, err, errs.ErrDatabaseDown)
+	})
 }

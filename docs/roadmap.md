@@ -33,7 +33,7 @@ Project history and planned work.
 - [x] Favorites synced to the account instead of one browser
 - [x] Unique-user analytics aggregated in SQL (active students per range, top students)
 - [x] Admin Students directory with per-student activity timeline
-- [ ] Cleanup job for stale unclaimed guest rows
+- [x] Cleanup job for stale unclaimed guest rows
 - [ ] Link health checker worker (companion Go service)
 - [ ] Mobile app (iOS/Android)
 - [ ] Push notifications for new resources

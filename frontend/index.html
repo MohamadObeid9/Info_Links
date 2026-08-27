@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>
+    <script data-cfasync="false">
       (function () {
         var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
@@ -277,7 +277,7 @@
         </div>
         <div class="toast" id="toast"></div>
     </div>
-    <script type="module" src="/main.js"></script>
+    <script data-cfasync="false" type="module" src="/main.js"></script>
 </body>
 
 </html>
