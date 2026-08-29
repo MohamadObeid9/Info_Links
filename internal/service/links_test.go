@@ -209,12 +209,12 @@ func TestLinkService_Update(t *testing.T) {
 	link := models.Link{Type: "Telegram", URL: "https://fake.test", Label: "link 1", Note: "", ContentType: nil}
 
 	tests := []struct {
-		name        string
-		idStr       string
-		id          int
-		link        models.Link
-		updateErr   error
-		err         error
+		name         string
+		idStr        string
+		id           int
+		link         models.Link
+		updateErr    error
+		err          error
 		resultWanted *models.Link
 	}{
 		{

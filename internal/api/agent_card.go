@@ -10,11 +10,11 @@ func (h *Handler) handleAgentCard(w http.ResponseWriter, r *http.Request) {
 	apiURL := h.absURL("/api")
 
 	doc := map[string]any{
-		"name":            "Info Links",
-		"description":     "CNAM Liban student materials hub — browse courses, open shared links, and submit reports or contributions via a JSON HTTP API.",
-		"version":         "1.0.0",
-		"protocolVersion": "0.3",
-		"url":             apiURL, // legacy field; prefer supportedInterfaces
+		"name":             "Info Links",
+		"description":      "CNAM Liban student materials hub — browse courses, open shared links, and submit reports or contributions via a JSON HTTP API.",
+		"version":          "1.0.0",
+		"protocolVersion":  "0.3",
+		"url":              apiURL, // legacy field; prefer supportedInterfaces
 		"documentationUrl": h.absURL("/api/docs"),
 		"provider": map[string]any{
 			"organization": "Info Links",

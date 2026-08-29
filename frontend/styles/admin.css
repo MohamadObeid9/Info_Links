@@ -83,6 +83,97 @@
     border-color: var(--accent);
 }
 
+.admin-table td.admin-mobile-only {
+    display: none;
+}
+
+.admin-toolbar {
+    margin-bottom: 16px;
+}
+
+.svc-links-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.svc-link-row {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.svc-link-row input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.svc-link-row input:focus {
+    border-color: var(--accent);
+}
+
+.svc-link-remove {
+    padding: 6px 10px;
+    min-width: 36px;
+}
+
+.svc-link-add {
+    margin-top: 4px;
+    width: 100%;
+}
+
+.admin-services-table .admin-service-name {
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.admin-services-table .admin-service-desc {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 320px;
+}
+
+.admin-services-table th:nth-child(7),
+.admin-services-table td.admin-desktop-only:nth-child(7) {
+    text-align: center;
+}
+
+.admin-services-table th:nth-child(8),
+.admin-services-table td.admin-desktop-only.admin-actions {
+    text-align: center;
+}
+
+.admin-services-table td.admin-actions {
+    min-width: 200px;
+}
+
+.admin-services-table td.admin-desktop-only.admin-actions.action-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-width: 240px;
+    margin: 0 auto;
+}
+
+.admin-services-table td.admin-desktop-only.admin-actions.action-btns .action-btn {
+    width: 100%;
+    text-align: center;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -368,6 +459,12 @@
     gap: 16px;
 }
 
+.analytics-heatmap-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 .analytics-stats-range .analytics-stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -462,6 +559,13 @@
 .heatmap-legend-1 { background: hsl(168 72% 42%); }
 .heatmap-legend-2 { background: hsl(38 95% 52%); }
 .heatmap-legend-3 { background: hsl(8 88% 54%); }
+
+.analytics-heatmap-desc {
+  margin: -4px 0 12px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
 
 .analytics-footnote {
     font-size: 0.78rem;

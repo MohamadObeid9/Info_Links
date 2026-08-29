@@ -149,6 +149,13 @@ function renderMobileProgramPicker() {
       </span>
       <span class="pick-chev">›</span>
     </button>
+    <button type="button" class="pick-card" data-mobile-prog="community">
+      <span>
+        <span class="pick-title">🤝 Community Services</span>
+        <small>Small student businesses & services</small>
+      </span>
+      <span class="pick-chev">›</span>
+    </button>
     <button type="button" class="pick-card" data-mobile-prog="favorites">
       <span>
         <span class="pick-title">⭐ My Courses</span>
@@ -200,11 +207,14 @@ function renderMobileList() {
     return;
   }
 
-  const cards = (sem.courses || []).map((c) => _buildCourseCard(c)).join("");
+  const semKey = `${AppState.currentProg}:${AppState.currentYear}:${AppState.currentSem}`;
+  const service = window.pickServices?.(1, `semester:${semKey}:${performance.now()}:${Math.random()}`)[0];
+  const courseCards = (sem.courses || []).map((c) => _buildCourseCard(c));
+  const cards = service ? window.intersperse?.(courseCards, [service], "semester") : courseCards;
   document.getElementById("coursesOutput").innerHTML = `
     ${chipsHtml([prog.name, year.name, sem.name], "year")}
-    ${cards
-      ? `<div class="courses-grid">${cards}</div>`
+    ${cards.length
+      ? `<div class="courses-grid">${cards.join("")}</div>`
       : '<div class="empty">No courses in this semester — try another, or search.</div>'}`;
 }
 
@@ -274,6 +284,10 @@ function renderMobileHome() {
     renderMobileExtra();
     return true;
   }
+  if (AppState.currentProg === "community") {
+    window.renderMobileCommunity?.();
+    return true;
+  }
   if (AppState.currentProg === "favorites") {
     renderMobileFavorites();
     return true;
@@ -313,6 +327,11 @@ function selectMobileProg(id) {
   }
   if (id === "extra") {
     renderMobileExtra();
+    return;
+  }
+  if (id === "community") {
+    AppState.mobileStep = "list";
+    window.renderMobileCommunity?.();
     return;
   }
   if (id === "favorites") {
@@ -384,9 +403,13 @@ function onMobileViewportChange() {
   if (AppState.currentYear == null) AppState.currentYear = "all";
   if (AppState.currentSem == null) AppState.currentSem = "all";
   if (AppState.mobileStep === "program" || AppState.mobileStep === "year") {
-    if (!isRealProgram(AppState.currentProg)) AppState.currentProg = "all";
+    if (!isRealProgram(AppState.currentProg) && AppState.currentProg !== "community") AppState.currentProg = "all";
     AppState.currentYear = "all";
     AppState.currentSem = "all";
+  }
+  if (AppState.currentProg === "community") {
+    window.selectCommunity?.();
+    return;
   }
   window.selectProg(AppState.currentProg);
 }
@@ -433,6 +456,17 @@ function onMobileHomeClick(e) {
   if (header) {
     e.preventDefault();
     toggleCourseCard(header.dataset.toggleCourse);
+    return;
+  }
+
+  const serviceHeader = e.target.closest("[data-toggle-service]");
+  if (serviceHeader) {
+    e.preventDefault();
+    const card = serviceHeader.closest(".service-card");
+    if (!card) return;
+    const open = card.classList.contains("open");
+    document.querySelectorAll(".course-card.open").forEach((el) => el.classList.remove("open"));
+    if (!open) card.classList.add("open");
   }
 }
 

@@ -95,7 +95,7 @@ The Analytics tab counts **people**, not just page loads:
 - **Growth chart** — toggle between unique visitors per day and cumulative registered roster over the selected range
 - **Today's visitors** — paged handle chips (sort by clicks or name)
 - **Demand** — top links, top courses, zero-click courses/links, most-favorited courses, top students
-- **Search terms** and an hour×weekday activity heatmap
+- **Search terms** and separate hour×weekday heatmaps for **page visits** and **link clicks**
 
 New visits store a coarse `device_type` (`phone` or `laptop`) derived from the User-Agent on the server; the client never sends device data. Search and browse-depth events are recorded separately so demand and funnel metrics stay actionable.
 

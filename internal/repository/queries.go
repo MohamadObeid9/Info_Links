@@ -23,6 +23,7 @@ const (
 	reassignFavoriteEventsQuery = `UPDATE favorite_events SET user_id = $2 WHERE user_id = $1`
 	reassignSearchEventsQuery   = `UPDATE search_events SET user_id = $2 WHERE user_id = $1`
 	reassignBrowseEventsQuery   = `UPDATE browse_events SET user_id = $2 WHERE user_id = $1`
+	reassignServiceClicksQuery  = `UPDATE service_clicks SET user_id = $2 WHERE user_id = $1`
 	deleteGuestQuery            = `DELETE FROM users WHERE id = $1 AND is_guest = true`
 	// Cascades page_views / search / browse for those guests; registered rows are untouched.
 	deleteStaleGuestsQuery = `DELETE FROM users WHERE is_guest = true AND last_seen_at < $1`
@@ -48,8 +49,25 @@ const (
 	listStudentsQuery      = listStudentsBaseQuery + listStudentsOrderQuery + `$1 OFFSET $2`
 	listStudentsWithQQuery = listStudentsBaseQuery + ` AND (u.first_name ILIKE $1 OR u.last_name ILIKE $1)` + listStudentsOrderQuery + `$2 OFFSET $3`
 
+	// serviceClickTargetLabelSQL picks a display label from stored target or clicked URL.
+	serviceClickTargetLabelSQL = `COALESCE(
+		NULLIF(NULLIF(NULLIF(trim(sc.link_target), ''), 'contact'), 'link'),
+		CASE
+			WHEN COALESCE(sc.clicked_url, '') ~* '(^whatsapp:|wa\.me|api\.whatsapp\.com)' THEN 'WhatsApp'
+			WHEN COALESCE(sc.clicked_url, '') ~* '(t\.me|telegram\.me)' THEN 'Telegram'
+			WHEN COALESCE(sc.clicked_url, '') ~* '^https?://' THEN 'website'
+			ELSE NULL
+		END,
+		CASE
+			WHEN COALESCE(s.phone, '') <> '' AND COALESCE(s.url, '') = ''
+			     AND COALESCE(jsonb_array_length(COALESCE(s.links, '[]'::jsonb)), 0) = 0 THEN 'WhatsApp'
+			WHEN COALESCE(s.url, '') <> '' AND COALESCE(s.phone, '') = '' THEN 'website'
+			ELSE 'service'
+		END
+	)`
+
 	// listUserTimelineQuery merges every activity table into one chronological feed.
-	// device_type is only stored on page_views; other event types return ''.
+	// device_type is set on page_views and service_clicks; other event types return ''.
 	listUserTimelineQuery = `
 		SELECT type, at, summary, ref_id, device_type FROM (
 			SELECT 'visit' AS type, pv.visited_at AS at,
@@ -61,8 +79,14 @@ const (
 			FROM page_views pv WHERE pv.user_id = $1
 			UNION ALL
 			SELECT 'link_click', lc.clicked_at,
-			       'opened ' || COALESCE(l.label, el.label, 'a link')
-			           || COALESCE(' in ' || co.name, ' in ' || es.title, ''),
+			       CASE
+			           WHEN lc.extra_link_id IS NOT NULL THEN
+			               'opened ' || COALESCE(NULLIF(trim(el.label), ''), initcap(COALESCE(el.type, '')), 'a link')
+			                   || COALESCE(' in ' || es.title, '')
+			           ELSE
+			               'opened ' || COALESCE(l.label, 'a link')
+			                   || COALESCE(' in ' || co.name, '')
+			       END,
 			       lc.id, ''
 			FROM link_clicks lc
 			LEFT JOIN links l ON l.id = lc.link_id
@@ -92,6 +116,14 @@ const (
 			FROM favorite_events fe
 			JOIN courses co ON co.id = fe.course_id
 			WHERE fe.user_id = $1
+			UNION ALL
+			SELECT 'service_click', sc.clicked_at,
+			       'opened ' || ` + serviceClickTargetLabelSQL + `
+			           || ' on ' || COALESCE(s.title, 'a service'),
+			       sc.id, COALESCE(sc.device_type, '')
+			FROM service_clicks sc
+			LEFT JOIN services s ON s.id = sc.service_id
+			WHERE sc.user_id = $1
 		) timeline
 		ORDER BY at DESC
 		LIMIT $2 OFFSET $3`
@@ -210,24 +242,58 @@ const (
 		GROUP BY d.day
 		ORDER BY d.day ASC`
 
-	// A visitor is anyone with a page view or a link click today. Link opens are
+	// Counts today's student activity (timeline events) except home page visits.
+	analyticsUserActivityTodayCountSQL = `(
+		SELECT COUNT(*)::bigint FROM (
+			SELECT lc.id FROM link_clicks lc
+			WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())
+			UNION ALL
+			SELECT sc.id FROM service_clicks sc
+			WHERE sc.user_id = u.id AND sc.clicked_at >= date_trunc('day', now())
+			UNION ALL
+			SELECT r.id FROM reports r
+			WHERE r.user_id = u.id AND r.created_at >= date_trunc('day', now())
+			UNION ALL
+			SELECT c.id FROM contributions c
+			WHERE c.user_id = u.id AND c.created_at >= date_trunc('day', now())
+			UNION ALL
+			SELECT f.id FROM feedback f
+			WHERE f.user_id = u.id AND f.created_at >= date_trunc('day', now())
+			UNION ALL
+			SELECT fe.id FROM favorite_events fe
+			WHERE fe.user_id = u.id AND fe.created_at >= date_trunc('day', now())
+			UNION ALL
+			SELECT pv.id FROM page_views pv
+			WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now())
+			  AND lower(COALESCE(pv.page, 'home')) <> 'home'
+		) activity_today
+	)`
+
+	// A visitor is anyone with a page view or meaningful activity today. Link opens are
 	// gated behind signup, so a click without a page_views row still means the
 	// person was on the site (e.g. visit POST failed or session was re-bootstrapped).
+	analyticsVisitorsTodayPresenceSQL = `
+		EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM service_clicks sc WHERE sc.user_id = u.id AND sc.clicked_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM reports r WHERE r.user_id = u.id AND r.created_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM contributions c WHERE c.user_id = u.id AND c.created_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM feedback f WHERE f.user_id = u.id AND f.created_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM favorite_events fe WHERE fe.user_id = u.id AND fe.created_at >= date_trunc('day', now()))`
+
 	analyticsVisitorsTodayByClicksQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
-		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())) AS clicks
+		       ` + analyticsUserActivityTodayCountSQL + ` AS clicks
 		FROM users u
-		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
-		   OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
+		WHERE ` + analyticsVisitorsTodayPresenceSQL + `
 		ORDER BY clicks DESC, u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT $1 OFFSET $2`
 
 	analyticsVisitorsTodayByNameQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
-		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now())) AS clicks
+		       ` + analyticsUserActivityTodayCountSQL + ` AS clicks
 		FROM users u
-		WHERE EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
-		   OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
+		WHERE ` + analyticsVisitorsTodayPresenceSQL + `
 		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT $1 OFFSET $2`
 
@@ -248,6 +314,15 @@ const (
 		ORDER BY COUNT(*) DESC, c.name ASC
 		LIMIT 50`
 
+	analyticsTopServicesQuery = `
+		SELECT s.id, s.title, COALESCE(s.category, ''), COUNT(*)::int
+		FROM service_clicks sc
+		JOIN services s ON s.id = sc.service_id
+		WHERE sc.clicked_at >= now() - make_interval(days => $1)
+		GROUP BY s.id, s.title, s.category
+		ORDER BY COUNT(*) DESC, s.title ASC
+		LIMIT 50`
+
 	analyticsZeroClickCoursesQuery = `
 		SELECT c.id, c.name, c.code, 0, COALESCE((
 			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
@@ -265,6 +340,17 @@ const (
 			WHERE l.course_id = c.id
 		  )
 		ORDER BY c.name ASC
+		LIMIT 50`
+
+	analyticsZeroClickServicesQuery = `
+		SELECT s.id, s.title, COALESCE(s.category, ''), 0
+		FROM services s
+		WHERE s.status <> 'frozen'
+		  AND NOT EXISTS (
+			SELECT 1 FROM service_clicks sc
+			WHERE sc.service_id = s.id AND sc.clicked_at >= now() - make_interval(days => $1)
+		  )
+		ORDER BY s.title ASC
 		LIMIT 50`
 
 	analyticsZeroClickLinksQuery = `
@@ -313,13 +399,16 @@ const (
 		ORDER BY COUNT(*) DESC, c.name ASC
 		LIMIT 50`
 
-	analyticsHeatmapQuery = `
-		SELECT EXTRACT(DOW FROM ts)::int, EXTRACT(HOUR FROM ts)::int, COUNT(*)::int
-		FROM (
-			SELECT clicked_at AS ts FROM link_clicks WHERE clicked_at >= now() - make_interval(days => $1)
-			UNION ALL
-			SELECT visited_at FROM page_views WHERE visited_at >= now() - make_interval(days => $1)
-		) activity
+	analyticsVisitHeatmapQuery = `
+		SELECT EXTRACT(DOW FROM visited_at)::int, EXTRACT(HOUR FROM visited_at)::int, COUNT(*)::int
+		FROM page_views
+		WHERE visited_at >= now() - make_interval(days => $1)
+		GROUP BY 1, 2`
+
+	analyticsClickHeatmapQuery = `
+		SELECT EXTRACT(DOW FROM clicked_at)::int, EXTRACT(HOUR FROM clicked_at)::int, COUNT(*)::int
+		FROM link_clicks
+		WHERE clicked_at >= now() - make_interval(days => $1)
 		GROUP BY 1, 2`
 
 	analyticsSearchTermsQuery = `
@@ -495,10 +584,15 @@ const (
 			) c) as courses,
 			(SELECT COALESCE(json_agg(p ORDER BY display_order ASC), '[]') FROM programs p) as programs,
 			(SELECT COALESCE(json_agg(s ORDER BY display_order ASC), '[]') FROM semesters s) as semesters,
-			(SELECT COALESCE(json_agg(el ORDER BY display_order ASC), '[]') FROM extra_links el) as extra_links,
-			(SELECT COALESCE(json_agg(ex ORDER BY display_order ASC), '[]') FROM extra_sections ex) as extra_sections,
-			(SELECT COALESCE(json_agg(l ORDER BY display_order ASC), '[]') FROM links l WHERE course_id IS NOT NULL) as links
-		)
+		(SELECT COALESCE(json_agg(el ORDER BY display_order ASC), '[]') FROM extra_links el) as extra_links,
+		(SELECT COALESCE(json_agg(ex ORDER BY display_order ASC), '[]') FROM extra_sections ex) as extra_sections,
+		(SELECT COALESCE(json_agg(l ORDER BY display_order ASC), '[]') FROM links l WHERE course_id IS NOT NULL) as links,
+		(SELECT COALESCE(json_agg(s ORDER BY display_order ASC), '[]') FROM (
+			SELECT id, title, owner_name, category, emoji, description, logo_url, phone, url, links, status, trial, started_at, expires_at, display_order
+			FROM services
+			WHERE status IN ('active', 'trial') AND expires_at > now()
+		) s) as services
+	)
 	SELECT json_build_object(
 		'years', years,
 		'links', links,
@@ -506,7 +600,67 @@ const (
 		'programs', programs,
 		'semesters', semesters,
 		'extra_links', extra_links,
-		'extra_sections', extra_sections
+		'extra_sections', extra_sections,
+		'services', services
 	) FROM content;
     `
+)
+
+// Service Queries
+const (
+	serviceColumns = `s.id, s.title, s.owner_name, s.category, s.emoji, COALESCE(s.description, ''), COALESCE(s.logo_url, ''), COALESCE(s.phone, ''), COALESCE(s.url, ''), s.links, s.status, s.trial, s.started_at, s.expires_at, s.display_order, s.created_at, s.updated_at`
+
+	listServicesWithClicksQuery = `
+		SELECT ` + serviceColumns + `, COALESCE(c.clicks, 0) AS clicks
+		FROM services s
+		LEFT JOIN (SELECT service_id, COUNT(*) AS clicks FROM service_clicks GROUP BY service_id) c ON c.service_id = s.id`
+
+	listServicesSearchWhere = ` WHERE s.title ILIKE $1 OR s.owner_name ILIKE $2 OR s.description ILIKE $1`
+
+	getServiceByIDQuery = `SELECT ` + serviceColumns + ` FROM services s WHERE s.id = $1`
+
+	insertServiceQuery = `
+		INSERT INTO services (title, owner_name, category, emoji, description, logo_url, phone, url, links, status, trial, started_at, expires_at, display_order)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		RETURNING id`
+
+	updateServiceQuery = `
+		UPDATE services SET
+			title = $1,
+			owner_name = $2,
+			category = $3,
+			emoji = $4,
+			description = $5,
+			logo_url = $6,
+			phone = $7,
+			url = $8,
+			links = $9,
+			status = $10,
+			trial = $11,
+			started_at = $12,
+			expires_at = $13,
+			display_order = $14,
+			updated_at = now()
+		WHERE id = $15`
+
+	deleteServiceQuery = `DELETE FROM services WHERE id = $1`
+
+	renewServiceQuery = `
+		UPDATE services SET
+			started_at = expires_at,
+			expires_at = expires_at + interval '1 month',
+			status = 'active',
+			trial = false,
+			updated_at = now()
+		WHERE id = $1`
+
+	freezeExpiredServicesQuery = `
+		UPDATE services SET status = 'frozen', updated_at = now()
+		WHERE expires_at <= now() AND status IN ('trial', 'active')`
+
+	setServiceStatusQuery = `UPDATE services SET status = $1, updated_at = now() WHERE id = $2`
+
+	insertServiceClickQuery = `WITH click AS (INSERT INTO service_clicks (service_id, user_id, page_context, link_target, clicked_url, device_type) VALUES ($1, $2, $3, $4, $5, $6)) UPDATE users SET last_seen_at = now() WHERE id = $2`
+
+	countServiceClicksQuery = `SELECT COUNT(*) FROM service_clicks WHERE service_id = $1`
 )

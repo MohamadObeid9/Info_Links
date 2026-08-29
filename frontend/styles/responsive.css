@@ -544,6 +544,27 @@
         font-size: 0.82rem;
     }
 
+    .admin-toolbar {
+        margin-bottom: 18px;
+    }
+
+    .svc-link-row {
+        grid-template-columns: 1fr;
+    }
+
+    .svc-link-remove {
+        justify-self: end;
+    }
+
+    .admin-table-wrap + .admin-pager,
+    .admin-services-table {
+        margin-top: 4px;
+    }
+
+    .admin-table td.admin-desktop-only {
+        display: none !important;
+    }
+
     .admin-table,
     .admin-table thead,
     .admin-table tbody,

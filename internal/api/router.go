@@ -90,6 +90,9 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 	mux.HandleFunc("POST /api/reports", middleware.RequireRegisteredUser(jwtSecret, h.handlePostReport))
 	mux.HandleFunc("POST /api/feedback", middleware.RequireRegisteredUser(jwtSecret, h.handlePostFeedback))
 	mux.HandleFunc("POST /api/contributions", middleware.RequireRegisteredUser(jwtSecret, h.handlePostContribution))
+
+	mux.HandleFunc("GET /api/services", h.handleGetServices)
+	mux.HandleFunc("POST /api/service_clicks", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostServiceClick)))
 }
 
 func registerAdminRoutes(mux *http.ServeMux, h *Handler, jwtSecret string) {
@@ -130,6 +133,14 @@ func registerAdminRoutes(mux *http.ServeMux, h *Handler, jwtSecret string) {
 	mux.HandleFunc("POST /api/admin/extra_links", middleware.RequireAdmin(jwtSecret, h.handleAdminPostExtraLink))
 	mux.HandleFunc("PATCH /api/admin/extra_links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchExtraLink))
 	mux.HandleFunc("DELETE /api/admin/extra_links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteExtraLink))
+
+	mux.HandleFunc("GET /api/admin/services", middleware.RequireAdmin(jwtSecret, h.handleAdminGetServices))
+	mux.HandleFunc("POST /api/admin/services", middleware.RequireAdmin(jwtSecret, h.handleAdminPostService))
+	mux.HandleFunc("PATCH /api/admin/services/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchService))
+	mux.HandleFunc("DELETE /api/admin/services/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteService))
+	mux.HandleFunc("POST /api/admin/services/{id}/renew", middleware.RequireAdmin(jwtSecret, h.handleAdminRenewService))
+	mux.HandleFunc("POST /api/admin/services/{id}/freeze", middleware.RequireAdmin(jwtSecret, h.handleAdminFreezeService))
+	mux.HandleFunc("POST /api/admin/services/{id}/unfreeze", middleware.RequireAdmin(jwtSecret, h.handleAdminUnfreezeService))
 }
 
 func metricsHandler(cfg config.Config) http.Handler {
@@ -305,7 +316,7 @@ func contentSecurityPolicy(allowedOrigins []string) string {
 		"default-src 'self'",
 		"script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
 		"style-src 'self' 'unsafe-inline'",
-		"img-src 'self' data:",
+		"img-src 'self' data: https:",
 		"font-src 'self'",
 		"connect-src " + strings.Join(connectSrcValues, " "),
 		"object-src 'none'",

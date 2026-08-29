@@ -61,6 +61,7 @@ func main() {
 		ExtraLinkService:    services.ExtraLinkService,
 		ContributionService: services.ContributionService,
 		ExtraSectionService: services.ExtraSectionService,
+		ServiceService:      services.ServiceService,
 		Logger:              logger.With("component", "api"),
 	})
 	if err != nil {
@@ -171,6 +172,9 @@ func handleServices(db *sql.DB) (*api.Dependencies, *service.UserService) {
 	extraLinkRepo := repository.NewPostgresExtraLinkRepository(db)
 	extraLinkService := service.NewExtraLinkService(extraLinkRepo)
 
+	serviceRepo := repository.NewPostgresServiceRepository(db)
+	serviceService := service.NewServiceService(serviceRepo)
+
 	return &api.Dependencies{
 		UserService:         userService,
 		AnalyticsService:    analyticsService,
@@ -184,5 +188,6 @@ func handleServices(db *sql.DB) (*api.Dependencies, *service.UserService) {
 		ContributionService: contributionsService,
 		ExtraSectionService: extraSectionService,
 		ExtraLinkService:    extraLinkService,
+		ServiceService:      serviceService,
 	}, userService
 }

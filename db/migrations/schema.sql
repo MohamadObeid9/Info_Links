@@ -547,6 +547,75 @@ CREATE TABLE public.years (
 
 
 --
+-- Name: service_clicks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.service_clicks (
+    id integer NOT NULL,
+    service_id integer NOT NULL,
+    user_id integer NOT NULL,
+    page_context text,
+    link_target text,
+    clicked_url text,
+    clicked_at timestamp with time zone NOT NULL DEFAULT now(),
+    device_type text
+);
+
+
+--
+-- Name: services; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.services (
+    id integer NOT NULL,
+    title text NOT NULL,
+    owner_name text,
+    category text,
+    emoji text,
+    description text,
+    logo_url text,
+    phone text,
+    url text,
+    links jsonb DEFAULT '[]'::jsonb NOT NULL,
+    status text DEFAULT 'trial'::text NOT NULL,
+    trial boolean DEFAULT true NOT NULL,
+    started_at timestamp with time zone NOT NULL DEFAULT now(),
+    expires_at timestamp with time zone NOT NULL,
+    display_order integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+
+--
+-- Name: service_clicks_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.service_clicks ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.service_clicks_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: services_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.services ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.services_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: years_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -721,6 +790,30 @@ ALTER TABLE ONLY public.years
 
 
 --
+-- Name: service_clicks service_clicks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_clicks
+    ADD CONSTRAINT service_clicks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: services services_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.services
+    ADD CONSTRAINT services_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: services services_status_check; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.services
+    ADD CONSTRAINT services_status_check CHECK ((status)::text = ANY ((ARRAY['trial'::character varying, 'active'::character varying, 'frozen'::character varying])::text[]));
+
+
+--
 -- Name: browse_events_created_at_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -830,6 +923,27 @@ CREATE UNIQUE INDEX users_unique_username ON public.users USING btree (first_nam
 --
 
 CREATE INDEX users_stale_guests_idx ON public.users USING btree (last_seen_at) WHERE (is_guest = true);
+
+
+--
+-- Name: service_clicks_clicked_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX service_clicks_clicked_at_idx ON public.service_clicks USING btree (clicked_at DESC);
+
+
+--
+-- Name: service_clicks_service_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX service_clicks_service_id_idx ON public.service_clicks USING btree (service_id);
+
+
+--
+-- Name: services_status_expires_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX services_status_expires_at_idx ON public.services USING btree (status, expires_at);
 
 
 --
@@ -966,6 +1080,22 @@ ALTER TABLE ONLY public.semesters
 
 ALTER TABLE ONLY public.years
     ADD CONSTRAINT years_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: service_clicks service_clicks_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_clicks
+    ADD CONSTRAINT service_clicks_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) ON DELETE CASCADE;
+
+
+--
+-- Name: service_clicks service_clicks_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_clicks
+    ADD CONSTRAINT service_clicks_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -1376,6 +1506,18 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.years ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: service_clicks; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.service_clicks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: services; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 
 --
 -- PostgreSQL database dump complete

@@ -26,6 +26,16 @@ var (
 	ErrLinkClickLinkIDAndExtraLinkIDSet      = errors.New("link id and extra link id cannot be set at the same time")
 )
 
+// Service errors
+var (
+	ErrServiceNotFound       = errors.New("service not found")
+	ErrServiceInvalidID      = errors.New("invalid service id")
+	ErrServiceTitleRequired  = errors.New("service title is required")
+	ErrServicePatchEmpty     = errors.New("service update has no fields")
+	ErrServiceInvalidStatus  = errors.New("status must be trial, active, or frozen")
+	ErrServiceInvalidRenewal = errors.New("renewal duration must be between 1 and 365 days")
+)
+
 // Reports Errors
 var (
 	ErrReportNotFound      = errors.New("report not found")

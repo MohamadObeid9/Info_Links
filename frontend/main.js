@@ -12,6 +12,7 @@ import "./js/admin.js";
 import "./js/views.js";
 import "./js/modals.js";
 import "./js/session.js";
+import "./js/services.js";
 import { initWebMCP } from "./js/webmcp.js";
 
 // --- EVENT ROUTER (Professional Event Delegation) ---
@@ -37,6 +38,16 @@ document.addEventListener("click", (e) => {
   const linkItem = target.closest(".link-item");
   if (linkItem) {
     e.preventDefault();
+    const serviceIdAttr = linkItem.dataset.serviceId;
+    if (serviceIdAttr) {
+      const serviceId = parseInt(serviceIdAttr, 10);
+      const context = linkItem.dataset.serviceContext || "list";
+      const url = linkItem.dataset.url || null;
+      const serviceTarget = linkItem.dataset.serviceTarget || "";
+      const openServiceLink = () => window.confirmServiceLink(serviceId, url, context, serviceTarget);
+      if (window.requireStudent(openServiceLink)) openServiceLink();
+      return;
+    }
     const idAttr = linkItem.dataset.linkId;
     const linkId = idAttr ? parseInt(idAttr, 10) : null;
     const linkKind = linkItem.dataset.linkKind || "link";
@@ -46,8 +57,42 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  const serviceCard = target.closest(".service-sidebar-card, .service-pick-card, .service-sem-btn");
+  if (serviceCard) {
+    e.preventDefault();
+    const serviceId = parseInt(serviceCard.dataset.serviceId, 10);
+    if (serviceCard.classList.contains("service-sidebar-card") && !window.isMobileView?.()) {
+      window.selectCommunity?.(serviceId);
+      return;
+    }
+    const s = window.AppState?.dbServices?.find((x) => x.id === serviceId);
+    if (s) {
+      const contact = window.primaryServiceContact?.(s) || s.url || s.phone || "";
+      const context = serviceCard.dataset.serviceContext || "sidebar";
+      const serviceTarget =
+        window.inferServiceTargetFromUrl?.(contact) || s.links?.[0]?.label || "";
+      const openServiceLink = () => window.confirmServiceLink(serviceId, contact, context, serviceTarget);
+      if (window.requireStudent(openServiceLink)) openServiceLink();
+    }
+    return;
+  }
+
+  const embeddedServiceCard = target.closest(".service-card");
+  if (embeddedServiceCard && !window.isMobileView?.() && !target.closest(".link-item")) {
+    const serviceId = parseInt(embeddedServiceCard.dataset.serviceId, 10);
+    if (serviceId && window.AppState?.currentProg !== "community") {
+      e.preventDefault();
+      window.selectCommunity?.(serviceId);
+      return;
+    }
+  }
+
   const view = target.closest("[data-view]")?.dataset.view;
   if (view) {
+    if (view === "community") {
+      window.selectCommunity();
+      return;
+    }
     window.showView(view);
     return;
   }

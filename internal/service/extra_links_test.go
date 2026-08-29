@@ -85,8 +85,8 @@ func TestExtraLinkService_Create(t *testing.T) {
 			err:       errs.ErrDatabaseDown,
 		},
 		{
-			name: "trims and persists",
-			link: models.ExtraLink{SectionID: extraSectionID(1), Type: "telegram", URL: "  https://fake.test  ", Label: "  link 1  "},
+			name:         "trims and persists",
+			link:         models.ExtraLink{SectionID: extraSectionID(1), Type: "telegram", URL: "  https://fake.test  ", Label: "  link 1  "},
 			resultWanted: &models.ExtraLink{SectionID: extraSectionID(1), Type: "telegram", URL: "https://fake.test", Label: "link 1"},
 		},
 	}

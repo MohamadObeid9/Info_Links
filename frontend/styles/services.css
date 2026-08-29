@@ -1,0 +1,208 @@
+/* Community services cards reuse .course-card so they match regular cards.
+   Only small badges differentiate them. */
+
+.service-card .optional-tag {
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.service-header-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.service-header-text {
+  min-width: 0;
+}
+
+.service-logo,
+.service-logo-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--bg3);
+}
+
+.service-logo-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.service-owner {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.service-desc {
+  margin: 0 12px 8px;
+  padding: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.service-desc.muted {
+  font-style: italic;
+}
+
+.service-sidebar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+
+.service-card.service-highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.service-sidebar {
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  .service-sidebar {
+    display: block;
+    position: fixed;
+    right: 24px;
+    top: 120px;
+    width: 260px;
+    min-height: 420px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    z-index: 5;
+  }
+
+  .service-sidebar-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .service-sidebar-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    border: 1px solid transparent;
+    margin-bottom: 8px;
+  }
+
+  .service-sidebar-card:hover {
+    background: var(--bg3);
+    border-color: var(--accent);
+  }
+
+  .service-sidebar-emoji {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .service-sidebar-body {
+    min-width: 0;
+  }
+
+  .service-sidebar-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .service-sidebar-meta {
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .service-sidebar-link {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    text-align: right;
+  }
+
+  .service-sidebar-link:hover {
+    text-decoration: underline;
+  }
+}
+
+.service-pick-card .pick-title,
+.service-sem-btn {
+  font-weight: 600;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+.status-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.status-resolved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+.service-sem-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.service-sem-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}

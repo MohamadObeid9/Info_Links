@@ -47,6 +47,7 @@ const AdminPager = {
   feedback: { page: 0, hasNext: false },
   students: { page: 0, hasNext: false },
   studentTimeline: { page: 0, hasNext: false },
+  services: { page: 0, hasNext: false },
 };
 
 function _setAdminPage(tab, page) {
@@ -163,6 +164,7 @@ function renderAdminContent() {
   else if (AppState.currentAdminTab === "reports") renderAdminReports();
   else if (AppState.currentAdminTab === "contributions") renderAdminContributions();
   else if (AppState.currentAdminTab === "students") renderAdminStudents();
+  else if (AppState.currentAdminTab === "services") renderAdminServices();
   else renderAdminAnalytics();
 }
 
@@ -337,7 +339,7 @@ function buildVisitorChipsSection(summary) {
   const sort = AppState.analyticsVisitorsSort === "name" ? "name" : "clicks";
   const sortButtons = ["clicks", "name"]
     .map((s) => {
-      const label = s === "clicks" ? "Most clicks" : "Name";
+      const label = s === "clicks" ? "Most activity" : "Name";
       return `<button type="button" class="filter-btn ${sort === s ? "active" : ""}" onclick="AppState.analyticsVisitorsSort='${s}';AppState.analyticsVisitorsOffset=0;analyticsPaintLocal()">${label}</button>`;
     })
     .join("");
@@ -447,6 +449,13 @@ function _courseDemandList(rows, emptyMsg, countLabel = "clicks", expandKey = nu
   );
 }
 
+function _serviceDemandList(rows, emptyMsg, countLabel = "opens", expandKey = null) {
+  return _showAllList(rows, expandKey, emptyMsg, (row) => {
+    const cat = row.category ? ` <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.category)})</span>` : "";
+    return `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.title)}${cat}</li>`;
+  });
+}
+
 function _deadLinksList(rows, expandKey = null) {
   return _showAllList(rows, expandKey, "Every link got at least one click in this range.", (row) => {
     const fromTree = row.kind === "link" ? resolveLinkInfo("link", row.id) : { programName: "" };
@@ -490,7 +499,8 @@ function _heatmapCellStyle(n, max) {
   return `background:hsl(${h.toFixed(0)} ${s.toFixed(0)}% ${l.toFixed(0)}%);color:${color};font-weight:700;${glow}`;
 }
 
-function _buildHeatmap(cells) {
+function _buildHeatmap(cells, unit = "events") {
+  const unitLabel = unit || "events";
   const map = new Map();
   let max = 0;
   const mobile = isMobileView();
@@ -521,8 +531,8 @@ function _buildHeatmap(cells) {
           const n = map.get(`${dow}-${hour}`) || 0;
           const end = hour + step - 1;
           const title = step === 1
-            ? `${label} ${hour}:00 — ${_num(n)}`
-            : `${label} ${hour}:00–${end}:59 — ${_num(n)}`;
+            ? `${label} ${hour}:00 — ${_num(n)} ${unitLabel}`
+            : `${label} ${hour}:00–${end}:59 — ${_num(n)} ${unitLabel}`;
           const empty = n === 0 ? " heatmap-empty" : " heatmap-hit";
           const labelText = n ? _num(n) : "";
           return `<div class="heatmap-cell${empty}" title="${title}" style="${_heatmapCellStyle(n, max)}">${labelText}</div>`;
@@ -722,12 +732,12 @@ function analyticsPaintLocal() {
     return;
   }
   const y = window.scrollY;
-  const heat = document.querySelector(".heatmap-scroll");
-  const hx = heat ? heat.scrollLeft : 0;
+  const heatScrolls = [...document.querySelectorAll(".heatmap-scroll")].map((el) => el.scrollLeft);
   paintAdminAnalytics(_withLocalVisitors(summary));
   window.scrollTo(0, y);
-  const heatAfter = document.querySelector(".heatmap-scroll");
-  if (heatAfter) heatAfter.scrollLeft = hx;
+  document.querySelectorAll(".heatmap-scroll").forEach((el, i) => {
+    el.scrollLeft = heatScrolls[i] || 0;
+  });
 }
 
 function paintAdminAnalytics(summary) {
@@ -827,8 +837,8 @@ function paintAdminAnalytics(summary) {
           ${_courseDemandList(summary.top_courses, "No course clicks in this range.", "clicks", "analyticsTopCoursesExpanded")}
         </div>
         <div class="chart-wrap analytics-card">
-          <div class="chart-title">⭐ Most favorited</div>
-          ${_courseDemandList(summary.top_favorites, "No favorites yet.", "stars", "analyticsTopFavoritesExpanded")}
+          <div class="chart-title">🤝 Top services (in range)</div>
+          ${_serviceDemandList(summary.top_services, "No service opens in this range.", "opens", "analyticsTopServicesExpanded")}
         </div>
       </div>
       <div class="analytics-two-col">
@@ -837,20 +847,38 @@ function paintAdminAnalytics(summary) {
           ${_courseDemandList(summary.zero_click_courses, "Every course with links got clicks.", "links ignored", "analyticsZeroCoursesExpanded")}
         </div>
         <div class="chart-wrap analytics-card">
-          <div class="chart-title">💤 Links never opened</div>
-          ${_deadLinksList(summary.zero_click_links, "analyticsZeroLinksExpanded")}
+          <div class="chart-title">🕳️ Services with zero clicks</div>
+          ${_serviceDemandList(summary.zero_click_services, "Every active service got opens.", "opens ignored", "analyticsZeroServicesExpanded")}
         </div>
       </div>
       <div class="analytics-two-col">
         <div class="chart-wrap analytics-card">
-          <div class="chart-title">🔎 Search terms</div>
-          ${_searchTermsList(summary.search_terms, "analyticsSearchExpanded")}
+          <div class="chart-title">💤 Links never opened</div>
+          ${_deadLinksList(summary.zero_click_links, "analyticsZeroLinksExpanded")}
         </div>
         ${buildTopUsersInRangeSection(summary.top_users)}
       </div>
-      <div class="chart-wrap analytics-card analytics-heatmap-card">
-        <div class="chart-title">🗓️ Activity heatmap</div>
-        ${_buildHeatmap(summary.heatmap)}
+      <div class="analytics-two-col">
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">⭐ Most favorited</div>
+          ${_courseDemandList(summary.top_favorites, "No favorites yet.", "stars", "analyticsTopFavoritesExpanded")}
+        </div>
+        <div class="chart-wrap analytics-card">
+          <div class="chart-title">🔎 Search terms</div>
+          ${_searchTermsList(summary.search_terms, "analyticsSearchExpanded")}
+        </div>
+      </div>
+      <div class="analytics-heatmap-stack">
+        <div class="chart-wrap analytics-card analytics-heatmap-card">
+          <div class="chart-title">🗓️ Page visits</div>
+          <p class="analytics-heatmap-desc">When students load pages — by day and hour in the selected range.</p>
+          ${_buildHeatmap(summary.visit_heatmap, "visits")}
+        </div>
+        <div class="chart-wrap analytics-card analytics-heatmap-card">
+          <div class="chart-title">🔗 Link clicks</div>
+          <p class="analytics-heatmap-desc">When students open course links — by day and hour in the selected range.</p>
+          ${_buildHeatmap(summary.click_heatmap, "clicks")}
+        </div>
       </div>
       <p class="analytics-footnote">Unique students where noted — device counts people, not tab loads. Search and browse depth fill in as new traffic arrives after deploy.</p>
       </div>`;
@@ -1171,6 +1199,7 @@ async function setContributionStatus(id, status, toast) {
 const TIMELINE_META = {
   visit: { icon: "👣", label: "Visit" },
   link_click: { icon: "🔗", label: "Link opened" },
+  service_click: { icon: "🤝", label: "Service opened" },
   report: { icon: "🚨", label: "Report" },
   contribution: { icon: "➕", label: "Contribution" },
   feedback: { icon: "⭐", label: "Feedback" },
@@ -1368,6 +1397,304 @@ async function applyAutoApproveContrib(contribId) {
   finally { setBtnLoading(btn, false); }
 }
 
+// ===================== ADMIN SERVICES =====================
+function _serviceStatusBadge(s) {
+  if (s.status === "frozen") return '<span class="status-badge status-rejected">Frozen</span>';
+  if (s.status === "trial") return '<span class="status-badge status-pending">Trial</span>';
+  return '<span class="status-badge status-resolved">Active</span>';
+}
+
+function _serviceExpiresText(s) {
+  const date = s.expires_at ? new Date(s.expires_at).toLocaleDateString() : "—";
+  return s.status === "trial" ? `Trial ends ${date}` : `Renews ${date}`;
+}
+
+function _serviceMobileSubtitle(s) {
+  const desc = (s.description || "").trim();
+  if (desc) return desc.length > 120 ? desc.slice(0, 120) + "…" : desc;
+  const parts = [s.owner_name, s.category].filter(Boolean);
+  return parts.join(" · ") || "Community service";
+}
+
+async function renderAdminServices() {
+  const container = document.getElementById("adminContent");
+  if (!container) return;
+  container.innerHTML = getAdminTableSkeleton();
+  try {
+    const page = AdminPager.services.page;
+    const offset = page * ADMIN_PAGE_SIZE;
+    const servicesPage = _pageSlice(
+      await apiRequest(`/api/admin/services?limit=${ADMIN_PAGE_FETCH}&offset=${offset}`),
+    );
+    const items = servicesPage.items;
+    if (page > 0 && items.length === 0) {
+      _setAdminPage("services", page - 1);
+      renderAdminServices();
+      return;
+    }
+    AdminPager.services.hasNext = servicesPage.hasNext;
+
+    const rows = items.length
+      ? items.map((s) => {
+        const desc = (s.description || "").trim();
+        const shortDesc = desc.length > 90 ? desc.slice(0, 90) + "…" : desc;
+        const actions = `
+            <button class="action-btn" onclick="openEditServiceModal(${s.id})">✏️ Edit</button>
+            ${s.status === "frozen"
+          ? `<button class="action-btn" onclick="unfreezeService(${s.id})">▶️ Unfreeze</button>`
+          : `<button class="action-btn" onclick="freezeService(${s.id})">🛑 Freeze</button>`}
+            <button class="action-btn" onclick="renewService(${s.id})">🔄 Renew</button>
+            <button class="action-btn del" onclick="deleteServiceAdmin(${s.id})">🗑 Delete</button>`;
+        return `
+        <tr class="admin-row">
+          ${adminCell("admin-desktop-only", "Service", `
+            <div class="admin-service-name">${esc(s.emoji || "🤝")} <strong>${esc(s.title)}</strong></div>
+            ${shortDesc ? `<div class="admin-service-desc">${esc(shortDesc)}</div>` : ""}`)}
+          ${adminCell("admin-desktop-only", "Owner", esc(s.owner_name || "—"))}
+          ${adminCell("admin-desktop-only", "Status", _serviceStatusBadge(s))}
+          ${adminCell("admin-desktop-only", "Trial", s.status === "trial" ? "Yes" : "No")}
+          ${adminCell("admin-desktop-only", "Started", s.started_at ? new Date(s.started_at).toLocaleDateString() : "—")}
+          ${adminCell("admin-desktop-only", "Expires", _serviceExpiresText(s))}
+          ${adminCell("admin-desktop-only", "Clicks", String(s.clicks || 0))}
+          ${adminCell("admin-desktop-only admin-actions action-btns", "Actions", actions)}
+          ${adminCell("admin-mobile-only admin-pri", "Service", `${esc(s.emoji || "🤝")} ${esc(s.title)}`)}
+          ${adminCell("admin-mobile-only admin-sec", "Details", esc(_serviceMobileSubtitle(s)))}
+          ${adminCell("admin-mobile-only admin-meta", "Status", _serviceStatusBadge(s))}
+          ${adminCell("admin-mobile-only admin-detail", "Owner", esc(s.owner_name || "—"))}
+          ${adminCell("admin-mobile-only admin-detail", "Category", esc(s.category || "—"))}
+          ${adminCell("admin-mobile-only admin-detail", "Trial", s.status === "trial" ? "Yes" : "No")}
+          ${adminCell("admin-mobile-only admin-detail", "Started", s.started_at ? new Date(s.started_at).toLocaleDateString() : "—")}
+          ${adminCell("admin-mobile-only admin-detail", "Expires", _serviceExpiresText(s))}
+          ${adminCell("admin-mobile-only admin-detail", "Clicks", String(s.clicks || 0))}
+          ${s.phone ? adminCell("admin-mobile-only admin-detail", "Phone", esc(s.phone)) : adminCell("admin-mobile-only admin-detail admin-empty", "Phone", "—")}
+          ${s.url ? adminCell("admin-mobile-only admin-detail", "Website", `<span class="admin-url">${esc(s.url)}</span>`) : adminCell("admin-mobile-only admin-detail admin-empty", "Website", "—")}
+          ${adminCell("admin-mobile-only admin-actions action-btns", "Actions", actions)}
+        </tr>`;
+      }).join("")
+      : '<tr class="admin-table-empty"><td colspan="8" class="empty">No services yet.</td></tr>';
+
+    container.innerHTML = `
+      <div class="admin-toolbar">
+        <button class="btn btn-primary" onclick="openAddServiceModal()">+ Add Service</button>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table admin-services-table">
+          <thead><tr>
+            <th>Service</th><th>Owner</th><th>Status</th><th>Trial</th><th>Started</th><th>Expires</th><th>Clicks</th><th>Actions</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      ${_renderAdminPager("services", "renderAdminServices")}`;
+  } catch (e) {
+    container.innerHTML = `<div class="empty">⚠️ Failed to load services: ${esc(e.message)}</div>`;
+  }
+}
+
+function _serviceLinkRowHtml(link = {}) {
+  return `
+    <div class="svc-link-row">
+      <input type="text" class="svc-link-label" value="${esc(link.label || "")}" placeholder="Title (e.g. Telegram)" />
+      <input type="url" class="svc-link-url" value="${esc(link.url || "")}" placeholder="https://…" />
+      <button type="button" class="action-btn svc-link-remove" onclick="removeServiceLinkRow(this)" title="Remove link" aria-label="Remove link">✕</button>
+    </div>`;
+}
+
+function _serviceLinksFieldsHtml(links) {
+  const rows = (links.length ? links : [{}]).map((l) => _serviceLinkRowHtml(l)).join("");
+  return `
+    <label>Extra links</label>
+    <div id="svcLinksList" class="svc-links-list">${rows}</div>
+    <button type="button" class="btn btn-ghost svc-link-add" onclick="addServiceLinkRow()">+ Add another link</button>`;
+}
+
+function addServiceLinkRow() {
+  const list = document.getElementById("svcLinksList");
+  if (!list) return;
+  list.insertAdjacentHTML("beforeend", _serviceLinkRowHtml());
+  list.lastElementChild?.querySelector(".svc-link-label")?.focus();
+}
+
+function removeServiceLinkRow(btn) {
+  const row = btn.closest(".svc-link-row");
+  const list = document.getElementById("svcLinksList");
+  if (!row || !list) return;
+  if (list.querySelectorAll(".svc-link-row").length <= 1) {
+    row.querySelector(".svc-link-label").value = "";
+    row.querySelector(".svc-link-url").value = "";
+    return;
+  }
+  row.remove();
+}
+
+function _serviceModalForm(s) {
+  const isEdit = !!s;
+  const title = s?.title || "";
+  const owner = s?.owner_name || "";
+  const category = s?.category || "";
+  const emoji = s?.emoji || "🤝";
+  const description = s?.description || "";
+  const phone = s?.phone || "";
+  const url = s?.url || "";
+  const status = s?.status || "trial";
+  const started = s?.started_at ? new Date(s.started_at).toISOString().slice(0, 16) : "";
+  const expires = s?.expires_at ? new Date(s.expires_at).toISOString().slice(0, 16) : "";
+  const links = s?.links || [];
+  const dateFields = isEdit
+    ? `<label>Started at</label><input type="datetime-local" id="svcStarted" value="${esc(started)}" />
+    <label>Expires at</label><input type="datetime-local" id="svcExpires" value="${esc(expires)}" />`
+    : "";
+  return {
+    isEdit,
+    body: `
+    <label>Title</label><input type="text" id="svcTitle" value="${esc(title)}" />
+    <label>Owner name</label><input type="text" id="svcOwner" value="${esc(owner)}" />
+    <label>Category</label><input type="text" id="svcCategory" value="${esc(category)}" placeholder="tutoring, design, food…" />
+    <label>Emoji</label><input type="text" id="svcEmoji" value="${esc(emoji)}" placeholder="Shown on the listing" />
+    <label>Short description</label>
+    <textarea id="svcDescription" rows="3" placeholder="What this service offers…">${esc(description)}</textarea>
+    <label>Phone</label><input type="text" id="svcPhone" value="${esc(phone)}" placeholder="+961 71 123 456" />
+    <label>Website / link</label><input type="url" id="svcUrl" value="${esc(url)}" placeholder="https://t.me/… or https://…" />
+    <label>Status</label>
+    <select id="svcStatus">
+      <option value="trial" ${status === "trial" ? "selected" : ""}>Trial</option>
+      <option value="active" ${status === "active" ? "selected" : ""}>Active</option>
+      <option value="frozen" ${status === "frozen" ? "selected" : ""}>Frozen</option>
+    </select>
+    ${dateFields}
+    ${_serviceLinksFieldsHtml(links)}`,
+  };
+}
+
+function _readServiceLinks() {
+  const rows = document.querySelectorAll("#svcLinksList .svc-link-row");
+  const links = [];
+  rows.forEach((row) => {
+    const label = row.querySelector(".svc-link-label")?.value.trim() || "";
+    const url = row.querySelector(".svc-link-url")?.value.trim() || "";
+    if (!label && !url) return;
+    if (!url) return;
+    links.push({ label: label || "Link", url });
+  });
+  return links;
+}
+
+function _readServiceForm(isEdit = false) {
+  const status = document.getElementById("svcStatus")?.value || "trial";
+  const payload = {
+    title: document.getElementById("svcTitle")?.value.trim(),
+    owner_name: document.getElementById("svcOwner")?.value.trim(),
+    category: document.getElementById("svcCategory")?.value.trim(),
+    emoji: document.getElementById("svcEmoji")?.value.trim(),
+    description: document.getElementById("svcDescription")?.value.trim(),
+    phone: document.getElementById("svcPhone")?.value.trim(),
+    url: document.getElementById("svcUrl")?.value.trim(),
+    status,
+    trial: status === "trial",
+    links: _readServiceLinks(),
+  };
+  if (isEdit) {
+    payload.started_at = document.getElementById("svcStarted")?.value || undefined;
+    payload.expires_at = document.getElementById("svcExpires")?.value || undefined;
+  }
+  return payload;
+}
+
+function openAddServiceModal() {
+  const form = _serviceModalForm(null);
+  window.openModal(`<h2>➕ Add Community Service</h2>
+    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px;">New services start with a 15-day trial by default.</p>
+    ${form.body}
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createService()">Save</button>
+    </div>`);
+}
+
+async function openEditServiceModal(id) {
+  const services = await apiRequest("/api/admin/services");
+  const s = services.find((x) => x.id === id);
+  if (!s) { showToast("Service not found.", true); return; }
+  const form = _serviceModalForm(s);
+  window.openModal(`<h2>✏️ Edit Community Service</h2>
+    ${form.body}
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="updateService(${id})">Save</button>
+    </div>`);
+}
+
+async function createService() {
+  const payload = _readServiceForm(false);
+  if (!payload.title) { showToast("Title is required.", true); return; }
+  const btn = document.querySelector("#modalBox .btn-primary");
+  setBtnLoading(btn, true, "Saving…");
+  try {
+    await apiRequest("/api/admin/services", { method: "POST", body: payload });
+    window.closeModal();
+    _clearCache();
+    loadAll();
+    renderAdminServices();
+    showToast("Service added.");
+  } catch (e) { showToast(e.message, true); } finally { setBtnLoading(btn, false); }
+}
+
+async function updateService(id) {
+  const payload = _readServiceForm(true);
+  if (!payload.title) { showToast("Title is required.", true); return; }
+  const btn = document.querySelector("#modalBox .btn-primary");
+  setBtnLoading(btn, true, "Saving…");
+  try {
+    await apiRequest(`/api/admin/services/${id}`, { method: "PATCH", body: payload });
+    window.closeModal();
+    _clearCache();
+    loadAll();
+    renderAdminServices();
+    showToast("Service updated.");
+  } catch (e) { showToast(e.message, true); } finally { setBtnLoading(btn, false); }
+}
+
+async function renewService(id) {
+  try {
+    await apiRequest(`/api/admin/services/${id}/renew`, { method: "POST", body: {} });
+    _clearCache();
+    loadAll();
+    renderAdminServices();
+    showToast("Service renewed for 1 month.");
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function freezeService(id) {
+  try {
+    await apiRequest(`/api/admin/services/${id}/freeze`, { method: "POST" });
+    _clearCache();
+    loadAll();
+    renderAdminServices();
+    showToast("Service frozen.");
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function unfreezeService(id) {
+  try {
+    await apiRequest(`/api/admin/services/${id}/unfreeze`, { method: "POST" });
+    _clearCache();
+    loadAll();
+    renderAdminServices();
+    showToast("Service unfrozen.");
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteServiceAdmin(id) {
+  if (!confirm("Delete this service? This cannot be undone.")) return;
+  try {
+    await apiRequest(`/api/admin/services/${id}`, { method: "DELETE" });
+    _clearCache();
+    loadAll();
+    renderAdminServices();
+    showToast("Service deleted.");
+  } catch (e) { showToast(e.message, true); }
+}
+
 // ===================== DB MUTATIONS =====================
 async function deleteCourse(id, placementId) {
   try {
@@ -1517,6 +1844,17 @@ Object.assign(window, {
   closeAdminStudent,
   renderAdminStudents,
   renderAdminStudentDetail,
+  renderAdminServices,
+  openAddServiceModal,
+  openEditServiceModal,
+  createService,
+  updateService,
+  renewService,
+  freezeService,
+  unfreezeService,
+  deleteServiceAdmin,
+  addServiceLinkRow,
+  removeServiceLinkRow,
   ADMIN_PAGE_SIZE,
 });
 
@@ -1527,4 +1865,5 @@ export {
   renderAdminExtra,
   renderAdminReports,
   renderAdminContributions,
+  renderAdminServices,
 };

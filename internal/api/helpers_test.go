@@ -39,6 +39,7 @@ type handlerTestDeps struct {
 	contribution *fakeContributionService
 	extraSection *fakeExtraSectionService
 	extraLink    *fakeExtraLinkService
+	service      *fakeServiceService
 }
 
 type testHandlerOption func(*handlerTestDeps)
@@ -88,6 +89,9 @@ func withExtraSection(s *fakeExtraSectionService) testHandlerOption {
 func withExtraLink(s *fakeExtraLinkService) testHandlerOption {
 	return func(d *handlerTestDeps) { d.extraLink = s }
 }
+func withService(s *fakeServiceService) testHandlerOption {
+	return func(d *handlerTestDeps) { d.service = s }
+}
 
 // testHandler builds a Handler for HTTP tests. Pass only the fakes you care about;
 // omitted services get empty defaults that satisfy NewHandler.
@@ -108,6 +112,7 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 		contribution: &fakeContributionService{},
 		extraSection: &fakeExtraSectionService{},
 		extraLink:    &fakeExtraLinkService{},
+		service:      &fakeServiceService{},
 	}
 	for _, opt := range opts {
 		opt(&deps)
@@ -138,6 +143,7 @@ func testHandler(t *testing.T, opts ...testHandlerOption) *Handler {
 		ContributionService: deps.contribution,
 		ExtraSectionService: deps.extraSection,
 		ExtraLinkService:    deps.extraLink,
+		ServiceService:      deps.service,
 	})
 	if err != nil {
 		t.Fatalf("NewHandler: %v", err)
