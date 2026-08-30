@@ -59,7 +59,7 @@ function logApiError(err, context, status) {
 // Endpoints where the server derives the acting student from the token, so the
 // student session token wins over any admin token present in the same browser.
 const STUDENT_AUTH_PATHS =
-  /^\/api\/(page_views|link_clicks|search_events|browse_events|reports|feedback|contributions|users)(\/|$|\?)/;
+  /^\/api\/(page_views|link_clicks|service_clicks|search_events|browse_events|reports|feedback|contributions|users)(\/|$|\?)/;
 
 function _usesStudentToken(url) {
   return STUDENT_AUTH_PATHS.test(String(url).split("?")[0]);
@@ -135,7 +135,7 @@ async function sb(
   method = "GET",
   body = null,
   matchString = null,
-  select = null,
+  _select = null,
 ) {
   let cleanTable = table;
   let id = null;

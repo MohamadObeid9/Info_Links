@@ -47,7 +47,7 @@ Introduce two internal layers:
 
 ## Consequences
 
-- `internal/api` at ~93% and `internal/service` at ~96% test coverage with table-driven tests and mocks
+- `internal/api` at ~79% and `internal/service` at ~73% statement coverage with table-driven tests and mocks (~74% across all packages)
 - Each layer has a single reason to change
 - Interview story: clear request flow from router → handler → service → repo → Postgres
 - Companion worker or CLI can reuse services without duplicating validation

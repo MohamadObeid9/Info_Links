@@ -19,6 +19,7 @@ How to use [infolinks.app](https://infolinks.app/) — for students and admins. 
 2. **Search** (`/` or `Ctrl+K`) or filter by year/semester to find a course.
 3. Expand a course and open a link — badge color is the link type; label text is the content type (see legends below).
 4. **Star** courses you revisit often. Use **Report** or **Contribute** when a link is broken or you have a new resource.
+5. Browse **Community Services** for student tutoring, small businesses, and campus helpers — cards appear in the sidebar, between course lists, and on a dedicated community view.
 
 Install from the browser menu as a **PWA** for a home-screen shortcut (service worker enabled in production builds).
 
@@ -45,7 +46,9 @@ Browsing never does. Search, filter, and look through courses without signing up
 | Action | Account needed |
 |--------|----------------|
 | Browse, search, and filter courses | No |
+| Browse community services | No |
 | Open a course link | Yes |
+| Open a community service link | Yes |
 | Star a course (favorites) | Yes |
 | Report a broken link | Yes |
 | Contribute a new resource | Yes |
@@ -63,6 +66,7 @@ When you try one of these without an account, a short signup form appears and th
 - **Link type badges** — Google Drive, Classroom, Telegram, and more
 - **Light/dark mode** — system detection with persistence
 - **Report & contribute** — submit broken links or new resources
+- **Community services** — discover student businesses and tutoring listed by admins
 - **Feedback** — rate the platform (1–5 stars) by category
 - **PWA** — installable with offline service worker support
 - **SEO pages** — server-rendered course and program pages for search engines
@@ -74,8 +78,9 @@ When you try one of these without an account, a short signup form appears and th
 1. **Admin** → log in with your Supabase credentials (the API issues a JWT for the session).
 2. **Courses** — manage offerings and links. The same course code is one catalog row; adding it to another program shares its links automatically. Deleting a course from one program leaves it in others.
 3. **Contributions**, **Reports**, and **Feedback** — review user submissions. Contributions can be **approved** (adds the link) or **rejected** (kept in the list, not deleted). Each row shows the **sender's handle**.
-4. **Analytics** — unique students per range alongside visit counts and top clicked links; export JSON when needed.
-5. **Students** — browse every registered student, search by name, and open one to see their full history.
+4. **Services** — manage community listings (title, owner, category, links, trial/active/frozen status). Renew, freeze, or unfreeze from the same tab. Expired trials freeze automatically.
+5. **Analytics** — unique students per range alongside visit counts and top clicked links; export JSON when needed. Includes top community services by opens.
+6. **Students** — browse every registered student, search by name, and open one to see their full history.
 
 Admin login is unchanged and stays separate from student accounts: admins sign in with Supabase credentials, students never do.
 
@@ -94,8 +99,8 @@ The Analytics tab counts **people**, not just page loads:
 - **Overview cards** — registered students, active/clicks/device **in the selected 7/30/90 range** (with vs-prior deltas), unique phone/laptop students, returning vs new, signup funnel, browse depth, and open inbox counts
 - **Growth chart** — toggle between unique visitors per day and cumulative registered roster over the selected range
 - **Today's visitors** — paged handle chips (sort by clicks or name)
-- **Demand** — top links, top courses, zero-click courses/links, most-favorited courses, top students
-- **Search terms** and an hour×weekday activity heatmap
+- **Demand** — top links, top courses, zero-click courses/links, most-favorited courses, top students, top community services
+- **Search terms** and separate hour×weekday heatmaps for **page visits** and **link clicks**
 
 New visits store a coarse `device_type` (`phone` or `laptop`) derived from the User-Agent on the server; the client never sends device data. Search and browse-depth events are recorded separately so demand and funnel metrics stay actionable.
 
@@ -111,6 +116,7 @@ Counting is done in the database rather than in the browser, so the dashboard st
 - Students directory with per-student activity timeline
 - Sender handle on contributions, reports, and feedback
 - Contribution, report, and feedback review workflows
+- Community services CRUD with trial/renew/freeze workflows
 - JWT-secured admin panel via the Go API
 - Extra resources sections beyond regular courses
 

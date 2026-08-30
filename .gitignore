@@ -8,15 +8,13 @@ dist/
 
 # Go
 cmd/server/server
+/server
 bin/
 *.exe
 *.test
+coverage.out
 vendor/
 .server
 tmp/
 
 .cursor
-
-# Local content dumps (keep them on disk, do not commit)
-db/test-data.json
-db/infolinks-backup-*.json

@@ -44,11 +44,11 @@ func TestSEORepository_GetCoursePageByCode(t *testing.T) {
 	linkCols := []string{"id", "label", "url", "note", "content_type", "type"}
 
 	tests := []struct {
-		name      string
-		code      string
-		setup     func(mock sqlmock.Sqlmock)
-		want      *CoursePageData
-		err       error
+		name  string
+		code  string
+		setup func(mock sqlmock.Sqlmock)
+		want  *CoursePageData
+		err   error
 	}{
 		{
 			name: "empty code",
@@ -282,11 +282,11 @@ func TestSEORepository_GetProgramBySlug(t *testing.T) {
 	courseCols := []string{"code", "name"}
 
 	tests := []struct {
-		name      string
-		slug      string
-		setup     func(mock sqlmock.Sqlmock)
-		want      *ProgramPageData
-		err       error
+		name  string
+		slug  string
+		setup func(mock sqlmock.Sqlmock)
+		want  *ProgramPageData
+		err   error
 	}{
 		{
 			name: "empty slug",

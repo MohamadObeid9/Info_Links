@@ -159,13 +159,13 @@ func TestExtraSectionRepository_Update(t *testing.T) {
 
 func TestExtraSectionRepository_Delete(t *testing.T) {
 	tests := []struct {
-		name              string
-		id                int
-		linksExecErr      error
-		sectionExecErr    error
-		sectionRows       int64
-		commitErr         error
-		err               error
+		name           string
+		id             int
+		linksExecErr   error
+		sectionExecErr error
+		sectionRows    int64
+		commitErr      error
+		err            error
 	}{
 		{
 			name:        "extra section not found",
@@ -174,10 +174,10 @@ func TestExtraSectionRepository_Delete(t *testing.T) {
 			err:         errs.ErrExtraSectionNotFound,
 		},
 		{
-			name:           "delete links exec error",
-			id:             10,
-			linksExecErr:   errs.ErrDatabaseDown,
-			err:            errs.ErrDatabaseDown,
+			name:         "delete links exec error",
+			id:           10,
+			linksExecErr: errs.ErrDatabaseDown,
+			err:          errs.ErrDatabaseDown,
 		},
 		{
 			name:           "delete section exec error",

@@ -15,8 +15,10 @@ Use **Report** or **Contribute** in the live app at [infolinks.app](https://info
 2. **Set up** locally — see [README — Getting started](README.md#getting-started).
 3. **Make your changes** and run checks:
    ```bash
-   go test -race ./...
-   golangci-lint run ./...   # if installed locally
+   go test -race ./cmd/... ./internal/...
+   golangci-lint run ./cmd/... ./internal/...   # if installed locally
+   INTEGRATION_DATABASE_URL=... go test -tags=integration -race ./internal/integration/...  # needs migrated Postgres
+   cd frontend && npm ci && npm run lint && npm test && npm run build
    ```
 4. **Open a pull request** with:
    - What changed and why

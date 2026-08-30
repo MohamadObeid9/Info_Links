@@ -105,3 +105,16 @@ type FeedbackRepository interface {
 	Create(ctx context.Context, feedback models.Feedback) error
 	List(ctx context.Context, limit int, offset int, q string, status string) ([]models.Feedback, error)
 }
+
+type ServiceRepository interface {
+	List(ctx context.Context, limit int, offset int, q string) ([]models.Service, error)
+	Get(ctx context.Context, id int) (models.Service, error)
+	Create(ctx context.Context, s models.Service) (int, error)
+	Update(ctx context.Context, s models.Service, id int) error
+	Delete(ctx context.Context, id int) error
+	Renew(ctx context.Context, id int) error
+	SetStatus(ctx context.Context, id int, status string) error
+	FreezeExpired(ctx context.Context) error
+	InsertClick(ctx context.Context, click models.ServiceClick) error
+	GetClickCount(ctx context.Context, id int) (int, error)
+}

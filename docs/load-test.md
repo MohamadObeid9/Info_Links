@@ -51,7 +51,7 @@ The latency threshold failure is expected and understood. `/api/content` is a he
 - The frontend caches the content response in `localStorage` for 1 hour. Real users hit `/api/content` once per hour at most, not once per second.
 - At actual traffic levels (300 daily users), true concurrency on this endpoint is near zero.
 
-**Known fix:** add a server-side `Cache-Control: public, max-age=60` header on the `/api/content` response, or an in-memory cache with a 60-second TTL in the content handler. This would cut DB load to near zero under concurrent access and bring p(95) well under 100ms.
+**Fix shipped in production (2026-08-21):** origin sends `Cache-Control: public, max-age=60, stale-while-revalidate=600` on `GET /api/content`. Cloudflare caches that response (and hashed static assets). A cron ping every 10 minutes keeps the edge cache warm so students rarely wait on Postgres. Grafana p95/p99 for `/api/content` dropped from ~2–2.5s spikes to well under 500ms after that date.
 
 ---
 
@@ -92,20 +92,13 @@ The rate limiter works correctly. At 4,427 req/s from a single IP:
 
 ---
 
-## Identified Bottleneck
+## Identified Bottleneck (June 2026 k6 run)
 
-**`GET /api/content` under concurrent load.**
+**`GET /api/content` under concurrent load** when every request hit origin Postgres.
 
-Root cause: single heavy CTE query against a remote Postgres instance (Supabase), ~36 KB response, no server-side cache. Acceptable for current traffic patterns due to frontend caching, but would need addressing before scaling beyond ~100 concurrent active users.
+Root cause: single heavy CTE query against remote Supabase, ~36 KB JSON, no edge cache at the time of the test.
 
-**Proposed fix (not yet implemented):**
-```go
-// In content handler, after building the response:
-w.Header().Set("Cache-Control", "public, max-age=60")
-w.Header().Set("ETag", contentHash) // optional, enables 304 Not Modified
-```
-
-Or an in-memory cache with a `sync.RWMutex`-protected map and a TTL, invalidated on any admin write operation.
+**Production follow-up (August 2026):** Cloudflare in front of Render caches `/api/content` using the origin `Cache-Control` header. A 10-minute cron keeps the object warm. Grafana shows the step-change on 21 Aug: p95/p99 collapsed from multi-second spikes to a stable sub-500ms band. The k6 numbers above remain a valid origin-only baseline (k6 hits the Go process, not the CDN).
 
 ---
 

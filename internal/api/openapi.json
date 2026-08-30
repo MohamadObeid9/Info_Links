@@ -16,6 +16,7 @@
     { "name": "users", "description": "Student guest / register / login" },
     { "name": "analytics", "description": "Page views, clicks, search, browse" },
     { "name": "submissions", "description": "Reports, feedback, contributions" },
+    { "name": "services", "description": "Community service listings and clicks" },
     { "name": "system", "description": "Health and discovery" }
   ],
   "paths": {
@@ -43,7 +44,7 @@
         "operationId": "getContent",
         "responses": {
           "200": {
-            "description": "Programs, years, semesters, courses, and links",
+            "description": "Programs, years, semesters, courses, links, extra sections, and community services",
             "content": {
               "application/json": {
                 "schema": { "type": "object" }
@@ -217,6 +218,54 @@
         }
       }
     },
+    "/api/services": {
+      "get": {
+        "tags": ["services"],
+        "summary": "List active community services",
+        "operationId": "getServices",
+        "responses": {
+          "200": {
+            "description": "Active community services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Service" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/service_clicks": {
+      "post": {
+        "tags": ["services"],
+        "summary": "Record a community service click",
+        "operationId": "postServiceClick",
+        "security": [{ "studentBearer": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["service_id"],
+                "properties": {
+                  "service_id": { "type": "integer" },
+                  "page_context": { "type": "string" },
+                  "link_target": { "type": "string" },
+                  "url": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Recorded" }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": ["system"],
@@ -256,6 +305,37 @@
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "Student session JWT from /api/users/guest, register, or login"
+      }
+    },
+    "schemas": {
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "owner_name": { "type": "string" },
+          "category": { "type": "string" },
+          "emoji": { "type": "string" },
+          "description": { "type": "string" },
+          "logo_url": { "type": "string" },
+          "phone": { "type": "string" },
+          "url": { "type": "string" },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string" },
+                "url": { "type": "string" }
+              }
+            }
+          },
+          "status": { "type": "string", "enum": ["trial", "active", "frozen"] },
+          "trial": { "type": "boolean" },
+          "started_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "display_order": { "type": "integer" }
+        }
       }
     }
   }

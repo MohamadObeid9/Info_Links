@@ -74,7 +74,7 @@ function showSkeleton() {
  * (Currently a no-op because renderCourses/renderProgTabs overwrite
  *  the same containers, but kept here for clarity & future use.)
  */
-function hideSkeleton() {
+function _hideSkeleton() {
   // Real render functions replace innerHTML directly,
   // so skeletons are automatically replaced. Nothing extra needed.
 }

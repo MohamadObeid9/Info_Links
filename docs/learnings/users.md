@@ -184,8 +184,10 @@ The array update is also written to be idempotent — favoriting an already-favo
 | Action | Anonymous | Guest | Registered |
 |---|---|---|---|
 | Browse, search, expand courses | yes | yes | yes |
+| Browse community services | yes | yes | yes |
 | Page view recorded | not attributed | yes | yes |
 | Open an external link | no | no | yes |
+| Open a community service link | no | no | yes |
 | Report / contribute / feedback | no | no | yes |
 | Favorite a course | no | no | yes |
 

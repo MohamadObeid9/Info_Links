@@ -18,9 +18,9 @@ func (h *Handler) handleMCPServerCard(w http.ResponseWriter, r *http.Request) {
 			"description": "CNAM Liban student materials hub — browse courses and shared links via MCP tools backed by the Info Links HTTP API.",
 			"homepage":    base + "/",
 		},
-		"description":       "Discover CNAM course materials, student auth, and analytics endpoints for Info Links.",
-		"documentationUrl":  h.absURL("/api/docs"),
-		"iconUrl":           h.absURL("/assets/android-chrome-192x192.png"),
+		"description":      "Discover CNAM course materials, student auth, and analytics endpoints for Info Links.",
+		"documentationUrl": h.absURL("/api/docs"),
+		"iconUrl":          h.absURL("/assets/android-chrome-192x192.png"),
 		"transport": map[string]any{
 			"type":     "streamable-http",
 			"endpoint": h.absURL("/mcp"),
@@ -31,8 +31,8 @@ func (h *Handler) handleMCPServerCard(w http.ResponseWriter, r *http.Request) {
 			"prompts":   map[string]any{"listChanged": false},
 		},
 		"authentication": map[string]any{
-			"required": false,
-			"schemes":  []string{"bearer"},
+			"required":         false,
+			"schemes":          []string{"bearer"},
 			"documentationUrl": h.absURL("/auth.md"),
 		},
 		"instructions": "Prefer public tools that call GET /api/content. For gated actions, follow /auth.md to obtain a student Bearer JWT and pass it as Authorization on MCP requests.",

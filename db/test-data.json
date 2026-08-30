@@ -1,0 +1,2251 @@
+{
+  "exported_at": "2026-04-18T22:42:11.635Z",
+  "programs": [
+    {
+      "id": 1,
+      "name": "Licence Info",
+      "slug": "licence",
+      "display_order": 1
+    },
+    {
+      "id": 2,
+      "name": "Master AISL",
+      "slug": "aisl",
+      "display_order": 2
+    },
+    {
+      "id": 3,
+      "name": "Master IRSM",
+      "slug": "irsm",
+      "display_order": 3
+    }
+  ],
+  "years": [
+    {
+      "id": 1,
+      "program_id": 1,
+      "name": "1ère Année",
+      "display_order": 1
+    },
+    {
+      "id": 4,
+      "program_id": 2,
+      "name": "3ème Année",
+      "display_order": 1
+    },
+    {
+      "id": 7,
+      "program_id": 3,
+      "name": "3ème Année",
+      "display_order": 1
+    },
+    {
+      "id": 8,
+      "program_id": 3,
+      "name": "4ème Année",
+      "display_order": 2
+    },
+    {
+      "id": 5,
+      "program_id": 2,
+      "name": "4ème Année",
+      "display_order": 2
+    },
+    {
+      "id": 2,
+      "program_id": 1,
+      "name": "2ème Année",
+      "display_order": 2
+    },
+    {
+      "id": 6,
+      "program_id": 2,
+      "name": "5ème Année",
+      "display_order": 3
+    },
+    {
+      "id": 9,
+      "program_id": 3,
+      "name": "5ème Année",
+      "display_order": 3
+    },
+    {
+      "id": 3,
+      "program_id": 1,
+      "name": "3ème Année",
+      "display_order": 3
+    }
+  ],
+  "semesters": [
+    {
+      "id": 14,
+      "year_id": 7,
+      "name": "Semestre 5",
+      "display_order": 1
+    },
+    {
+      "id": 7,
+      "year_id": 4,
+      "name": "Semestre 5",
+      "display_order": 1
+    },
+    {
+      "id": 16,
+      "year_id": 8,
+      "name": "Semestre 7",
+      "display_order": 1
+    },
+    {
+      "id": 11,
+      "year_id": 6,
+      "name": "Semestre 9",
+      "display_order": 1
+    },
+    {
+      "id": 18,
+      "year_id": 9,
+      "name": "Semestre 9",
+      "display_order": 1
+    },
+    {
+      "id": 9,
+      "year_id": 5,
+      "name": "Semestre 7",
+      "display_order": 1
+    },
+    {
+      "id": 5,
+      "year_id": 3,
+      "name": "Semestre 5",
+      "display_order": 1
+    },
+    {
+      "id": 1,
+      "year_id": 1,
+      "name": "Semestre 1",
+      "display_order": 1
+    },
+    {
+      "id": 3,
+      "year_id": 2,
+      "name": "Semestre 3",
+      "display_order": 1
+    },
+    {
+      "id": 6,
+      "year_id": 3,
+      "name": "Semestre 6",
+      "display_order": 2
+    },
+    {
+      "id": 2,
+      "year_id": 1,
+      "name": "Semestre 2",
+      "display_order": 2
+    },
+    {
+      "id": 8,
+      "year_id": 4,
+      "name": "Semestre 6",
+      "display_order": 2
+    },
+    {
+      "id": 10,
+      "year_id": 5,
+      "name": "Semestre 8",
+      "display_order": 2
+    },
+    {
+      "id": 12,
+      "year_id": 6,
+      "name": "Semestre 10",
+      "display_order": 2
+    },
+    {
+      "id": 15,
+      "year_id": 7,
+      "name": "Semestre 6",
+      "display_order": 2
+    },
+    {
+      "id": 17,
+      "year_id": 8,
+      "name": "Semestre 8",
+      "display_order": 2
+    },
+    {
+      "id": 19,
+      "year_id": 9,
+      "name": "Semestre 10",
+      "display_order": 2
+    },
+    {
+      "id": 4,
+      "year_id": 2,
+      "name": "Semestre 4",
+      "display_order": 2
+    },
+    {
+      "id": 20,
+      "year_id": 9,
+      "name": "Semestres 7-9 (Communs)",
+      "display_order": 3
+    },
+    {
+      "id": 13,
+      "year_id": 6,
+      "name": "Semestres 9-10 (Communs)",
+      "display_order": 3
+    }
+  ],
+  "courses": [
+    {
+      "id": 87,
+      "semester_id": 17,
+      "name": "NSY107",
+      "code": "NSY107",
+      "display_order": 0,
+      "is_optional": true
+    },
+    {
+      "id": 85,
+      "semester_id": 6,
+      "name": "Rapport",
+      "code": "LB111",
+      "display_order": 0,
+      "is_optional": false
+    },
+    {
+      "id": 6,
+      "semester_id": 2,
+      "name": "Java 1",
+      "code": "NFA031",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 51,
+      "semester_id": 12,
+      "name": "NSY115",
+      "code": "NSY115",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 79,
+      "semester_id": 20,
+      "name": "DNT104",
+      "code": "DNT104",
+      "display_order": 1,
+      "is_optional": true
+    },
+    {
+      "id": 59,
+      "semester_id": 14,
+      "name": "Anglais",
+      "code": "ANG330",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 53,
+      "semester_id": 13,
+      "name": "DNT104",
+      "code": "DNT104",
+      "display_order": 1,
+      "is_optional": true
+    },
+    {
+      "id": 10,
+      "semester_id": 3,
+      "name": "Réseaux",
+      "code": "NFA009",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 42,
+      "semester_id": 9,
+      "name": "Linux",
+      "code": "NSY103",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 1,
+      "semester_id": 1,
+      "name": "Base de Données BDD",
+      "code": "NFA008",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 64,
+      "semester_id": 15,
+      "name": "Paradigmes",
+      "code": "UTC503",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 14,
+      "semester_id": 4,
+      "name": "Java 3",
+      "code": "NFA035",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 37,
+      "semester_id": 8,
+      "name": "Paradigmes",
+      "code": "UTC503",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 29,
+      "semester_id": 6,
+      "name": "Paradigmes",
+      "code": "UTC503",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 76,
+      "semester_id": 19,
+      "name": "RSX218",
+      "code": "RSX218",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 20,
+      "semester_id": 5,
+      "name": "Anglais",
+      "code": "ANG320",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 32,
+      "semester_id": 7,
+      "name": "Anglais",
+      "code": "ANG330",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 45,
+      "semester_id": 10,
+      "name": "UATN01",
+      "code": "UATN01",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 70,
+      "semester_id": 17,
+      "name": "UATN01",
+      "code": "UATN01",
+      "display_order": 1,
+      "is_optional": true
+    },
+    {
+      "id": 68,
+      "semester_id": 16,
+      "name": "RSX103",
+      "code": "RSX103",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 74,
+      "semester_id": 18,
+      "name": "RSX217",
+      "code": "RSX217",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 49,
+      "semester_id": 11,
+      "name": "NSY205",
+      "code": "NSY205",
+      "display_order": 1,
+      "is_optional": false
+    },
+    {
+      "id": 2,
+      "semester_id": 1,
+      "name": "Archi Machine",
+      "code": "NFA004",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 11,
+      "semester_id": 3,
+      "name": "Java 2",
+      "code": "NFA032",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 15,
+      "semester_id": 4,
+      "name": "Graphes",
+      "code": "NFA010",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 46,
+      "semester_id": 10,
+      "name": "NSY107",
+      "code": "NSY107",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 50,
+      "semester_id": 11,
+      "name": "ENG210",
+      "code": "ENG210",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 52,
+      "semester_id": 12,
+      "name": "NSY206",
+      "code": "NSY206",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 65,
+      "semester_id": 15,
+      "name": "RSX101",
+      "code": "RSX101",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 75,
+      "semester_id": 18,
+      "name": "ENG210",
+      "code": "ENG210",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 77,
+      "semester_id": 19,
+      "name": "RSX116",
+      "code": "RSX116",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 30,
+      "semester_id": 6,
+      "name": "RSX",
+      "code": "RSX101",
+      "display_order": 2,
+      "is_optional": true
+    },
+    {
+      "id": 38,
+      "semester_id": 8,
+      "name": "SGBD",
+      "code": "NFP107",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 54,
+      "semester_id": 13,
+      "name": "CFA109",
+      "code": "CFA109",
+      "display_order": 2,
+      "is_optional": true
+    },
+    {
+      "id": 7,
+      "semester_id": 2,
+      "name": "Outils Seni oula",
+      "code": "MVA003",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 80,
+      "semester_id": 20,
+      "name": "CFA109",
+      "code": "CFA109",
+      "display_order": 2,
+      "is_optional": true
+    },
+    {
+      "id": 71,
+      "semester_id": 17,
+      "name": "RSX102",
+      "code": "RSX102",
+      "display_order": 2,
+      "is_optional": true
+    },
+    {
+      "id": 21,
+      "semester_id": 5,
+      "name": "Cyberstructure",
+      "code": "UTC505",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 60,
+      "semester_id": 14,
+      "name": "Cyberstructure",
+      "code": "UTC505",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 33,
+      "semester_id": 7,
+      "name": "Cyberstructure",
+      "code": "UTC505",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 43,
+      "semester_id": 9,
+      "name": "Java 4",
+      "code": "NFP121",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 69,
+      "semester_id": 16,
+      "name": "Recherche Opérationnelle RO",
+      "code": "RCP101",
+      "display_order": 2,
+      "is_optional": false
+    },
+    {
+      "id": 61,
+      "semester_id": 14,
+      "name": "Outils Mathématiques",
+      "code": "UTC501",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 34,
+      "semester_id": 7,
+      "name": "Outils Mathématiques",
+      "code": "UTC501",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 22,
+      "semester_id": 5,
+      "name": "GDN",
+      "code": "GDN100",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 44,
+      "semester_id": 9,
+      "name": "Recherche Opérationnelle RO",
+      "code": "RCP101",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 72,
+      "semester_id": 17,
+      "name": "ENG251",
+      "code": "ENG251",
+      "display_order": 3,
+      "is_optional": true
+    },
+    {
+      "id": 39,
+      "semester_id": 8,
+      "name": "RSX101",
+      "code": "RSX101",
+      "display_order": 3,
+      "is_optional": true
+    },
+    {
+      "id": 16,
+      "semester_id": 4,
+      "name": "Enjeux",
+      "code": "TED001",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 55,
+      "semester_id": 13,
+      "name": "HSE134",
+      "code": "HSE134",
+      "display_order": 3,
+      "is_optional": true
+    },
+    {
+      "id": 12,
+      "semester_id": 3,
+      "name": "Automates",
+      "code": "MVA004",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 78,
+      "semester_id": 19,
+      "name": "RSX112",
+      "code": "RSX112",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 47,
+      "semester_id": 10,
+      "name": "ENG251",
+      "code": "ENG251",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 31,
+      "semester_id": 6,
+      "name": "SGBD",
+      "code": "NFP107",
+      "display_order": 3,
+      "is_optional": true
+    },
+    {
+      "id": 3,
+      "semester_id": 1,
+      "name": "Web 1",
+      "code": "NFA040",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 8,
+      "semester_id": 2,
+      "name": "Web 2",
+      "code": "NFA042",
+      "display_order": 3,
+      "is_optional": false
+    },
+    {
+      "id": 66,
+      "semester_id": 14,
+      "name": "Linux",
+      "code": "NSY103",
+      "display_order": 3,
+      "is_optional": true
+    },
+    {
+      "id": 81,
+      "semester_id": 20,
+      "name": "HSE134",
+      "code": "HSE134",
+      "display_order": 3,
+      "is_optional": true
+    },
+    {
+      "id": 82,
+      "semester_id": 20,
+      "name": "GDN",
+      "code": "GDN100",
+      "display_order": 4,
+      "is_optional": true
+    },
+    {
+      "id": 40,
+      "semester_id": 8,
+      "name": "RSX102",
+      "code": "RSX102",
+      "display_order": 4,
+      "is_optional": true
+    },
+    {
+      "id": 9,
+      "semester_id": 2,
+      "name": "Web 3",
+      "code": "NFA021",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 73,
+      "semester_id": 17,
+      "name": "SGBD",
+      "code": "NFP107",
+      "display_order": 4,
+      "is_optional": true
+    },
+    {
+      "id": 56,
+      "semester_id": 13,
+      "name": "GDN",
+      "code": "GDN100",
+      "display_order": 4,
+      "is_optional": true
+    },
+    {
+      "id": 4,
+      "semester_id": 1,
+      "name": "JavaScript",
+      "code": "NFA041",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 67,
+      "semester_id": 14,
+      "name": "Java 4",
+      "code": "NFP121",
+      "display_order": 4,
+      "is_optional": true
+    },
+    {
+      "id": 23,
+      "semester_id": 5,
+      "name": "Outils Mathématiques",
+      "code": "UTC501",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 62,
+      "semester_id": 14,
+      "name": "Systèmes d'exploitation SE",
+      "code": "UTC502",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 48,
+      "semester_id": 10,
+      "name": "NFP103",
+      "code": "NFP103",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 35,
+      "semester_id": 7,
+      "name": "Systèmes d'exploitation SE",
+      "code": "UTC502",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 17,
+      "semester_id": 4,
+      "name": "PLSQL",
+      "code": "NFA011",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 13,
+      "semester_id": 3,
+      "name": "Systèmes d'exploitation SE",
+      "code": "NFA003",
+      "display_order": 4,
+      "is_optional": false
+    },
+    {
+      "id": 24,
+      "semester_id": 5,
+      "name": "Systèmes d'exploitation SE",
+      "code": "UTC502",
+      "display_order": 5,
+      "is_optional": false
+    },
+    {
+      "id": 41,
+      "semester_id": 8,
+      "name": "RSX103",
+      "code": "RSX103",
+      "display_order": 5,
+      "is_optional": true
+    },
+    {
+      "id": 36,
+      "semester_id": 7,
+      "name": "SIBD",
+      "code": "UTC504",
+      "display_order": 5,
+      "is_optional": false
+    },
+    {
+      "id": 57,
+      "semester_id": 13,
+      "name": "FAB121",
+      "code": "FAB121",
+      "display_order": 5,
+      "is_optional": true
+    },
+    {
+      "id": 5,
+      "semester_id": 1,
+      "name": "Base d'Analyse",
+      "code": "MVA010",
+      "display_order": 5,
+      "is_optional": false
+    },
+    {
+      "id": 18,
+      "semester_id": 4,
+      "name": "Méthodes",
+      "code": "NFA007",
+      "display_order": 5,
+      "is_optional": false
+    },
+    {
+      "id": 63,
+      "semester_id": 14,
+      "name": "SIBD",
+      "code": "UTC504",
+      "display_order": 5,
+      "is_optional": false
+    },
+    {
+      "id": 83,
+      "semester_id": 20,
+      "name": "FAB121",
+      "code": "FAB121",
+      "display_order": 5,
+      "is_optional": true
+    },
+    {
+      "id": 58,
+      "semester_id": 13,
+      "name": "GFN106",
+      "code": "GFN106",
+      "display_order": 6,
+      "is_optional": true
+    },
+    {
+      "id": 84,
+      "semester_id": 20,
+      "name": "GFN106",
+      "code": "GFN106",
+      "display_order": 6,
+      "is_optional": true
+    },
+    {
+      "id": 19,
+      "semester_id": 4,
+      "name": "Structures de Données",
+      "code": "NFA006",
+      "display_order": 6,
+      "is_optional": false
+    },
+    {
+      "id": 25,
+      "semester_id": 5,
+      "name": "SIBD",
+      "code": "UTC504",
+      "display_order": 6,
+      "is_optional": false
+    },
+    {
+      "id": 26,
+      "semester_id": 5,
+      "name": "Linux",
+      "code": "NSY103",
+      "display_order": 7,
+      "is_optional": true
+    },
+    {
+      "id": 27,
+      "semester_id": 5,
+      "name": "Java 4",
+      "code": "NFP121",
+      "display_order": 8,
+      "is_optional": true
+    },
+    {
+      "id": 28,
+      "semester_id": 5,
+      "name": "Recherche Opérationnelle RO",
+      "code": "RCP101",
+      "display_order": 9,
+      "is_optional": true
+    }
+  ],
+  "links": [
+    {
+      "id": 132,
+      "course_id": 87,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1cw9sFbwpcvis9ZwiyoIpML11AlUrt-Pt?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 0,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 96,
+      "course_id": 44,
+      "type": "telegram",
+      "url": "https://t.me/+d_aXlXXXdeE2NGY0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 60,
+      "course_id": 27,
+      "type": "telegram",
+      "url": "https://t.me/+2qTDnDXIVFw4YTE8",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "exams"
+    },
+    {
+      "id": 62,
+      "course_id": 28,
+      "type": "telegram",
+      "url": "https://t.me/+d_aXlXXXdeE2NGY0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 127,
+      "course_id": 74,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1m3T59XS1djeHPxaLnzbAijljD6pRcW76?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 64,
+      "course_id": 29,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/116ELsBUpQPdYA-IV32AsCAH9UKkbP_3_",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 66,
+      "course_id": 30,
+      "type": "telegram",
+      "url": "https://t.me/+vMVCtaPLqvY2MzVk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 33,
+      "course_id": 15,
+      "type": "telegram",
+      "url": "https://t.me/+KqulXozZNLQ3YmZk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 3,
+      "course_id": 2,
+      "type": "telegram",
+      "url": "https://t.me/NFA004",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 122,
+      "course_id": 69,
+      "type": "telegram",
+      "url": "https://t.me/+d_aXlXXXdeE2NGY0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 120,
+      "course_id": 67,
+      "type": "telegram",
+      "url": "https://t.me/+2qTDnDXIVFw4YTE8",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "exams"
+    },
+    {
+      "id": 70,
+      "course_id": 31,
+      "type": "telegram",
+      "url": "https://t.me/+pijj3RPQ7fowODRk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 94,
+      "course_id": 43,
+      "type": "telegram",
+      "url": "https://t.me/+2qTDnDXIVFw4YTE8",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "exams"
+    },
+    {
+      "id": 80,
+      "course_id": 36,
+      "type": "telegram",
+      "url": "https://t.me/+8Bvi3lCCI980Yjdk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 48,
+      "course_id": 22,
+      "type": "telegram",
+      "url": "https://t.me/+hXZTPglNE2IwMjRk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams,other"
+    },
+    {
+      "id": 129,
+      "course_id": 82,
+      "type": "telegram",
+      "url": "https://t.me/+hXZTPglNE2IwMjRk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams,other"
+    },
+    {
+      "id": 100,
+      "course_id": 56,
+      "type": "telegram",
+      "url": "https://t.me/+hXZTPglNE2IwMjRk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams,other"
+    },
+    {
+      "id": 104,
+      "course_id": 61,
+      "type": "telegram",
+      "url": "https://t.me/Outilemathematique",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 35,
+      "course_id": 16,
+      "type": "telegram",
+      "url": "https://t.me/+XGWZeSjvYjRkZjE0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 109,
+      "course_id": 63,
+      "type": "telegram",
+      "url": "https://t.me/+8Bvi3lCCI980Yjdk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 14,
+      "course_id": 8,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/11cVSs-WDe5owq4gg9pOlp1o3_zrW--7O?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 9,
+      "course_id": 5,
+      "type": "telegram",
+      "url": "https://t.me/+rNoctdF1JYBkMGVk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "exams"
+    },
+    {
+      "id": 10,
+      "course_id": 6,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1cVm1QPQQDR6WqOvEj8zn2Bc-jEfDeePC",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours"
+    },
+    {
+      "id": 91,
+      "course_id": 42,
+      "type": "telegram",
+      "url": "https://t.me/LinuxOnlin",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 18,
+      "course_id": 10,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/13_WKw2TB5QLrCDfu4yEEM1MceDziSSNd?usp=drive_link",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 37,
+      "course_id": 17,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1u5e4vNbQ8cvwY3-rgO6LsezAWFZCXw2S?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 102,
+      "course_id": 60,
+      "type": "telegram",
+      "url": "https://t.me/UTC505Abbas",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 24,
+      "course_id": 12,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1Z_kLjejDMStUIzqW9W747I-uGhZJEvCv?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 27,
+      "course_id": 13,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1E_XjuTSd727TOI8QvgmyEJ37nPW5txk_?usp=drive_link",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 99,
+      "course_id": 49,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1EQ2IPv3aLJe0yIgRRkOUxMywqGS60g1H?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 124,
+      "course_id": 73,
+      "type": "telegram",
+      "url": "https://t.me/+pijj3RPQ7fowODRk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 39,
+      "course_id": 18,
+      "type": "telegram",
+      "url": "https://t.me/+TtFT9TPNk3c1Nzg0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 106,
+      "course_id": 62,
+      "type": "telegram",
+      "url": "https://t.me/+Gz2MLnT80cdhMmY0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 17,
+      "course_id": 9,
+      "type": "telegram",
+      "url": "https://t.me/+TDHWqaA_qNI4YmNk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 117,
+      "course_id": 66,
+      "type": "telegram",
+      "url": "https://t.me/LinuxOnlin",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 41,
+      "course_id": 19,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1tySxrG2f7-hDz2QibLkOEpbeiR_7RIdw?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 21,
+      "course_id": 11,
+      "type": "telegram",
+      "url": "https://t.me/java2DrKamal",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,exams"
+    },
+    {
+      "id": 98,
+      "course_id": 46,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1cw9sFbwpcvis9ZwiyoIpML11AlUrt-Pt?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 87,
+      "course_id": 39,
+      "type": "telegram",
+      "url": "https://t.me/+vMVCtaPLqvY2MzVk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 113,
+      "course_id": 65,
+      "type": "telegram",
+      "url": "https://t.me/+vMVCtaPLqvY2MzVk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 46,
+      "course_id": 21,
+      "type": "telegram",
+      "url": "https://t.me/UTC505Abbas",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 73,
+      "course_id": 33,
+      "type": "telegram",
+      "url": "https://t.me/UTC505Abbas",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 84,
+      "course_id": 38,
+      "type": "telegram",
+      "url": "https://t.me/+pijj3RPQ7fowODRk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 50,
+      "course_id": 23,
+      "type": "telegram",
+      "url": "https://t.me/Outilemathematique",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 75,
+      "course_id": 34,
+      "type": "telegram",
+      "url": "https://t.me/Outilemathematique",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 52,
+      "course_id": 24,
+      "type": "telegram",
+      "url": "https://t.me/+Gz2MLnT80cdhMmY0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 7,
+      "course_id": 4,
+      "type": "telegram",
+      "url": "https://t.me/+rj8HxGe_JwQ0OTE0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 77,
+      "course_id": 35,
+      "type": "telegram",
+      "url": "https://t.me/+Gz2MLnT80cdhMmY0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 5,
+      "course_id": 3,
+      "type": "telegram",
+      "url": "https://t.me/WEB1NFA040",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,videos,exams"
+    },
+    {
+      "id": 128,
+      "course_id": 77,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1KJlYV6aLqo0gOyYu1KiDj2T_BObpuAG1?usp=sharing",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 82,
+      "course_id": 37,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/116ELsBUpQPdYA-IV32AsCAH9UKkbP_3_",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 111,
+      "course_id": 64,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/116ELsBUpQPdYA-IV32AsCAH9UKkbP_3_",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos"
+    },
+    {
+      "id": 55,
+      "course_id": 25,
+      "type": "telegram",
+      "url": "https://t.me/+8Bvi3lCCI980Yjdk",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 1,
+      "course_id": 1,
+      "type": "telegram",
+      "url": "https://t.me/nfa008",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "cours,videos,exams"
+    },
+    {
+      "id": 29,
+      "course_id": 14,
+      "type": "telegram",
+      "url": "https://t.me/+xm1e5uD2tNVmMzQ0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 12,
+      "course_id": 7,
+      "type": "telegram",
+      "url": "https://t.me/+xIEG0FsA6NNiZGI0",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "exams"
+    },
+    {
+      "id": 57,
+      "course_id": 26,
+      "type": "telegram",
+      "url": "https://t.me/LinuxOnlin",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 83,
+      "course_id": 37,
+      "type": "telegram",
+      "url": "https://t.me/+0l3tWDmXw5RmODM0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 2,
+      "course_id": 1,
+      "type": "telegram",
+      "url": "https://t.me/+qqwyy9OguhI5OGE8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 8,
+      "course_id": 4,
+      "type": "telegram",
+      "url": "https://t.me/+tbZkYMWIUT0wOWE0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 6,
+      "course_id": 3,
+      "type": "telegram",
+      "url": "https://t.me/+CRqMn22WjqQyYjA0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 11,
+      "course_id": 6,
+      "type": "telegram",
+      "url": "https://t.me/+l34v2-SO_Cc4MGY0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 13,
+      "course_id": 7,
+      "type": "telegram",
+      "url": "https://t.me/+SVAptbbafQViYzk0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos"
+    },
+    {
+      "id": 15,
+      "course_id": 8,
+      "type": "telegram",
+      "url": "https://t.me/+3nEX9ImGQQM1YmY0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,exams"
+    },
+    {
+      "id": 22,
+      "course_id": 11,
+      "type": "telegram",
+      "url": "https://t.me/+QMztlyJgelQ4Yjc0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 25,
+      "course_id": 12,
+      "type": "telegram",
+      "url": "https://t.me/+UmGCoLMdUDNhMGY0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 28,
+      "course_id": 13,
+      "type": "telegram",
+      "url": "https://t.me/+ybBgVgn_YoYxMmJk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 30,
+      "course_id": 14,
+      "type": "telegram",
+      "url": "https://t.me/+Dg9WcEduqF82ZTE0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,videos"
+    },
+    {
+      "id": 34,
+      "course_id": 15,
+      "type": "telegram",
+      "url": "https://t.me/+wqUaKqV21DFjZjVk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,exams"
+    },
+    {
+      "id": 36,
+      "course_id": 16,
+      "type": "telegram",
+      "url": "https://t.me/+b-6MFFKOYURiMmNk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "cours,exams"
+    },
+    {
+      "id": 19,
+      "course_id": 10,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/14IkvbjDC9JuCS-PDp85cxkB6amSsplmr?usp=sharing",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,videos,exams"
+    },
+    {
+      "id": 38,
+      "course_id": 17,
+      "type": "telegram",
+      "url": "https://t.me/+rnFiRdxNSF03OWU0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 40,
+      "course_id": 18,
+      "type": "telegram",
+      "url": "https://t.me/+37Q8dQTz2d02ZmI0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 42,
+      "course_id": 19,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1Cd9kA0hDzA80AKrWpQti1lF9fBD0g05z",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos"
+    },
+    {
+      "id": 74,
+      "course_id": 33,
+      "type": "telegram",
+      "url": "https://t.me/+si1FEJ0P6JlhZjQ0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 76,
+      "course_id": 34,
+      "type": "telegram",
+      "url": "https://t.me/+pdG05nNF2phlNTE8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 53,
+      "course_id": 24,
+      "type": "telegram",
+      "url": "https://t.me/+nLCISc3u_J8xMzE0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,exams"
+    },
+    {
+      "id": 78,
+      "course_id": 35,
+      "type": "telegram",
+      "url": "https://t.me/+nLCISc3u_J8xMzE0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,exams"
+    },
+    {
+      "id": 56,
+      "course_id": 25,
+      "type": "telegram",
+      "url": "https://t.me/+Z50vDndRPzc5MTc0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "other"
+    },
+    {
+      "id": 81,
+      "course_id": 36,
+      "type": "telegram",
+      "url": "https://t.me/+Z50vDndRPzc5MTc0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "other"
+    },
+    {
+      "id": 58,
+      "course_id": 26,
+      "type": "telegram",
+      "url": "https://t.me/+eync0dgMHlQ5YmVk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 63,
+      "course_id": 28,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1ySeTgHo1lutNBNrS5QSUgWdo6ZzmO-2Z",
+      "label": "Link 2",
+      "note": "mail l jem3a",
+      "display_order": 2,
+      "content_type": "td,cours,videos,other"
+    },
+    {
+      "id": 65,
+      "course_id": 29,
+      "type": "telegram",
+      "url": "https://t.me/+0l3tWDmXw5RmODM0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 71,
+      "course_id": 31,
+      "type": "telegram",
+      "url": "https://t.me/+wfsaJbxw-8RjODZk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 49,
+      "course_id": 22,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1dpK968WeGJHCQOY32WOiNDQwjlxKrnW9?usp=classroom_web&authuser=0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos"
+    },
+    {
+      "id": 130,
+      "course_id": 82,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1dpK968WeGJHCQOY32WOiNDQwjlxKrnW9?usp=classroom_web&authuser=0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos"
+    },
+    {
+      "id": 101,
+      "course_id": 56,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1dpK968WeGJHCQOY32WOiNDQwjlxKrnW9?usp=classroom_web&authuser=0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos"
+    },
+    {
+      "id": 47,
+      "course_id": 21,
+      "type": "telegram",
+      "url": "https://t.me/+si1FEJ0P6JlhZjQ0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 103,
+      "course_id": 60,
+      "type": "telegram",
+      "url": "https://t.me/+si1FEJ0P6JlhZjQ0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 51,
+      "course_id": 23,
+      "type": "telegram",
+      "url": "https://t.me/+pdG05nNF2phlNTE8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 110,
+      "course_id": 63,
+      "type": "telegram",
+      "url": "https://t.me/+Z50vDndRPzc5MTc0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "other"
+    },
+    {
+      "id": 105,
+      "course_id": 61,
+      "type": "telegram",
+      "url": "https://t.me/+pdG05nNF2phlNTE8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 107,
+      "course_id": 62,
+      "type": "telegram",
+      "url": "https://t.me/+nLCISc3u_J8xMzE0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,exams"
+    },
+    {
+      "id": 92,
+      "course_id": 42,
+      "type": "telegram",
+      "url": "https://t.me/+eync0dgMHlQ5YmVk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 118,
+      "course_id": 66,
+      "type": "telegram",
+      "url": "https://t.me/+eync0dgMHlQ5YmVk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 61,
+      "course_id": 27,
+      "type": "telegram",
+      "url": "https://t.me/+CLBD6V1xyAxkY2E8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos,exams,other"
+    },
+    {
+      "id": 95,
+      "course_id": 43,
+      "type": "telegram",
+      "url": "https://t.me/+CLBD6V1xyAxkY2E8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos,exams,other"
+    },
+    {
+      "id": 121,
+      "course_id": 67,
+      "type": "telegram",
+      "url": "https://t.me/+CLBD6V1xyAxkY2E8",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "videos,exams,other"
+    },
+    {
+      "id": 97,
+      "course_id": 44,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1ySeTgHo1lutNBNrS5QSUgWdo6ZzmO-2Z",
+      "label": "Link 2",
+      "note": "mail l jem3a",
+      "display_order": 2,
+      "content_type": "td,cours,videos,other"
+    },
+    {
+      "id": 123,
+      "course_id": 69,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1ySeTgHo1lutNBNrS5QSUgWdo6ZzmO-2Z",
+      "label": "Link 2",
+      "note": "mail l jem3a",
+      "display_order": 2,
+      "content_type": "td,cours,videos,other"
+    },
+    {
+      "id": 4,
+      "course_id": 2,
+      "type": "telegram",
+      "url": "https://t.me/+szBY688YDM0yN2U0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 112,
+      "course_id": 64,
+      "type": "telegram",
+      "url": "https://t.me/+0l3tWDmXw5RmODM0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 67,
+      "course_id": 30,
+      "type": "telegram",
+      "url": "https://t.me/+ma1UGCbhHR1kYjU0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 88,
+      "course_id": 39,
+      "type": "telegram",
+      "url": "https://t.me/+ma1UGCbhHR1kYjU0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 114,
+      "course_id": 65,
+      "type": "telegram",
+      "url": "https://t.me/+ma1UGCbhHR1kYjU0",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 85,
+      "course_id": 38,
+      "type": "telegram",
+      "url": "https://t.me/+wfsaJbxw-8RjODZk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 125,
+      "course_id": 73,
+      "type": "telegram",
+      "url": "https://t.me/+wfsaJbxw-8RjODZk",
+      "label": "Link 2",
+      "note": "",
+      "display_order": 2,
+      "content_type": "exams"
+    },
+    {
+      "id": 79,
+      "course_id": 35,
+      "type": "telegram",
+      "url": "https://t.me/+Rl9pqfXutr81NDFk",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 54,
+      "course_id": 24,
+      "type": "telegram",
+      "url": "https://t.me/+Rl9pqfXutr81NDFk",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 20,
+      "course_id": 10,
+      "type": "telegram",
+      "url": "https://t.me/+0vhtg5ztavkxMjJk",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "exams"
+    },
+    {
+      "id": 16,
+      "course_id": 8,
+      "type": "classroom",
+      "url": "https://classroom.google.com/c/Nzg1NDA0MjkxODM4?cjc=7yah7noc",
+      "label": "Link 3",
+      "note": "mail 3adi",
+      "display_order": 3,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 43,
+      "course_id": 19,
+      "type": "telegram",
+      "url": "https://t.me/+tqOKmYMQMsg0MThk",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos,exams"
+    },
+    {
+      "id": 68,
+      "course_id": 30,
+      "type": "telegram",
+      "url": "https://t.me/+jv9KDX_ae7FmMTE0",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 59,
+      "course_id": 26,
+      "type": "telegram",
+      "url": "https://t.me/+svNJ1MvGzQZjODI0",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "td,videos"
+    },
+    {
+      "id": 31,
+      "course_id": 14,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1f5_FA66OcQEvlh_4nmhtwqQhbDzNMepC",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "other"
+    },
+    {
+      "id": 26,
+      "course_id": 12,
+      "type": "telegram",
+      "url": "https://t.me/+BiKWyBi_VPA5NjI8",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 115,
+      "course_id": 65,
+      "type": "telegram",
+      "url": "https://t.me/+jv9KDX_ae7FmMTE0",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 89,
+      "course_id": 39,
+      "type": "telegram",
+      "url": "https://t.me/+jv9KDX_ae7FmMTE0",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 23,
+      "course_id": 11,
+      "type": "classroom",
+      "url": "https://classroom.google.com/c/ODEzMjgwMDQ3MzE0?cjc=b6sfiwzh",
+      "label": "Link 3",
+      "note": "mail 3adi",
+      "display_order": 3,
+      "content_type": "td,cours,exams"
+    },
+    {
+      "id": 119,
+      "course_id": 66,
+      "type": "telegram",
+      "url": "https://t.me/+svNJ1MvGzQZjODI0",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "td,videos"
+    },
+    {
+      "id": 93,
+      "course_id": 42,
+      "type": "telegram",
+      "url": "https://t.me/+svNJ1MvGzQZjODI0",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "td,videos"
+    },
+    {
+      "id": 108,
+      "course_id": 62,
+      "type": "telegram",
+      "url": "https://t.me/+Rl9pqfXutr81NDFk",
+      "label": "Link 3",
+      "note": "",
+      "display_order": 3,
+      "content_type": "videos"
+    },
+    {
+      "id": 44,
+      "course_id": 19,
+      "type": "telegram",
+      "url": "https://t.me/+SAnQt0BKu5FjMjc0",
+      "label": "Link 4",
+      "note": "",
+      "display_order": 4,
+      "content_type": "videos"
+    },
+    {
+      "id": 116,
+      "course_id": 65,
+      "type": "telegram",
+      "url": "https://t.me/+eKhO1GpX-5kxYTY8",
+      "label": "Link 4",
+      "note": "",
+      "display_order": 4,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 90,
+      "course_id": 39,
+      "type": "telegram",
+      "url": "https://t.me/+eKhO1GpX-5kxYTY8",
+      "label": "Link 4",
+      "note": "",
+      "display_order": 4,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 32,
+      "course_id": 14,
+      "type": "telegram",
+      "url": "https://t.me/+MvXj0fP6FmI5Nzc0",
+      "label": "Link 4",
+      "note": "",
+      "display_order": 4,
+      "content_type": "exams"
+    },
+    {
+      "id": 69,
+      "course_id": 30,
+      "type": "telegram",
+      "url": "https://t.me/+eKhO1GpX-5kxYTY8",
+      "label": "Link 4",
+      "note": "",
+      "display_order": 4,
+      "content_type": "videos,other"
+    },
+    {
+      "id": 45,
+      "course_id": 19,
+      "type": "telegram",
+      "url": "https://t.me/+8pY8n21X7eQyZGU8",
+      "label": "Link 5",
+      "note": "",
+      "display_order": 5,
+      "content_type": "td,cours,exams"
+    }
+  ],
+  "extra_sections": [
+    {
+      "id": 1,
+      "title": "Sessions (Tous modules)",
+      "icon": "📼",
+      "display_order": 1
+    },
+    {
+      "id": 2,
+      "title": "Préparation DELF B2",
+      "icon": "🇫🇷",
+      "display_order": 2
+    },
+    {
+      "id": 4,
+      "title": "CISCO 1 (Basic)",
+      "icon": "🌐",
+      "display_order": 4
+    },
+    {
+      "id": 5,
+      "title": "CISCO 2 & CISCO 3",
+      "icon": "🌐",
+      "display_order": 5
+    }
+  ],
+  "extra_links": [
+    {
+      "id": 6,
+      "section_id": 5,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1maAs8JQsFF1FWuFExTSIhFKMYFBHiM65?usp=drive_link",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "cours,videos"
+    },
+    {
+      "id": 5,
+      "section_id": 4,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/13wW1e2CocTe816KRFV9yh10abqc7OIpA?usp=drive_link",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos"
+    },
+    {
+      "id": 3,
+      "section_id": 2,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1Y3P0NHbUs4K2ygmFC6FNwb6ez_-OF-4X",
+      "label": "Link 1",
+      "note": "",
+      "display_order": 1,
+      "content_type": "td,cours,videos,exams,other"
+    },
+    {
+      "id": 1,
+      "section_id": 1,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/1PcrWZVI2I4YiopCavvyuF60QVeK3UdH3",
+      "label": "Nouveau",
+      "note": "jdid",
+      "display_order": 1,
+      "content_type": "exams"
+    },
+    {
+      "id": 2,
+      "section_id": 1,
+      "type": "drive",
+      "url": "https://drive.google.com/drive/folders/0BwQCaKYdf8RCMTNqX0luN1NrU2c?resourcekey=0-Yv8MsFd5KZixReuk9Y2BYA",
+      "label": "Ancien",
+      "note": "2adim",
+      "display_order": 2,
+      "content_type": "exams"
+    }
+  ]
+}

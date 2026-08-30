@@ -101,11 +101,23 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	}
 	summary.TopCourses = topCourses
 
+	topServices, err := r.serviceDemand(ctx, analyticsTopServicesQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics top services: %w", err)
+	}
+	summary.TopServices = topServices
+
 	zeroCourses, err := r.courseDemand(ctx, analyticsZeroClickCoursesQuery, params.Days)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics zero-click courses: %w", err)
 	}
 	summary.ZeroClickCourses = zeroCourses
+
+	zeroServices, err := r.serviceDemand(ctx, analyticsZeroClickServicesQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics zero-click services: %w", err)
+	}
+	summary.ZeroClickServices = zeroServices
 
 	zeroLinks, err := r.deadLinks(ctx, params.Days)
 	if err != nil {
@@ -119,11 +131,17 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	}
 	summary.TopFavorites = topFavorites
 
-	heatmap, err := r.heatmap(ctx, params.Days)
+	visitHeatmap, err := r.heatmap(ctx, analyticsVisitHeatmapQuery, params.Days)
 	if err != nil {
-		return models.AnalyticsSummary{}, fmt.Errorf("analytics heatmap: %w", err)
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics visit heatmap: %w", err)
 	}
-	summary.Heatmap = heatmap
+	summary.VisitHeatmap = visitHeatmap
+
+	clickHeatmap, err := r.heatmap(ctx, analyticsClickHeatmapQuery, params.Days)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics click heatmap: %w", err)
+	}
+	summary.ClickHeatmap = clickHeatmap
 
 	searchTerms, err := r.searchTerms(ctx, params.Days)
 	if err != nil {
@@ -319,6 +337,27 @@ func (r *postgresAnalyticsRepository) courseDemand(ctx context.Context, query st
 	return out, nil
 }
 
+func (r *postgresAnalyticsRepository) serviceDemand(ctx context.Context, query string, args ...any) ([]models.ServiceDemand, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := []models.ServiceDemand{}
+	for rows.Next() {
+		var s models.ServiceDemand
+		if err := rows.Scan(&s.ServiceID, &s.Title, &s.Category, &s.Count); err != nil {
+			return nil, fmt.Errorf("rows scan: %w", err)
+		}
+		out = append(out, s)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows err: %w", err)
+	}
+	return out, nil
+}
+
 func (r *postgresAnalyticsRepository) deadLinks(ctx context.Context, days int) ([]models.DeadLink, error) {
 	rows, err := r.db.QueryContext(ctx, analyticsZeroClickLinksQuery, days)
 	if err != nil {
@@ -340,8 +379,8 @@ func (r *postgresAnalyticsRepository) deadLinks(ctx context.Context, days int) (
 	return out, nil
 }
 
-func (r *postgresAnalyticsRepository) heatmap(ctx context.Context, days int) ([]models.HeatmapCell, error) {
-	rows, err := r.db.QueryContext(ctx, analyticsHeatmapQuery, days)
+func (r *postgresAnalyticsRepository) heatmap(ctx context.Context, query string, days int) ([]models.HeatmapCell, error) {
+	rows, err := r.db.QueryContext(ctx, query, days)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}

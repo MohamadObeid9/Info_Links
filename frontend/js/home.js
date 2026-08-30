@@ -14,6 +14,7 @@ function renderProgTabs() {
       )
       .join("") +
     `<button class="prog-tab ${AppState.currentProg === "extra" ? "active" : ""}" onclick="selectProg('extra')">📦 Extra</button>` +
+    `<button class="prog-tab ${AppState.currentProg === "community" ? "active" : ""}" onclick="selectCommunity()">🤝 Community</button>` +
     `<button class="prog-tab fav-tab ${AppState.currentProg === "favorites" ? "active" : ""}" onclick="selectProg('favorites')">⭐ My Courses</button>`;
 }
 
@@ -132,12 +133,12 @@ function renderCourses() {
       );
       if (!filtered.length) return;
 
-      const cardsHtml = filtered.map(_buildCourseCard).join("");
+      const courseCards = filtered.map(_buildCourseCard);
 
       yearHtml += `
         <div class="sem-block">
           <div class="sem-title">${esc(sem.name)}</div>
-          <div class="courses-grid">${cardsHtml}</div>
+          <div class="courses-grid">${courseCards.join("")}</div>
         </div>`;
     });
 
@@ -172,11 +173,11 @@ function renderAllCourses() {
         );
         if (!filtered.length) return;
 
-        const cardsHtml = filtered.map(_buildCourseCard).join("");
+        const courseCards = filtered.map(_buildCourseCard);
         yearHtml += `
           <div class="sem-block">
             <div class="sem-title">${esc(sem.name)}</div>
-            <div class="courses-grid">${cardsHtml}</div>
+            <div class="courses-grid">${courseCards.join("")}</div>
           </div>`;
       });
 
@@ -261,6 +262,10 @@ function selectProg(id) {
     selectMobileProg(id);
     return;
   }
+  if (id === "community") {
+    window.selectCommunity?.();
+    return;
+  }
   AppState.currentProg = id;
   AppState.currentYear = "all";
   AppState.currentSem = "all";
@@ -270,12 +275,14 @@ function selectProg(id) {
     document.getElementById("coursesOutput").style.display = "none";
     document.getElementById("extraSection").style.display = "";
     renderExtra();
+    window.renderDesktopServiceSidebar?.();
   } else if (id === "all") {
     document.querySelector(".filter-row").style.display = "none";
     document.getElementById("coursesOutput").style.display = "";
     document.getElementById("extraSection").style.display = "";
     renderCourses();
     renderExtra();
+    window.renderDesktopServiceSidebar?.();
   } else if (id === "favorites") {
     document.querySelector(".filter-row").style.display = "none";
     document.getElementById("coursesOutput").style.display = "";
@@ -288,6 +295,7 @@ function selectProg(id) {
     renderYearFilters();
     renderSemFilters();
     renderCourses();
+    window.renderDesktopServiceSidebar?.();
   }
 }
 

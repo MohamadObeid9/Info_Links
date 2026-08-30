@@ -55,13 +55,13 @@ func TestHandleLogin(t *testing.T) {
 	userToken := fakeSupabaseToken(t, "user")
 
 	tests := []struct {
-		name            string
-		body            string
-		supabaseStatus  int
-		supabaseBody    string
-		statusWanted    int
-		errMsg          string
-		wantToken       bool
+		name           string
+		body           string
+		supabaseStatus int
+		supabaseBody   string
+		statusWanted   int
+		errMsg         string
+		wantToken      bool
 	}{
 		{
 			name:           "200 returns token for valid admin credentials",

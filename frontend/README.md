@@ -1,19 +1,46 @@
 # InfoLinks Frontend
 
-This directory contains the user interface for InfoLinks, built with plain HTML, CSS, and Vanilla JavaScript.
+Vanilla HTML, CSS, and JavaScript UI for Info Links. The Go server serves these files (or `dist/` after a Vite build).
 
 ## Structure
-- `index.html`: The main entry point of the application.
-- `main.js`: Frontend event wiring and app bootstrap.
-- `js/`: Contains feature logic modules (`views.js`, `data.js`, etc.).
-- `styles/`: Contains all CSS files for styling the application.
-- `public/`: Static assets copied as-is into the build (`favicon`, PWA icons under `public/assets/`).
 
-## Deployment & Running
-The frontend is designed to be served statically by the Go backend. All API requests are made using relative paths (`/api/...`). 
+- `index.html` — main SPA shell
+- `main.js` — bootstrap and event wiring
+- `js/` — feature modules (`data.js`, `home.js`, `admin.js`, `services.js`, …)
+- `styles/` — CSS (`app.css`, `admin.css`, `services.css`, `responsive.css`, …)
+- `public/` — static assets copied as-is into the build (favicon, PWA icons under `public/assets/`)
 
-To run the frontend during development, start the Go backend from the repository root:
+## Features
+
+- Course browsing, search, favorites, report/contribute/feedback flows
+- Community services cards (sidebar, list intersperse, dedicated community view)
+- Admin panel (courses, services, analytics, students, inbox)
+- Light/dark theme and mobile layouts
+- PWA manifest + service worker in production builds
+
+## Development
+
+**With Vite** (from `frontend/`, proxies `/api` and SEO routes to the Go server on `:8080`):
+
 ```bash
-go run cmd/server/main.go
+npm ci && npm run dev
+# → http://localhost:5173
 ```
-Then visit `http://localhost:8080/` in your browser.
+
+**Served by Go** (no frontend build; uses source files when `dist/` is absent):
+
+```bash
+# from repo root
+go run ./cmd/server
+# → http://localhost:8080
+```
+
+**Checks:**
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+API calls use relative paths (`/api/...`).

@@ -6,6 +6,9 @@ import (
 
 // HandleGetContent fetches all navigation data using a single optimized query.
 func (h *Handler) handleGetContent(w http.ResponseWriter, r *http.Request) {
+	if err := h.serviceService.FreezeExpired(r.Context()); err != nil {
+		h.LoggerWithID(r).Error("freeze expired services failed", "error", err)
+	}
 	result, err := h.contentService.Get(r.Context())
 	if err != nil {
 		h.LoggerWithID(r).Error("get content failed", "error", err)

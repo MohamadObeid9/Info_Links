@@ -292,16 +292,16 @@ func TestHandleCourseFoundIntegration(t *testing.T) {
 }
 
 type serviceFakeSEORepo struct {
-	getCourseData  *repository.CoursePageData
-	getCourseErr   error
-	listCodes      []string
-	listCodesErr   error
-	listPrograms   []repository.ProgramSitemapEntry
+	getCourseData   *repository.CoursePageData
+	getCourseErr    error
+	listCodes       []string
+	listCodesErr    error
+	listPrograms    []repository.ProgramSitemapEntry
 	listProgramsErr error
-	listIndex      []repository.CourseIndexEntry
-	listIndexErr   error
-	getProgramData *repository.ProgramPageData
-	getProgramErr  error
+	listIndex       []repository.CourseIndexEntry
+	listIndexErr    error
+	getProgramData  *repository.ProgramPageData
+	getProgramErr   error
 }
 
 func (f *serviceFakeSEORepo) GetCoursePageByCode(ctx context.Context, code string) (*repository.CoursePageData, error) {

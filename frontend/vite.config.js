@@ -30,6 +30,10 @@ export default defineConfig({
       input: './index.html',
     },
   },
+  test: {
+    environment: 'happy-dom',
+    include: ['js/**/*.test.js'],
+  },
   server: {
     proxy: {
       '/api': 'http://localhost:8080',

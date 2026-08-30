@@ -69,13 +69,13 @@ func TestHandleAdminGetAnalyticsSummary(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		query         string
-		summaryErr    error
-		statusWanted  int
-		errMsg        string
-		wantRange     string
-		wantVisitors  service.AnalyticsVisitorsParams
+		name         string
+		query        string
+		summaryErr   error
+		statusWanted int
+		errMsg       string
+		wantRange    string
+		wantVisitors service.AnalyticsVisitorsParams
 	}{
 		{
 			name:         "200 with the aggregated summary",

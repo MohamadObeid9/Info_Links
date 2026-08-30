@@ -186,12 +186,12 @@ func TestSEOService_GetProgramBySlug(t *testing.T) {
 	sample := &repository.ProgramPageData{ID: 1, Name: "Génie Info", Slug: "genie-info"}
 
 	tests := []struct {
-		name      string
-		slug      string
-		repoData  *repository.ProgramPageData
-		repoErr   error
-		want      *repository.ProgramPageData
-		wantErr   error
+		name     string
+		slug     string
+		repoData *repository.ProgramPageData
+		repoErr  error
+		want     *repository.ProgramPageData
+		wantErr  error
 	}{
 		{
 			name:     "returns repo result",

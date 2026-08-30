@@ -78,8 +78,8 @@ func TestExtraSectionService_Create(t *testing.T) {
 			err:       errs.ErrDatabaseDown,
 		},
 		{
-			name:    "trims and defaults icon",
-			section: models.ExtraSection{Title: "  Python  ", Icon: "  ", DisplayOrder: 0},
+			name:         "trims and defaults icon",
+			section:      models.ExtraSection{Title: "  Python  ", Icon: "  ", DisplayOrder: 0},
 			resultWanted: &models.ExtraSection{Title: "Python", Icon: "📁", DisplayOrder: 0},
 		},
 	}
