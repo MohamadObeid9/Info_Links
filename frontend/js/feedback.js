@@ -4,7 +4,7 @@ import { showToast } from "./export.js";
 import { esc, setBtnLoading, adminCell } from "./ui.js";
 import { loadReportsBadges } from "./data.js";
 import { getAdminTableSkeleton } from "./skeleton.js";
-import { loadStudentDirectory, senderCell, senderDetail } from "./students.js";
+import { loadStudentDirectory, senderDetail } from "./students.js";
 
 // Feedback management
 const FEEDBACK_PAGE_SIZE = 10;

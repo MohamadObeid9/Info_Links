@@ -49,6 +49,9 @@ Repository → run SQL
 | `LinkClickService` | `linkclicks.go` | `LinkClickRepository` |
 | `ExtraSectionService` | `extra_sections.go` | `ExtraSectionRepository` |
 | `ExtraLinkService` | `extra_links.go` | `ExtraLinkRepository` |
+| `ServiceService` | `services.go` | `ServiceRepository` |
+| `UserService` | `users.go` | `UserRepository` |
+| `AnalyticsService` | `analytics.go` | `AnalyticsRepository` |
 | `SEOService` | `seo.go` | `SEORepository` |
 
 All follow the same constructor pattern:
@@ -117,6 +120,19 @@ List endpoints validate pagination and filters in the service:
 - `status` must be `"open"`, `"resolved"`, or empty → else `ErrReportInvalidStatus`
 
 The repository receives clean, validated values and builds the right SQL query.
+
+---
+
+### Community services (`ServiceService`)
+
+Community listings (tutoring, student businesses) use status `trial` / `active` / `frozen`:
+
+- **Create** — defaults to a 15-day trial when `expires_at` is omitted
+- **List** — freezes expired rows before returning results
+- **Renew / freeze / unfreeze** — admin lifecycle actions with validated day ranges (1–365)
+- **TrackClick** — records student opens via `POST /api/service_clicks`
+
+Same validation → sentinel → repository pattern as courses and links.
 
 ---
 

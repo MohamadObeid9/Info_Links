@@ -463,7 +463,7 @@ function openEditLinkModal(linkId, courseId) {
   <label>Note (optional)</label><input type="text" id="elNote" value="${esc(l.note || "")}"/>
   <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveLink(${linkId},${courseId})">Save</button></div>`);
 }
-async function saveLink(linkId, courseId) {
+async function saveLink(linkId, _courseId) {
   const url = document.getElementById("elUrl").value.trim();
   if (!url) {
     showToast("URL required.", true);

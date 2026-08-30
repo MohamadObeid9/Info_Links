@@ -17,6 +17,7 @@ Project history and planned work.
 | **Phase 7** | Favorites, content types, analytics, and PWA support |
 | **Phase 8** | Go backend with layered architecture, observability, CI, and SEO |
 | **Phase 9** | Student identity without passwords, synced favorites, and unique-user analytics |
+| **Phase 10** | Community services, agent/API discovery, graceful shutdown, integration tests, Cloudflare cache |
 
 ---
 
@@ -34,7 +35,10 @@ Project history and planned work.
 - [x] Unique-user analytics aggregated in SQL (active students per range, top students)
 - [x] Admin Students directory with per-student activity timeline
 - [x] Cleanup job for stale unclaimed guest rows
-- [ ] Link health checker worker (companion Go service)
+- [x] Community services (student businesses / tutoring) with click tracking
+- [x] HTTP server timeouts and graceful shutdown on SIGTERM
+- [x] Postgres integration tests (repo + HTTP, CI-gated)
+- [x] Cloudflare CDN cache for static assets and `GET /api/content` (kept warm with a 10-minute ping)
 - [ ] Mobile app (iOS/Android)
 - [ ] Push notifications for new resources
 - [ ] Course schedule integration

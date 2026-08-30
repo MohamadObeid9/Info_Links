@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"infolinks-backend/internal/api"
+	"infolinks-backend/internal/app"
 	"infolinks-backend/internal/config"
 	"infolinks-backend/internal/database"
 	"infolinks-backend/internal/repository"
@@ -17,6 +21,8 @@ import (
 	"infolinks-backend/internal/service"
 	"infolinks-backend/internal/webbotauth"
 )
+
+const shutdownTimeout = 10 * time.Second
 
 func main() {
 	cfg, err := config.Load()
@@ -34,7 +40,7 @@ func main() {
 	}
 	defer func() { _ = dbClient.Close() }()
 
-	services, userService := handleServices(dbClient.DB)
+	services, userService := app.Wire(dbClient.DB)
 
 	webBotDir, err := webbotauth.NewDirectory(cfg.JWTSecret, cfg.SiteBaseURL)
 	if err != nil {
@@ -82,26 +88,71 @@ func main() {
 		seoHandler,
 	)
 
-	startStaleGuestCleanup(userService, logger.With("component", "guest-cleanup"))
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
+	startStaleGuestCleanup(ctx, userService, logger.With("component", "guest-cleanup"))
+
+	server := newHTTPServer(":"+cfg.Port, handler)
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
-
-	addr := ":" + cfg.Port
-	if err = http.ListenAndServe(addr, handler); err != nil {
-		logger.Error("server failed to start", "error", err)
+	if err := serveHTTP(ctx, server, nil); err != nil {
+		logger.Error("server failed", "error", err)
 		os.Exit(1)
+	}
+	logger.Info("server stopped")
+}
+
+func newHTTPServer(addr string, handler http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           handler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+}
+
+// serveHTTP serves until ctx is cancelled, then shuts down gracefully.
+// If ln is non-nil, Serve is used (tests); otherwise ListenAndServe.
+func serveHTTP(ctx context.Context, server *http.Server, ln net.Listener) error {
+	errCh := make(chan error, 1)
+	go func() {
+		var err error
+		if ln != nil {
+			err = server.Serve(ln)
+		} else {
+			err = server.ListenAndServe()
+		}
+		errCh <- err
+	}()
+
+	select {
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			return fmt.Errorf("graceful shutdown: %w", err)
+		}
+		return nil
 	}
 }
 
 // startStaleGuestCleanup deletes unclaimed guests idle for StaleGuestTTL, once
-// at boot and then hourly. Cascaded analytics for those guests go with them.
-func startStaleGuestCleanup(svc *service.UserService, logger *slog.Logger) {
+// at boot and then hourly until ctx is cancelled. Cascaded analytics for those
+// guests go with them.
+func startStaleGuestCleanup(ctx context.Context, svc *service.UserService, logger *slog.Logger) {
 	const every = time.Hour
 
 	run := func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		runCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		n, err := svc.DeleteStaleGuests(ctx, service.StaleGuestTTL)
+		n, err := svc.DeleteStaleGuests(runCtx, service.StaleGuestTTL)
 		if err != nil {
 			logger.Error("stale guest cleanup failed", "error", err)
 			return
@@ -115,8 +166,13 @@ func startStaleGuestCleanup(svc *service.UserService, logger *slog.Logger) {
 	go func() {
 		ticker := time.NewTicker(every)
 		defer ticker.Stop()
-		for range ticker.C {
-			run()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				run()
+			}
 		}
 	}()
 }
@@ -132,62 +188,4 @@ func newLogger(appEnv, logLevel string) *slog.Logger {
 	}
 	logger := slog.New(logHandler).With("AppEnv", appEnv)
 	return logger
-}
-
-func handleServices(db *sql.DB) (*api.Dependencies, *service.UserService) {
-
-	userRepo := repository.NewPostgresUserRepository(db)
-	userService := service.NewUserService(userRepo)
-
-	analyticsRepo := repository.NewPostgresAnalyticsRepository(db)
-	analyticsService := service.NewAnalyticsService(analyticsRepo)
-
-	linkRepo := repository.NewPostgresLinkRepository(db)
-	linkService := service.NewLinkService(linkRepo)
-
-	courseRepo := repository.NewPostgresCourseRepository(db)
-	courseService := service.NewCourseService(courseRepo)
-
-	reportRepo := repository.NewPostgresReportRepository(db)
-	reportService := service.NewReportService(reportRepo)
-
-	feedbackRepo := repository.NewPostgresFeedbackRepository(db)
-	feedbackService := service.NewFeedbackService(feedbackRepo)
-
-	contentRepo := repository.NewPostgresContentRepository(db)
-	contentService := service.NewContentService(contentRepo)
-
-	pageViewRepo := repository.NewPostgresPageViewRepository(db)
-	pageViewService := service.NewPageViewService(pageViewRepo)
-
-	linkClickRepo := repository.NewPostgresLinkClickRepository(db)
-	linkClickService := service.NewLinkClickService(linkClickRepo)
-
-	contributionsRepo := repository.NewPostgresContributionRepository(db)
-	contributionsService := service.NewContributionService(contributionsRepo)
-
-	extraSectionRepo := repository.NewPostgresExtraSectionRepository(db)
-	extraSectionService := service.NewExtraSectionService(extraSectionRepo)
-
-	extraLinkRepo := repository.NewPostgresExtraLinkRepository(db)
-	extraLinkService := service.NewExtraLinkService(extraLinkRepo)
-
-	serviceRepo := repository.NewPostgresServiceRepository(db)
-	serviceService := service.NewServiceService(serviceRepo)
-
-	return &api.Dependencies{
-		UserService:         userService,
-		AnalyticsService:    analyticsService,
-		LinkService:         linkService,
-		CourseService:       courseService,
-		ReportService:       reportService,
-		ContentService:      contentService,
-		FeedbackService:     feedbackService,
-		PageViewService:     pageViewService,
-		LinkClickService:    linkClickService,
-		ContributionService: contributionsService,
-		ExtraSectionService: extraSectionService,
-		ExtraLinkService:    extraLinkService,
-		ServiceService:      serviceService,
-	}, userService
 }

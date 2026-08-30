@@ -19,7 +19,7 @@ go run ./cmd/server    # → http://localhost:8080
 
 ## Overview
 
-Info Links centralizes course materials (Google Drive, Classroom, Telegram, and more) by program, year, and semester. The backend is Go (`net/http`, layered architecture, ~88% test coverage); the frontend is vanilla JS with Vite. Production runs as Docker on Render with CI-gated deploys.
+Info Links centralizes course materials (Google Drive, Classroom, Telegram, and more) by program, year, and semester. The backend is Go (`net/http`, layered architecture, ~74% statement coverage across packages); the frontend is vanilla JS with Vite. Production runs as Docker on Render with CI-gated deploys.
 
 Using the app? See the [user guide](docs/user-guide.md).
 
@@ -33,7 +33,8 @@ Using the app? See the [user guide](docs/user-guide.md).
 | **Backend** | Go 1.25 (`net/http`, no web framework) |
 | **Database** | PostgreSQL via Supabase |
 | **Auth** | Supabase Auth at login → app-issued JWT for admin routes |
-| **Observability** | `slog`, Prometheus `/metrics`, `/healthz`, `/readyz` |
+| **Observability** | `slog`, Prometheus `/metrics`, Grafana, `/healthz`, `/readyz` |
+| **CDN** | Cloudflare (static assets + `/api/content`) |
 | **Deployment** | Render (Docker) + Supabase |
 | **CI** | GitHub Actions — test, lint, govulncheck, frontend build, `docker build` |
 
@@ -57,6 +58,9 @@ The Go server also:
 - Serves the built frontend from `frontend/dist` (or `frontend/` source in local dev when `dist/` is absent)
 - Renders SSR SEO pages for `/course/{code}`, `/program/{slug}`, `/courses`, sitemap, and robots.txt
 - Exposes a JSON API under `/api/*` — see `GET /api` for a live endpoint directory
+- Shuts down gracefully on `SIGTERM`/`SIGINT` (waits for in-flight requests, then closes the DB pool)
+
+Production traffic hits **Cloudflare** first: hashed static files and `GET /api/content` are cached at the edge. A 10-minute cron ping keeps `/api/content` warm. Origin still runs the JSON aggregation on cache miss.
 
 **Deploy pipeline:**
 
@@ -72,7 +76,7 @@ Deep dives: [`docs/adr/`](docs/adr/) · [`docs/learnings/`](docs/learnings/)
 
 ```text
 info_links/
-├── cmd/server/           # Application entry point
+├── cmd/server/           # Entry point (HTTP timeouts + graceful shutdown)
 ├── cmd/seed/             # Load an admin backup JSON into local Postgres
 ├── internal/
 │   ├── api/              # Router, handlers, JSON helpers
@@ -83,6 +87,8 @@ info_links/
 │   ├── config/           # Environment configuration
 │   ├── database/         # DB client (pgx)
 │   ├── models/           # Shared domain types
+│   ├── device/           # User-Agent → phone/laptop classification
+│   ├── webbotauth/       # Web Bot Auth JWKS + HTTP Message Signatures
 │   └── errs/             # Sentinel errors
 ├── frontend/             # Vanilla JS SPA (Vite for dev/build)
 ├── db/
@@ -210,13 +216,22 @@ docker run --rm -p 8080:8080 --env-file .env infolinks:local
 ## Testing & CI
 
 ```bash
-go test -race ./...
-golangci-lint run ./...
-cd frontend && npm ci && npm run build
+go test -race ./cmd/... ./internal/...
+golangci-lint run ./cmd/... ./internal/...
+cd frontend && npm ci && npm run lint && npm test && npm run build
 docker build -t infolinks:local .
 ```
 
-CI runs on every push/PR: Go build, `go test -race` with coverage, golangci-lint, govulncheck, frontend `npm run build`, and `docker build`. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+**Integration tests** (real Postgres — repo + HTTP flows):
+
+```bash
+# Start Postgres and apply migrations (see db/README.md)
+export INTEGRATION_DATABASE_URL="postgres://postgres:postgres@localhost:5432/infolinks?sslmode=disable"
+migrate -path db/migrations -database "$INTEGRATION_DATABASE_URL" up
+go test -tags=integration -race ./internal/integration/...
+```
+
+CI runs on every push/PR: Go build, unit tests with coverage, Postgres migrations, integration tests, golangci-lint, govulncheck, frontend lint/test/build, and `docker build`. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 `main` is branch-protected — all CI jobs must pass before merge. Render deploys only after checks pass (`autoDeployTrigger: checksPass` in [`render.yaml`](render.yaml)).
 
@@ -233,8 +248,13 @@ Single Docker web service on [Render](https://render.com), configured in [`rende
 | **Health check** | `GET /readyz` |
 | **Auto-deploy** | On merge to `main`, only when CI checks pass |
 | **Domains** | [infolinks.app](https://infolinks.app), www.infolinks.app |
+| **CDN** | Cloudflare in front of Render |
 
 The [Dockerfile](Dockerfile) is multi-stage: Node builds `frontend/dist`, Go compiles the server, final image runs on distroless as non-root. CI runs the same `docker build` before Render deploys — what is tested is what ships.
+
+On deploy, Render sends `SIGTERM`. The server stops accepting new connections, drains in-flight requests (10s budget), stops the stale-guest cleanup ticker, then closes the database pool.
+
+`GET /api/content` is publicly cacheable (`max-age=60`, `stale-while-revalidate=600`). Cloudflare serves most student hits; a cron request every 10 minutes keeps that cache warm. Grafana showed p95/p99 drop from multi-second spikes to a stable sub-500ms band after this went live (21 Aug 2026).
 
 Set environment variables in the Render dashboard (see [`.env.example`](.env.example)). Secrets use `sync: false` in `render.yaml`. In production, `APP_ENV=production` and metrics basic auth are required for `/metrics`.
 

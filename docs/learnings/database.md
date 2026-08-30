@@ -89,13 +89,14 @@ if err != nil {
 }
 defer func() { _ = dbClient.Close() }()
 
-services := handleServices(dbClient.DB)
+services, userService := handleServices(dbClient.DB)
 ```
 
 - Config provides `DatabaseURL` (from env / Supabase)
 - Logger tagged with `component=database`
 - `dbClient.DB` passed to all repository constructors
 - `dbClient` passed to API handler for readiness ping
+- `Close()` runs after graceful HTTP shutdown (SIGTERM/SIGINT), not while the server is still accepting traffic
 
 ---
 

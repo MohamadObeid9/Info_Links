@@ -55,6 +55,7 @@ Services depend on interfaces (`LinkRepository`), not the concrete struct — te
 Defined in `repositories.go`:
 
 - `LinkRepository`, `CourseRepository`, `ReportRepository`, …
+- `ServiceRepository` — community listings + click tracking + freeze-expired
 - `ContentRepository` — returns pre-built JSON bytes
 - `SEORepository` — returns SEO page DTOs (`CoursePageData`, etc.)
 

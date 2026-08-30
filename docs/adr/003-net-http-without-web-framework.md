@@ -22,13 +22,14 @@ Build the HTTP layer on **Go standard library only**:
 - `http.NewServeMux()` with Go 1.22+ route patterns (`"GET /api/content"`, `"PATCH /api/admin/links/{id}"`)
 - Custom middleware as `func(http.Handler) http.Handler` wrappers in `internal/middleware`
 - Small third-party additions only where stdlib is weak: **CORS** (`rs/cors`), **Prometheus** (`client_golang`), **JWT** (`golang-jwt/jwt`)
+- Explicit `http.Server` in `cmd/server` with `ReadHeaderTimeout` / read / write / idle timeouts and `Shutdown` on `SIGTERM`/`SIGINT`
 
 No Gin, Echo, Fiber, or Chi.
 
 ## Consequences
 
-
 - Senior Go engineers often prefer stdlib-heavy code — shows deliberate choice, not tutorial default
 - Full visibility into middleware order and request flow — nothing hidden in framework magic
 - Fewer dependencies to audit and upgrade
 - Go 1.22 ServeMux path params (`r.PathValue("id")`) cover admin CRUD needs
+- Server lifecycle (timeouts + graceful shutdown) stays explicit in `main` instead of being hidden in a framework

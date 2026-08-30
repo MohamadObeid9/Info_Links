@@ -65,7 +65,7 @@ Three registration functions in `router.go`:
 
 **Public (`registerPublicRoutes`)** — no JWT required:
 
-- `GET /api/content` — main navigation JSON
+- `GET /api/content` — main navigation JSON (`Cache-Control: public, max-age=60, stale-while-revalidate=600`; Cloudflare caches it in production)
 - `GET /.well-known/api-catalog` — RFC 9727 API catalog (`application/linkset+json`)
 - `GET /.well-known/oauth-protected-resource` — RFC 9728 PRM for student API auth
 - `GET /.well-known/oauth-authorization-server` — AS metadata + `agent_auth` (anonymous guest → claim)
@@ -83,6 +83,8 @@ Three registration functions in `router.go`:
 - `GET /openapi.json` — OpenAPI 3.1 description (`service-desc`)
 - `GET /api/docs` — human API docs in markdown (`service-doc`)
 - `POST /api/reports`, `/api/feedback`, `/api/page_views`, … — user submissions
+- `GET /api/services` — public community service listings (expired trials auto-freeze on read)
+- `POST /api/service_clicks` — track a service card open (requires student JWT)
 - `POST /api/auth/login` — admin login, returns JWT
 - `GET /healthz`, `GET /readyz` — probes for Render/load balancers
 - `GET /metrics` — provide the metrics for **Prometheus** , protected by a username/password
@@ -90,8 +92,9 @@ Three registration functions in `router.go`:
 **Admin (`registerAdminRoutes`)** — every route wrapped with `middleware.RequireAdmin`:
 
 - CRUD on links, courses, extra sections/links
+- Community services CRUD plus renew / freeze / unfreeze
 - List/update/delete reports, feedback, contributions
-- Analytics: page views, link clicks
+- Analytics: page views, link clicks, summary dashboards
 
 **SEO (`registerSEORoutes`)** — separate `seo.Handler`, returns HTML not JSON:
 
@@ -200,6 +203,18 @@ Render uses `/readyz` to decide whether to send traffic. `/healthz` answers "is 
 
 ---
 
+### Caching (`GET /api/content` and static files)
+
+Origin does **not** keep an in-memory copy of the course tree. It sets cache headers and lets Cloudflare sit in front of Render:
+
+- **Hashed Vite assets** — `Cache-Control: public, max-age=31536000, immutable`
+- **`GET /api/content`** — `public, max-age=60, stale-while-revalidate=600`
+- **Warm-up** — a cron GET every 10 minutes so the edge object does not expire while students are asleep
+
+Grafana (Prometheus scrape of `/metrics`) showed p95/p99 for `/api/content` collapsing on 21 Aug 2026 after this went live. A cache miss still runs the Postgres JSON aggregation.
+
+---
+
 ### Observability touchpoints
 
 - **`LoggerWithID(r)`** — enriches logs with the request ID set by middleware (see `logging.md`)
@@ -207,6 +222,22 @@ Render uses `/readyz` to decide whether to send traffic. `/healthz` answers "is 
 - **`Panic recovery`** — middleware catches panics, logs stack, returns 500
 
 Middleware details live in `internal/middleware/` — the API layer only consumes them in `NewRouter`.
+
+---
+
+### Process lifecycle (`cmd/server`)
+
+The HTTP server is an explicit `http.Server` (not bare `ListenAndServe`):
+
+| Concern | Behavior |
+|---|---|
+| Timeouts | `ReadHeaderTimeout` 5s, `ReadTimeout` 15s, `WriteTimeout` 60s, `IdleTimeout` 60s |
+| Signals | `SIGINT` / `SIGTERM` via `signal.NotifyContext` |
+| Shutdown | `Shutdown` with a 10s budget drains in-flight requests |
+| Background | Stale-guest cleanup ticker stops when the signal context cancels |
+| DB | `defer dbClient.Close()` runs after shutdown returns |
+
+Render sends `SIGTERM` on deploy — without this path, in-flight requests are cut and the DB pool may not drain cleanly.
 
 ---
 

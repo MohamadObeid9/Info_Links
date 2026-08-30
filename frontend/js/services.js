@@ -54,7 +54,7 @@ function pickServices(count, context, excludeIds = []) {
   return shuffled.slice(0, Math.min(n, shuffled.length));
 }
 
-function _whatsappHref(phone) {
+function whatsappHref(phone) {
   const raw = String(phone || "").trim();
   if (!raw) return "";
   if (/^https?:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(raw)) return raw;
@@ -75,7 +75,7 @@ function _isWhatsAppUrl(parsed) {
 function primaryServiceContact(s) {
   if (!s) return "";
   if (s.url) return s.url;
-  if (s.phone) return _whatsappHref(s.phone);
+  if (s.phone) return whatsappHref(s.phone);
   const first = s.links?.[0];
   return first?.url || "";
 }
@@ -103,7 +103,7 @@ function _resolveServiceClickUrl(service, explicitTarget, rawUrl) {
   if (url && url !== "#") return url;
   if (!service) return "";
   const target = _normalizeServiceTarget(explicitTarget).toLowerCase();
-  if (target === "whatsapp" && service.phone) return _whatsappHref(service.phone);
+  if (target === "whatsapp" && service.phone) return whatsappHref(service.phone);
   if (target === "website" && service.url) return service.url;
   if (service.links?.length && target) {
     const byLabel = service.links.find(
@@ -166,7 +166,7 @@ function _serviceLinksHtml(s) {
 function _serviceContactRows(s, context) {
   const rows = [];
   if (s.phone) {
-    const whatsapp = _whatsappHref(s.phone);
+    const whatsapp = whatsappHref(s.phone);
     rows.push(`
       <a class="link-item service-link"
          data-service-id="${s.id}"
@@ -470,6 +470,7 @@ export {
   trackServiceClick,
   confirmServiceLink,
   primaryServiceContact,
+  whatsappHref,
   renderMobileCommunity,
   renderDesktopCommunity,
   renderDesktopServiceSidebar,

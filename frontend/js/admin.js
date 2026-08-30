@@ -7,7 +7,7 @@ import { _clearCache } from "./cache.js";
 import { showToast } from "./export.js";
 import { renderAdminFeedback } from "./feedback.js";
 import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder } from "./modals.js";
-import { loadStudentDirectory, rememberStudents, senderCell, senderDetail, studentHandleOf, fmtDateTime } from "./students.js";
+import { loadStudentDirectory, rememberStudents, senderDetail, studentHandleOf, fmtDateTime } from "./students.js";
 
 // ===================== ADMIN AUTH =====================
 async function checkLogin() {
@@ -1715,7 +1715,7 @@ async function toggleOptional(id, current) {
     showToast(current ? "Marked as required." : "Marked as optional.");
   } catch (e) { showToast(e.message, true); }
 }
-function confirmDeleteLink(linkId, courseId) {
+function confirmDeleteLink(linkId, _courseId) {
   window.openModal(`<h2>⚠️ Confirm</h2>
     <p style="color:var(--muted);font-size:.9rem;margin-top:8px;">Remove this link from the course in every program that offers it?</p>
     <div class="modal-actions">

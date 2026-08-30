@@ -135,7 +135,7 @@ async function sb(
   method = "GET",
   body = null,
   matchString = null,
-  select = null,
+  _select = null,
 ) {
   let cleanTable = table;
   let id = null;

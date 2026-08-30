@@ -99,7 +99,6 @@ document.addEventListener("click", (e) => {
 
   const action = target.closest("[data-action]")?.dataset.action;
   if (action) {
-    const actionEl = target.closest("[data-action]");
     switch (action) {
       case "toggleMobileMenu":
         window.toggleMobileMenu();

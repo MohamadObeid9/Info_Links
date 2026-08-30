@@ -29,7 +29,7 @@ Request (outermost first)
   → ServeMux (routes)
 ```
 
-**Per-route** — `middleware.RequireAdmin` wraps individual admin handlers in `registerAdminRoutes`.
+**Per-route** — `middleware.RequireAdmin` wraps individual admin handlers in `registerAdminRoutes`. `middleware.RequireUser` wraps student-authenticated routes (page views, link clicks, service clicks, favorites, etc.).
 
 **Per-endpoint** — `MetricsBasicAuth` / `MetricsDenied` wrap the Prometheus handler only.
 

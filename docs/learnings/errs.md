@@ -10,6 +10,8 @@ var ErrLinkNotFound = errors.New("link not found")
 
 Handlers use `errors.Is(err, errs.ErrLinkNotFound)` to pick HTTP status codes without string matching.
 
+Domains covered today include links, courses, reports, feedback, contributions, users, extra sections/links, and community services (`ErrServiceNotFound`, `ErrServiceInvalidStatus`, `ErrServiceInvalidRenewal`, …).
+
 ---
 
 ### Why sentinel errors exist

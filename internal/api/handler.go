@@ -198,7 +198,7 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 	}
 
 	if deps.FeedbackService == nil {
-		return nil, fmt.Errorf("feedback service is required ")
+		return nil, fmt.Errorf("feedback service is required")
 	}
 
 	if deps.CourseService == nil {
@@ -206,7 +206,7 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 	}
 
 	if deps.LinkClickService == nil {
-		return nil, fmt.Errorf("link click servie is required")
+		return nil, fmt.Errorf("link click service is required")
 	}
 
 	if deps.LinkService == nil {

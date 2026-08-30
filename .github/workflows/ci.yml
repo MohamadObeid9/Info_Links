@@ -7,6 +7,22 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: infolinks
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d infolinks"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      INTEGRATION_DATABASE_URL: postgres://postgres:postgres@localhost:5432/infolinks?sslmode=disable
     steps:
       - uses: actions/checkout@v5
 
@@ -19,7 +35,18 @@ jobs:
         run: go build ./cmd/server ./cmd/seed
 
       - name: Test
-        run: go test -race -coverprofile=coverage.out ./...
+        run: go test -race -coverprofile=coverage.out ./cmd/... ./internal/...
+
+      - name: Install migrate
+        run: |
+          curl -sL https://github.com/golang-migrate/migrate/releases/download/v4.18.3/migrate.linux-amd64.tar.gz | tar xvz
+          sudo mv migrate /usr/local/bin/
+
+      - name: Apply migrations
+        run: migrate -path db/migrations -database "$INTEGRATION_DATABASE_URL" up
+
+      - name: Integration tests
+        run: go test -tags=integration -race ./internal/integration/...
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out
@@ -28,11 +55,12 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.12.2
+          args: ./cmd/... ./internal/...
 
       - name: Vulnerability check
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+          govulncheck ./cmd/... ./internal/...
 
   frontend:
     runs-on: ubuntu-latest
@@ -46,6 +74,10 @@ jobs:
           node-version: 24
       - name: Install
         run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
       - name: Build
         run: npm run build
 
