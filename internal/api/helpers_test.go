@@ -89,9 +89,6 @@ func withExtraSection(s *fakeExtraSectionService) testHandlerOption {
 func withExtraLink(s *fakeExtraLinkService) testHandlerOption {
 	return func(d *handlerTestDeps) { d.extraLink = s }
 }
-func withService(s *fakeServiceService) testHandlerOption {
-	return func(d *handlerTestDeps) { d.service = s }
-}
 
 // testHandler builds a Handler for HTTP tests. Pass only the fakes you care about;
 // omitted services get empty defaults that satisfy NewHandler.
