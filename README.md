@@ -161,10 +161,11 @@ Pick the workflow that matches what you're changing.
 |------|---------|
 | Fastest dev loop | `air` + `npm run dev` (see below) |
 | API work, single port | `go run ./cmd/server` |
-| Full stack in Docker, auto-rebuild | `docker compose up --build --watch` |
-| Verify container builds once | `docker compose up --build` |
+| Full stack in Docker, auto-rebuild | `make watch` or `docker compose up --watch` |
+| First run / Dockerfile changed | `make rebuild` or `docker compose up --build` |
+| Verify container builds once | `make build` or `docker compose build` |
 | Match CI image build | `docker build -t infolinks:local .` |
-| Restart existing container | `docker compose up` |
+| Restart existing containers | `make up` or `docker compose up` |
 
 ### Native (recommended for daily coding)
 
@@ -190,7 +191,8 @@ Use **5173** while editing HTML/CSS/JS. Fastest feedback loop.
 Requires Docker Compose v2.22+ (for `watch`). Starts Postgres, applies `db/migrations`, seeds `db/test-data.json` if the DB is empty, then the app.
 
 ```bash
-COMPOSE_DISABLE_ENV_FILE=1 docker compose up --build
+make up
+# or: COMPOSE_DISABLE_ENV_FILE=1 docker compose up
 # → http://localhost:8080
 ```
 
@@ -203,7 +205,8 @@ Seeding uses `-if-empty` so later `up` does not wipe local edits. Wipe and re-se
 **Watch (rebuild app on file changes):**
 
 ```bash
-COMPOSE_DISABLE_ENV_FILE=1 docker compose up --build --watch
+make watch
+# or: COMPOSE_DISABLE_ENV_FILE=1 docker compose up --watch
 ```
 
 **Build image only (same as CI):**

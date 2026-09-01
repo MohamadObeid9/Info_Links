@@ -1,5 +1,5 @@
 import { AppState } from "./state.js";
-import { esc, _linkHref, isMobileView, setSectionHint, COMMUNITY_HINT_CARD, setHomeLegendVisible } from "./ui.js";
+import { esc, _linkHref, isMobileView, setSectionHint, COMMUNITY_PROMOTE_HINT, COMMUNITY_HINT_CARD, homeSectionHeading, sectionInlineHintHtml, setHomeLegendVisible } from "./ui.js";
 import { apiRequest } from "./supabase.js";
 
 // ===================== COMMUNITY SERVICES =====================
@@ -386,15 +386,21 @@ function renderDesktopCommunity() {
   extra.style.display = "none";
   if (sidebar) sidebar.style.display = "none";
   const services = shuffleServices(`community:${performance.now()}`);
-  setSectionHint(COMMUNITY_HINT_CARD);
+  setSectionHint("");
   if (!services.length) {
-    output.innerHTML = '<div class="empty">No community services yet.</div>';
+    output.innerHTML = `
+      <div class="home-section">
+        ${homeSectionHeading("🤝 Community Services")}
+        ${sectionInlineHintHtml(COMMUNITY_PROMOTE_HINT)}
+        <div class="empty">No community services yet.</div>
+      </div>`;
     return;
   }
   const cards = services.map((s) => buildServiceCard(s, "community"));
   output.innerHTML = `
-    <div style="margin-bottom:32px;">
-      <h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--accent);">🤝 Community Services</h2>
+    <div class="home-section">
+      ${homeSectionHeading("🤝 Community Services")}
+      ${sectionInlineHintHtml(COMMUNITY_PROMOTE_HINT)}
       <div class="courses-grid">${cards.join("")}</div>
     </div>`;
 }
