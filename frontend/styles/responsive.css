@@ -167,6 +167,25 @@
         margin: 4px 4px 14px;
     }
 
+    .hint-link-types {
+        gap: 6px 8px;
+    }
+
+    .hint-legend-item {
+        font-size: 0.7rem;
+        gap: 4px;
+    }
+
+    .hint-legend-item .link-badge {
+        font-size: 0.55rem;
+        padding: 2px 4px;
+    }
+
+    .hint-legend-item .optional-tag {
+        font-size: 0.5rem;
+        padding: 2px 4px;
+    }
+
     .mobile-section-label {
         font-size: 0.7rem;
         font-weight: 700;

@@ -1,5 +1,5 @@
 import { AppState } from "./state.js";
-import { esc, _linkHref, isMobileView } from "./ui.js";
+import { esc, _linkHref, isMobileView, setSectionHint, COMMUNITY_HINT_CARD, setHomeLegendVisible } from "./ui.js";
 import { apiRequest } from "./supabase.js";
 
 // ===================== COMMUNITY SERVICES =====================
@@ -40,9 +40,21 @@ function _activeServices(excludeIds = []) {
   );
 }
 
+function _randomShuffle(items) {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function shuffleServices(context) {
   const active = _activeServices();
   if (!active.length) return [];
+  if (context && String(context).startsWith("community")) {
+    return _randomShuffle(active);
+  }
   return _seededShuffle(active, _contextSeed(context));
 }
 
@@ -52,6 +64,19 @@ function pickServices(count, context, excludeIds = []) {
   const shuffled = _seededShuffle(active, _contextSeed(context));
   const n = Number.isFinite(count) && count > 0 ? count : active.length;
   return shuffled.slice(0, Math.min(n, shuffled.length));
+}
+
+/** Last service shown in a semester course list; next pick avoids it when possible. */
+let lastSemesterServiceId = null;
+
+function pickRotatingService() {
+  const active = _activeServices();
+  if (!active.length) return null;
+  const others = active.filter((s) => s.id !== lastSemesterServiceId);
+  const pool = others.length ? others : active;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  lastSemesterServiceId = picked.id;
+  return picked;
 }
 
 function whatsappHref(phone) {
@@ -336,11 +361,12 @@ function confirmServiceLink(serviceId, rawUrl, context, target) {
 function renderMobileCommunity() {
   const container = document.getElementById("coursesOutput");
   if (!container) return;
+  setSectionHint(COMMUNITY_HINT_CARD);
   const services = shuffleServices(`community-mobile:${performance.now()}`);
   if (!services.length) {
     container.innerHTML = `
       <button type="button" class="mobile-back" data-mobile-back="program">← Programs</button>
-      <div class="empty">No community services yet. Contact us to list yours!</div>`;
+      <div class="empty">No community services yet.</div>`;
     return;
   }
   const cards = services.map((s) => buildServiceCard(s, "community"));
@@ -360,14 +386,15 @@ function renderDesktopCommunity() {
   extra.style.display = "none";
   if (sidebar) sidebar.style.display = "none";
   const services = shuffleServices(`community:${performance.now()}`);
+  setSectionHint(COMMUNITY_HINT_CARD);
   if (!services.length) {
-    output.innerHTML = '<div class="empty">No community services yet. Contact us to list yours!</div>';
+    output.innerHTML = '<div class="empty">No community services yet.</div>';
     return;
   }
   const cards = services.map((s) => buildServiceCard(s, "community"));
   output.innerHTML = `
     <div style="margin-bottom:32px;">
-      <h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid var(--accent);">🤝 Community Services</h2>
+      <h2 style="font-size:1.1rem;font-weight:800;color:var(--text);margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid var(--accent);">🤝 Community Services</h2>
       <div class="courses-grid">${cards.join("")}</div>
     </div>`;
 }
@@ -426,6 +453,7 @@ function highlightServiceCard(serviceId) {
 }
 
 function selectCommunity(serviceId = null) {
+  setHomeLegendVisible(true);
   if (window.showView) window.showView("home");
   if (isMobileView()) {
     renderMobileCommunity();
@@ -453,6 +481,7 @@ window.addCommunityTab = addCommunityTab;
 window.selectCommunity = selectCommunity;
 window.highlightServiceCard = highlightServiceCard;
 window.pickServices = pickServices;
+window.pickRotatingService = pickRotatingService;
 window.shuffleServices = shuffleServices;
 window.buildServiceCard = buildServiceCard;
 window.buildServicePickCard = buildServicePickCard;
@@ -461,6 +490,7 @@ window.intersperse = intersperse;
 
 export {
   pickServices,
+  pickRotatingService,
   shuffleServices,
   buildServiceCard,
   buildServicePickCard,

@@ -67,6 +67,7 @@ When you try one of these without an account, a short signup form appears and th
 - **Light/dark mode** — system detection with persistence
 - **Report & contribute** — submit broken links or new resources
 - **Community services** — discover student businesses and tutoring listed by admins
+- **Tips** — link-type badges, starring courses, promoting a service, and contributing via the [Telegram guide](https://t.me/Info_Links_Contributing_Guide)
 - **Feedback** — rate the platform (1–5 stars) by category
 - **PWA** — installable with offline service worker support
 - **SEO pages** — server-rendered course and program pages for search engines

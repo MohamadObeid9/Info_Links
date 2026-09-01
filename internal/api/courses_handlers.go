@@ -19,6 +19,7 @@ func (h *Handler) handleAdminPostCourse(w http.ResponseWriter, r *http.Request) 
 		mapPostCourseErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
@@ -33,6 +34,7 @@ func (h *Handler) handleAdminPatchCourse(w http.ResponseWriter, r *http.Request)
 		mapUpdateCourseErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -42,6 +44,7 @@ func (h *Handler) handleAdminDeleteCourse(w http.ResponseWriter, r *http.Request
 		mapDeleteCourseErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

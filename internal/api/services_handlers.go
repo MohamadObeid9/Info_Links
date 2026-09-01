@@ -73,6 +73,7 @@ func (h *Handler) handleAdminPostService(w http.ResponseWriter, r *http.Request)
 		mapPostServiceErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
@@ -86,6 +87,7 @@ func (h *Handler) handleAdminPatchService(w http.ResponseWriter, r *http.Request
 		mapUpdateServiceErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -95,6 +97,7 @@ func (h *Handler) handleAdminDeleteService(w http.ResponseWriter, r *http.Reques
 		mapDeleteServiceErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -110,6 +113,7 @@ func (h *Handler) handleAdminRenewService(w http.ResponseWriter, r *http.Request
 		mapRenewServiceErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -119,6 +123,7 @@ func (h *Handler) handleAdminFreezeService(w http.ResponseWriter, r *http.Reques
 		mapUpdateServiceErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -128,6 +133,7 @@ func (h *Handler) handleAdminUnfreezeService(w http.ResponseWriter, r *http.Requ
 		mapUpdateServiceErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

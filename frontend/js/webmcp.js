@@ -159,7 +159,7 @@ function toolDefs() {
         }
         return {
           programs,
-          tabs: ["all", "extra", "favorites"],
+          tabs: ["all", "extra", "community", "tips", "favorites"],
         };
       },
     },
@@ -214,7 +214,7 @@ function toolDefs() {
           program: {
             type: "string",
             description:
-              "Optional program tab: all | extra | favorites | numeric program id.",
+              "Optional program tab: all | extra | community | tips | favorites | numeric program id.",
           },
         },
         required: ["view"],
@@ -230,7 +230,7 @@ function toolDefs() {
         if (view === "home" && input.program != null && window.selectProg) {
           const raw = String(input.program);
           const prog =
-            raw === "all" || raw === "extra" || raw === "favorites"
+            raw === "all" || raw === "extra" || raw === "favorites" || raw === "community" || raw === "tips"
               ? raw
               : Number(raw);
           window.selectProg(prog);

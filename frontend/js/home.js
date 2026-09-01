@@ -1,7 +1,7 @@
 
 // ===================== HOME RENDER =====================
 import { AppState } from "./state.js";
-import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView } from "./ui.js";
+import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView, collectFavoriteCourses, setSectionHint, tipsSectionHtml, FAVORITES_HINT_CARD, setHomeLegendVisible } from "./ui.js";
 import { renderMobileHome, selectMobileProg } from "./mobile-home.js";
 
 function renderProgTabs() {
@@ -15,6 +15,7 @@ function renderProgTabs() {
       .join("") +
     `<button class="prog-tab ${AppState.currentProg === "extra" ? "active" : ""}" onclick="selectProg('extra')">📦 Extra</button>` +
     `<button class="prog-tab ${AppState.currentProg === "community" ? "active" : ""}" onclick="selectCommunity()">🤝 Community</button>` +
+    `<button class="prog-tab ${AppState.currentProg === "tips" ? "active" : ""}" onclick="selectProg('tips')">💡 Tips</button>` +
     `<button class="prog-tab fav-tab ${AppState.currentProg === "favorites" ? "active" : ""}" onclick="selectProg('favorites')">⭐ My Courses</button>`;
 }
 
@@ -53,9 +54,8 @@ function renderSemFilters() {
 
 // ── Favorites view ─────────────────────────────────────────────────────────
 function renderFavorites() {
+  setSectionHint(FAVORITES_HINT_CARD);
   const q = document.getElementById("searchInput")?.value.toLowerCase().trim() || "";
-  const favIds = AppState.favorites;
-  let html = "";
 
   if (!window.isRegisteredStudent?.() && !AppState.adminLoggedIn) {
     document.getElementById("coursesOutput").innerHTML =
@@ -63,47 +63,31 @@ function renderFavorites() {
     return;
   }
 
-  if (favIds.size === 0) {
+  if (AppState.favorites.size === 0) {
     document.getElementById("coursesOutput").innerHTML =
       '<div class="empty">No favorites yet — click ★ on any course card to save it here.</div>';
     return;
   }
 
-  AppState.dbPrograms.forEach((prog) => {
-    let progHtml = "";
-    prog.years.forEach((year) => {
-      year.sems.forEach((sem) => {
-        const filtered = sem.courses.filter(
-          (c) =>
-            favIds.has(String(c.id)) &&
-            (!q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)),
-        );
-        if (!filtered.length) return;
-        const cardsHtml = filtered.map(_buildCourseCard).join("");
-        progHtml += `
-          <div class="sem-block">
-            <div class="sem-title">${esc(sem.name)}</div>
-            <div class="courses-grid">${cardsHtml}</div>
-          </div>`;
-      });
-    });
-    if (progHtml) {
-      html += `
-        <div style="margin-bottom:32px;">
-          <h3 style="font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:16px;">${esc(prog.name)}</h3>
-          ${progHtml}
-        </div>`;
-    }
-  });
+  const entries = collectFavoriteCourses(q);
+  const cardsHtml = entries
+    .map((e) => _buildCourseCard(e.course, { path: e.paths.join(" | ") }))
+    .join("");
 
-  document.getElementById("coursesOutput").innerHTML =
-    html || '<div class="empty">No matching favorites found.</div>';
+  document.getElementById("coursesOutput").innerHTML = cardsHtml
+    ? `<div class="courses-grid">${cardsHtml}</div>`
+    : '<div class="empty">No matching favorites found.</div>';
 }
 
 function renderCourses() {
   if (isMobileView() && renderMobileHome()) return;
   if (AppState.currentProg === "all") {
+    setSectionHint("");
     renderAllCourses();
+    return;
+  }
+  if (AppState.currentProg === "tips") {
+    renderTips();
     return;
   }
   if (AppState.currentProg === "favorites") {
@@ -113,6 +97,7 @@ function renderCourses() {
 
   const prog = AppState.dbPrograms.find((p) => p.id === AppState.currentProg);
   if (!prog) return;
+  setSectionHint("");
 
   const q = document.getElementById("searchInput").value.toLowerCase().trim();
   let html = "";
@@ -253,6 +238,16 @@ function renderExtra() {
     : "";
 }
 
+function renderTips() {
+  setSectionHint("");
+  setHomeLegendVisible(false);
+  document.getElementById("coursesOutput").innerHTML = `
+    <div class="tips-page" style="margin-bottom:32px;">
+      <h2 class="tips-title"><span class="tips-title-emoji" aria-hidden="true">💡</span> Tips</h2>
+      ${tipsSectionHtml()}
+    </div>`;
+}
+
 function selectProg(id) {
   // "My Courses" is server-synced, so it needs a registered student.
   if (id === "favorites" && !window.requireStudent(() => selectProg("favorites"))) {
@@ -263,14 +258,17 @@ function selectProg(id) {
     return;
   }
   if (id === "community") {
+    setHomeLegendVisible(true);
     window.selectCommunity?.();
     return;
   }
   AppState.currentProg = id;
   AppState.currentYear = "all";
   AppState.currentSem = "all";
+  if (id !== "tips") setHomeLegendVisible(true);
   renderProgTabs();
   if (id === "extra") {
+    setSectionHint("");
     document.querySelector(".filter-row").style.display = "none";
     document.getElementById("coursesOutput").style.display = "none";
     document.getElementById("extraSection").style.display = "";
@@ -283,6 +281,14 @@ function selectProg(id) {
     renderCourses();
     renderExtra();
     window.renderDesktopServiceSidebar?.();
+  } else if (id === "tips") {
+    setSectionHint("");
+    document.querySelector(".filter-row").style.display = "none";
+    document.getElementById("coursesOutput").style.display = "";
+    document.getElementById("extraSection").style.display = "none";
+    const sidebar = document.getElementById("serviceSidebar");
+    if (sidebar) sidebar.style.display = "none";
+    renderTips();
   } else if (id === "favorites") {
     document.querySelector(".filter-row").style.display = "none";
     document.getElementById("coursesOutput").style.display = "";

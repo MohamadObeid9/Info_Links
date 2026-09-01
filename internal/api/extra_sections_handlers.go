@@ -26,6 +26,7 @@ func (h *Handler) handleAdminPostExtraSection(w http.ResponseWriter, r *http.Req
 		mapPostExtraSectionErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
@@ -39,6 +40,7 @@ func (h *Handler) handleAdminPatchExtraSection(w http.ResponseWriter, r *http.Re
 		mapUpdateExtraSectionErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -48,6 +50,7 @@ func (h *Handler) handleAdminDeleteExtraSection(w http.ResponseWriter, r *http.R
 		mapDeleteExtraSectionErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

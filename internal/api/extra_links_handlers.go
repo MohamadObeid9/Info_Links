@@ -26,6 +26,7 @@ func (h *Handler) handleAdminPostExtraLink(w http.ResponseWriter, r *http.Reques
 		mapPostExtraLinkErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
@@ -39,6 +40,7 @@ func (h *Handler) handleAdminPatchExtraLink(w http.ResponseWriter, r *http.Reque
 		mapUpdateExtraLinkErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -48,6 +50,7 @@ func (h *Handler) handleAdminDeleteExtraLink(w http.ResponseWriter, r *http.Requ
 		mapDeleteExtraLinkErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

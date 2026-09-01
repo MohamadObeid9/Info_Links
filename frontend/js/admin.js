@@ -628,7 +628,7 @@ function _buildBarChart(days, range, todayStr) {
     .map((d, i) => {
       const pct = Math.round((d.count / maxCount) * 100);
       const showLabel = i % labelStep === 0 || i === days.length - 1;
-      return `<div class="bar-col"><div class="bar-val" style="visibility:${d.count > 0 ? "visible" : "hidden"}">${d.count || ""}</div><div class="bar-fill" style="height:${Math.max(pct, d.count > 0 ? 4 : 0)}%;background:${d.date === todayStr ? "var(--accent2)" : "var(--accent)"}"></div><div class="bar-label">${showLabel ? fmtDay(d.date) : ""}</div></div>`;
+      return `<div class="bar-col"><div class="bar-val">${d.count}</div><div class="bar-fill" style="height:${Math.max(pct, d.count > 0 ? 4 : 0)}%;background:${d.date === todayStr ? "var(--accent2)" : "var(--accent)"}"></div><div class="bar-label">${showLabel ? fmtDay(d.date) : ""}</div></div>`;
     })
     .join("");
 }
