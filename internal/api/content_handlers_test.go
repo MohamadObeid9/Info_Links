@@ -76,7 +76,7 @@ func TestHandleGetContent(t *testing.T) {
 				if body["error"] != tt.errMsg {
 					t.Fatalf("error = %q, want %q", body["error"], tt.errMsg)
 				}
-				if cc := rr.Header().Get("Cache-Control"); strings.Contains(cc, "max-age=60") {
+				if cc := rr.Header().Get("Cache-Control"); strings.Contains(cc, contentCachePublic) {
 					t.Fatalf("error response must not be publicly cached, Cache-Control=%q", cc)
 				}
 				return
@@ -84,13 +84,32 @@ func TestHandleGetContent(t *testing.T) {
 			if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
 				t.Fatalf("Content-Type = %q, want application/json", ct)
 			}
-			wantCC := "public, max-age=60, stale-while-revalidate=600"
-			if cc := rr.Header().Get("Cache-Control"); cc != wantCC {
-				t.Fatalf("Cache-Control = %q, want %q", cc, wantCC)
+			if cc := rr.Header().Get("Cache-Control"); cc != contentCachePublic {
+				t.Fatalf("Cache-Control = %q, want %q", cc, contentCachePublic)
 			}
 			if !reflect.DeepEqual(rr.Body.Bytes(), tt.wantBody) {
 				t.Fatalf("body = %q, want %q", rr.Body.Bytes(), tt.wantBody)
 			}
 		})
+	}
+}
+
+func TestHandleGetAdminContent(t *testing.T) {
+	sampleJSON := []byte(`{"programs":[]}`)
+	fakeContent := &fakeContentService{getResult: sampleJSON}
+	h := testHandler(t, withContent(fakeContent))
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/content", nil)
+	rr := httptest.NewRecorder()
+
+	h.handleGetAdminContent(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	if cc := rr.Header().Get("Cache-Control"); cc != contentCacheAdmin {
+		t.Fatalf("Cache-Control = %q, want %q", cc, contentCacheAdmin)
+	}
+	if !reflect.DeepEqual(rr.Body.Bytes(), sampleJSON) {
+		t.Fatalf("body = %q, want %q", rr.Body.Bytes(), sampleJSON)
 	}
 }

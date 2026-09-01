@@ -72,6 +72,7 @@ async function apiRequest(
     body = null,
     headers = {},
     timeoutMs = API_TIMEOUT_MS,
+    cache,
   } = {},
 ) {
   const controller = new AbortController();
@@ -95,6 +96,7 @@ async function apiRequest(
       headers: finalHeaders,
       body: body !== null ? JSON.stringify(body) : null,
       signal: controller.signal,
+      ...(cache ? { cache } : {}),
     });
     const text = await res.text();
     if (!res.ok) {
