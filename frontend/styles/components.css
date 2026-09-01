@@ -360,67 +360,69 @@ select.inp {
     font-size: 0.62rem;
 }
 
+.home-section {
+    margin-bottom: 32px;
+}
+
+.home-section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+}
+
+.section-inline-hint {
+    margin: 0 0 16px;
+    padding: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.55;
+    text-align: left;
+}
+
+.section-inline-hint a,
+.section-inline-hint .hint-link {
+    color: #1a6fa0;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
 @media (min-width: 769px) {
     .tips-page {
-        max-width: 44rem;
-        margin: 0 auto 32px;
-    }
-
-    .tips-title {
-        font-size: 1.15rem;
-        margin-bottom: 14px;
-        padding-bottom: 8px;
+        width: 100%;
         max-width: none;
-    }
-
-    .tips-title-emoji {
-        font-size: 1.2rem;
+        margin: 0 0 32px;
     }
 
     .tips-section {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        max-width: none;
+        gap: 14px;
         width: 100%;
         margin: 0;
     }
 
-    .tips-section .fav-hint--link-types {
-        grid-column: 1 / -1;
-    }
-
-    #sectionHint:not([hidden]) {
-        max-width: 28rem;
-        margin-left: auto;
-        margin-right: auto;
-    }
-
-    .fav-hint,
     .tips-section .fav-hint {
-        padding: 10px 12px;
-        font-size: 0.82rem;
-        margin-bottom: 0;
+        height: 100%;
+        margin: 0;
+        padding: 12px 14px;
+        font-size: 0.84rem;
         text-align: left;
     }
 
     .fav-hint-title {
-        font-size: 0.68rem;
-        margin-bottom: 5px;
+        font-size: 0.7rem;
+        margin-bottom: 6px;
         text-align: left;
     }
 
     .fav-hint-body {
-        font-size: 0.82rem;
-    }
-
-    .hint-link-types {
-        justify-content: flex-start;
-        gap: 8px 12px;
-    }
-
-    .hint-legend-item {
-        font-size: 0.74rem;
+        font-size: 0.84rem;
     }
 }
 

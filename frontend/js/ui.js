@@ -273,6 +273,14 @@ function tipsSectionHtml() {
     </div>`;
 }
 
+function homeSectionHeading(title) {
+  return `<h2 class="home-section-title">${title}</h2>`;
+}
+
+function sectionInlineHintHtml(bodyHtml) {
+  return `<div class="section-inline-hint">${bodyHtml}</div>`;
+}
+
 function setHomeLegendVisible(visible) {
   const legend = document.querySelector("#view-home .legend");
   if (legend) legend.hidden = !visible;
@@ -395,4 +403,6 @@ export {
   setSectionHint,
   tipsSectionHtml,
   setHomeLegendVisible,
+  homeSectionHeading,
+  sectionInlineHintHtml,
 };

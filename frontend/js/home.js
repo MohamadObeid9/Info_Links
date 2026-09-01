@@ -1,7 +1,7 @@
 
 // ===================== HOME RENDER =====================
 import { AppState } from "./state.js";
-import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView, collectFavoriteCourses, setSectionHint, tipsSectionHtml, FAVORITES_HINT_CARD, setHomeLegendVisible } from "./ui.js";
+import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView, collectFavoriteCourses, setSectionHint, tipsSectionHtml, FAVORITES_HINT, FAVORITES_HINT_CARD, homeSectionHeading, sectionInlineHintHtml, setHomeLegendVisible } from "./ui.js";
 import { renderMobileHome, selectMobileProg } from "./mobile-home.js";
 
 function renderProgTabs() {
@@ -54,29 +54,36 @@ function renderSemFilters() {
 
 // ── Favorites view ─────────────────────────────────────────────────────────
 function renderFavorites() {
-  setSectionHint(FAVORITES_HINT_CARD);
   const q = document.getElementById("searchInput")?.value.toLowerCase().trim() || "";
+  const mobile = isMobileView();
+  setSectionHint(mobile ? FAVORITES_HINT_CARD : "");
 
+  let body = "";
   if (!window.isRegisteredStudent?.() && !AppState.adminLoggedIn) {
-    document.getElementById("coursesOutput").innerHTML =
-      '<div class="empty">Sign up to save courses here — it takes a name and a number.</div>';
+    body = '<div class="empty">Sign up to save courses here — it takes a name and a number.</div>';
+  } else if (AppState.favorites.size === 0) {
+    body = '<div class="empty">No favorites yet — click ★ on any course card to save it here.</div>';
+  } else {
+    const entries = collectFavoriteCourses(q);
+    const cardsHtml = entries
+      .map((e) => _buildCourseCard(e.course, { path: e.paths.join(" | ") }))
+      .join("");
+    body = cardsHtml
+      ? `<div class="courses-grid">${cardsHtml}</div>`
+      : '<div class="empty">No matching favorites found.</div>';
+  }
+
+  if (mobile) {
+    document.getElementById("coursesOutput").innerHTML = body;
     return;
   }
 
-  if (AppState.favorites.size === 0) {
-    document.getElementById("coursesOutput").innerHTML =
-      '<div class="empty">No favorites yet — click ★ on any course card to save it here.</div>';
-    return;
-  }
-
-  const entries = collectFavoriteCourses(q);
-  const cardsHtml = entries
-    .map((e) => _buildCourseCard(e.course, { path: e.paths.join(" | ") }))
-    .join("");
-
-  document.getElementById("coursesOutput").innerHTML = cardsHtml
-    ? `<div class="courses-grid">${cardsHtml}</div>`
-    : '<div class="empty">No matching favorites found.</div>';
+  document.getElementById("coursesOutput").innerHTML = `
+    <div class="home-section">
+      ${homeSectionHeading("⭐ My Courses")}
+      ${sectionInlineHintHtml(FAVORITES_HINT)}
+      ${body}
+    </div>`;
 }
 
 function renderCourses() {
@@ -242,8 +249,8 @@ function renderTips() {
   setSectionHint("");
   setHomeLegendVisible(false);
   document.getElementById("coursesOutput").innerHTML = `
-    <div class="tips-page" style="margin-bottom:32px;">
-      <h2 class="tips-title"><span class="tips-title-emoji" aria-hidden="true">💡</span> Tips</h2>
+    <div class="home-section tips-page">
+      ${homeSectionHeading("💡 Tips")}
       ${tipsSectionHtml()}
     </div>`;
 }

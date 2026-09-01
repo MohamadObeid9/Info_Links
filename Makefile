@@ -4,13 +4,19 @@
 # still gets secrets via env_file format: raw.
 export COMPOSE_DISABLE_ENV_FILE := 1
 
-.PHONY: up down watch
+.PHONY: up down watch build rebuild
 
 up:
-	docker compose up --build
+	docker compose up
 
 watch:
-	docker compose up --build --watch
+	docker compose up --watch
+
+build:
+	docker compose build
+
+rebuild:
+	docker compose up --build
 
 down:
 	docker compose down
