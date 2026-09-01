@@ -66,6 +66,8 @@ type dbPinger interface {
 
 type contentService interface {
 	Get(ctx context.Context) ([]byte, error)
+	GetUncached(ctx context.Context) ([]byte, error)
+	Invalidate()
 }
 
 type userService interface {

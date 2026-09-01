@@ -1,14 +1,65 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: infolinks
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d infolinks"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - infolinks-pg:/var/lib/postgresql/data
+
+  migrate:
+    image: migrate/migrate:v4.18.3
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database=postgres://postgres:postgres@db:5432/infolinks?sslmode=disable
+      - up
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.seed
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./db/test-data.json:/data/test-data.json:ro
+    command:
+      - -file=/data/test-data.json
+      - -dsn=postgres://postgres:postgres@db:5432/infolinks?sslmode=disable
+      - -if-empty
+
   app:
     build: .
     ports:
       - "8080:8080"
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    # App secrets come from .env (format: raw). Compose still reads `.env` for
+    # YAML interpolation unless COMPOSE_DISABLE_ENV_FILE=1 (see Makefile).
     env_file:
-      - .env
+      - path: .env
+        format: raw
+        required: true
     environment:
       APP_ENV: development
       PORT: "8080"
       SITE_BASE_URL: http://localhost:8080
+      # Hostname `db` is the Compose Postgres service — not 127.0.0.1 inside this container.
+      LOCAL_DATABASE_URL: postgres://postgres:postgres@db:5432/infolinks?sslmode=disable
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -20,3 +71,7 @@ services:
             - frontend/node_modules/
             - .git/
             - frontend/dist/
+            - db/migrations/
+
+volumes:
+  infolinks-pg:

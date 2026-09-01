@@ -19,6 +19,7 @@ func (h *Handler) handleAdminPostLink(w http.ResponseWriter, r *http.Request) {
 		mapPostLinkErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "ok"})
 }
 
@@ -32,6 +33,7 @@ func (h *Handler) handleAdminPatchLink(w http.ResponseWriter, r *http.Request) {
 		mapUpdateLinkErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -41,6 +43,7 @@ func (h *Handler) handleAdminDeleteLink(w http.ResponseWriter, r *http.Request) 
 		mapDeleteLinkErr(h, w, r, err)
 		return
 	}
+	h.invalidateContent()
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

@@ -13,6 +13,7 @@ Vanilla HTML, CSS, and JavaScript UI for Info Links. The Go server serves these 
 ## Features
 
 - Course browsing, search, favorites, report/contribute/feedback flows
+- Tips (favorites, community promote, contribute Telegram guide)
 - Community services cards (sidebar, list intersperse, dedicated community view)
 - Admin panel (courses, services, analytics, students, inbox)
 - Light/dark theme and mobile layouts

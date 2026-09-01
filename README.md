@@ -60,7 +60,7 @@ The Go server also:
 - Exposes a JSON API under `/api/*` — see `GET /api` for a live endpoint directory
 - Shuts down gracefully on `SIGTERM`/`SIGINT` (waits for in-flight requests, then closes the DB pool)
 
-Production traffic hits **Cloudflare** first: hashed static files and `GET /api/content` are cached at the edge. A 10-minute cron ping keeps `/api/content` warm. Origin still runs the JSON aggregation on cache miss.
+Production traffic hits **Cloudflare** first: hashed static files and `GET /api/content` are cached at the edge. A 10-minute cron ping keeps `/api/content` warm. Origin also keeps a 60s in-memory copy (`singleflight` on miss) so a flood that skips the CDN does not run the JSON aggregation once per request. k6 against that origin (2026-09-01): 50-VU normal load p95 **1.53 ms** (100% 200); burst **~17k req/s** with 99.93% 429s and p95 of allowed 200s **8.91 ms**. Same-day uncached normal p95 was **4.91 s**. Details: [`docs/load-test.md`](docs/load-test.md).
 
 **Deploy pipeline:**
 
@@ -97,10 +97,10 @@ info_links/
 ├── docs/
 │   ├── adr/              # Architecture Decision Records
 │   ├── learnings/        # Per-package engineering notes
+│   ├── load-test.md      # k6 results for GET /api/content
 │   └── user-guide.md     # Student and admin walkthrough
 ├── Dockerfile            # Multi-stage: Node build → Go build → distroless
-├── render.yaml           # Render Blueprint (Docker runtime, CI-gated deploy)
-├── docker-compose.yml    # Local container + file watch
+├── docker-compose.yml    # Local Postgres + migrate + seed + app
 ├── .air.toml             # Go hot-reload config
 └── .env.example          # Required environment variables
 ```
@@ -185,23 +185,25 @@ cd frontend && npm ci && npm run dev
 
 Use **5173** while editing HTML/CSS/JS. Fastest feedback loop.
 
-### Docker (production-like)
+### Docker (local app + local Postgres)
 
-Requires Docker Compose v2.22+ (for `watch`).
-
-**Active development in a container** — rebuilds the image when project files change (`develop.watch` in `docker-compose.yml`):
+Requires Docker Compose v2.22+ (for `watch`). Starts Postgres, applies `db/migrations`, seeds `db/test-data.json` if the DB is empty, then the app.
 
 ```bash
-docker compose up --build --watch
+COMPOSE_DISABLE_ENV_FILE=1 docker compose up --build
 # → http://localhost:8080
 ```
 
-Slower than Air + Vite, but matches the production Docker layout without installing Go/Node locally.
+Seeding uses `-if-empty` so later `up` does not wipe local edits. Wipe and re-seed with `docker compose down -v` then `up` again.
 
-**One-shot verify:**
+`COMPOSE_DISABLE_ENV_FILE=1` stops Compose from treating `$` in `.env` (for example a Supabase password) as a variable. The app still loads `.env` with `format: raw`. Or run `make up`.
+
+`APP_ENV=development` uses `LOCAL_DATABASE_URL` pointing at the `db` service. `.env` still supplies JWT and Supabase Auth keys. Postgres is published on host `5432` as well (`postgres://postgres:postgres@localhost:5432/infolinks?sslmode=disable`) for `air` / `go run` against the same local database.
+
+**Watch (rebuild app on file changes):**
 
 ```bash
-docker compose up --build
+COMPOSE_DISABLE_ENV_FILE=1 docker compose up --build --watch
 ```
 
 **Build image only (same as CI):**
@@ -233,13 +235,13 @@ go test -tags=integration -race ./internal/integration/...
 
 CI runs on every push/PR: Go build, unit tests with coverage, Postgres migrations, integration tests, golangci-lint, govulncheck, frontend lint/test/build, and `docker build`. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
-`main` is branch-protected — all CI jobs must pass before merge. Render deploys only after checks pass (`autoDeployTrigger: checksPass` in [`render.yaml`](render.yaml)).
+`main` is branch-protected — all CI jobs must pass before merge. Render deploys only after those checks pass.
 
 ---
 
 ## Deployment
 
-Single Docker web service on [Render](https://render.com), configured in [`render.yaml`](render.yaml):
+Single Docker web service on [Render](https://render.com):
 
 | Setting | Value |
 |---------|-------|
@@ -254,9 +256,9 @@ The [Dockerfile](Dockerfile) is multi-stage: Node builds `frontend/dist`, Go com
 
 On deploy, Render sends `SIGTERM`. The server stops accepting new connections, drains in-flight requests (10s budget), stops the stale-guest cleanup ticker, then closes the database pool.
 
-`GET /api/content` is publicly cacheable (`max-age=60`, `stale-while-revalidate=600`). Cloudflare serves most student hits; a cron request every 10 minutes keeps that cache warm. Grafana showed p95/p99 drop from multi-second spikes to a stable sub-500ms band after this went live (21 Aug 2026).
+`GET /api/content` is publicly cacheable (`max-age=60`, `stale-while-revalidate=600`). Cloudflare serves most student hits; a cron request every 10 minutes keeps that cache warm. Grafana showed p95/p99 drop from multi-second spikes to a stable sub-500ms band after this went live (21 Aug 2026). Origin also caches the same JSON in process (60s TTL). Origin-only k6 after that change: normal p95 **1.53 ms**, burst ~**17,009 req/s** ([`docs/load-test.md`](docs/load-test.md)).
 
-Set environment variables in the Render dashboard (see [`.env.example`](.env.example)). Secrets use `sync: false` in `render.yaml`. In production, `APP_ENV=production` and metrics basic auth are required for `/metrics`.
+Set environment variables in the Render dashboard (see [`.env.example`](.env.example)). In production, `APP_ENV=production` and metrics basic auth are required for `/metrics`.
 
 ---
 

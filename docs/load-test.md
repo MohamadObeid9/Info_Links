@@ -1,22 +1,24 @@
 # Load Test Results
 
-## Environment
+## Environment (2026-09-01, after in-memory cache)
 
 | | |
 |---|---|
-| **Date** | 2026-06-13 |
-| **Go version** | 1.25.9 |
-| **Stack** | Docker Compose (single container, app only — no separate DB container, connects to remote Supabase Postgres) |
-| **Tool** | [k6](https://k6.io/) v0.56.0 |
-| **Machine** | Fedora Linux (local dev) |
+| **Date** | 2026-09-01 (afternoon rerun) |
+| **Go version** | 1.26.5 |
+| **Stack** | Local `go run ./cmd/server` with `APP_ENV=production` (remote Supabase). Origin now keeps a 60s in-memory copy of `GET /api/content` with `singleflight` on miss. |
+| **Tool** | [k6](https://k6.io/) v2.2.0 |
+| **Machine** | Fedora Linux 44 (local dev) |
 | **Endpoint tested** | `GET /api/content` |
+
+Origin-only (k6 hits the Go process, not Cloudflare).
 
 ---
 
 ## Test 1 — Normal Load (50 VUs, ramped)
 
 **Script:** `docs/load-test-normal.js`  
-**Scenario:** Ramp up to 50 virtual users over 30s, hold for 1m, ramp down over 10s. Each VU sends 1 req/s with a unique `X-Forwarded-For` IP to simulate 50 distinct users.
+**Scenario:** Ramp up to 50 virtual users over 30s, hold for 1m, ramp down over 10s. Each VU sends ~1 req/s with a unique `X-Forwarded-For` (`203.0.113.{VU}`, TEST-NET-3).
 
 ```
 stages:
@@ -25,87 +27,70 @@ stages:
   10s → 0 VUs
 ```
 
-### Results
+### Results (2026-09-01 afternoon — in-memory cache)
 
 | Metric | Value |
 |---|---|
-| Total requests | 2,123 |
-| Throughput | 21.1 req/s |
-| Success rate | **100%** |
+| Total requests | 4,018 |
+| Throughput | 39.9 req/s |
+| Success rate (HTTP 200) | **100%** |
 | Rate-limited (429) | 0 |
-| avg latency | 902 ms |
-| p(90) latency | 1.44 s |
-| p(95) latency | 1.69 s |
-| min latency | 316 ms |
-| max latency | 3.77 s |
-| Avg response size | ~36 KB |
+| avg latency | 1.76 ms |
+| p(90) latency | 1.23 ms |
+| p(95) latency | **1.53 ms** |
+| min latency | 317 µs |
+| max latency | 329 ms |
 
-**Threshold result:** `http_req_duration p(95) < 500ms` ❌ (p95 = 1.69s)  
-**Failure rate threshold:** `rate < 1%` ✅ (0% failures)
+**Threshold result:** `http_req_duration p(95) < 500ms` ✅  
+**Failure rate threshold:** `rate < 1%` ✅ (0%)
 
-### Analysis
+Same day, before the cache (morning): 1,210 req, 11.9 req/s, p95 **4.91 s**, 99.5% 200. June 2026 (no cache): 2,123 req, 21.1 req/s, p95 1.69 s.
 
-The latency threshold failure is expected and understood. `/api/content` is a heavy read-all endpoint: a single CTE query aggregates programs, years, semesters, courses, links, extra sections, and extra links, returning ~36 KB of JSON per response. At 50 concurrent users all hitting this endpoint simultaneously, the remote Postgres connection pool queues up, and response times climb.
-
-**This is not a real-world concern** because:
-- The frontend caches the content response in `localStorage` for 1 hour. Real users hit `/api/content` once per hour at most, not once per second.
-- At actual traffic levels (300 daily users), true concurrency on this endpoint is near zero.
-
-**Fix shipped in production (2026-08-21):** origin sends `Cache-Control: public, max-age=60, stale-while-revalidate=600` on `GET /api/content`. Cloudflare caches that response (and hashed static assets). A cron ping every 10 minutes keeps the edge cache warm so students rarely wait on Postgres. Grafana p95/p99 for `/api/content` dropped from ~2–2.5s spikes to well under 500ms after that date.
+After warmup, 50 distinct IPs no longer stampede Postgres. Max 329 ms is a refill after TTL/cold; the rest is RAM.
 
 ---
 
 ## Test 2 — Burst (30 VUs, no sleep, 10s)
 
 **Script:** `docs/load-test-burst.js`  
-**Scenario:** 30 VUs hammering the same endpoint with no sleep for 10 seconds — all from the same IP. Validates that the rate limiter correctly returns 429 and does not crash or degrade.
+**Scenario:** 30 VUs, same IP, 10 seconds — rate limiter still returns 429.
 
-### Results
+### Results (2026-09-01 afternoon)
 
 | Metric | Value |
 |---|---|
-| Total requests | 53,070 |
-| Throughput | **4,427 req/s** |
-| Check pass rate | **100%** (all responses were 200 or 429) |
-| Rate-limited (429) | 99.78% (52,956) |
-| Passed through (200) | 0.22% (114) |
-| p(95) latency (all) | 995 µs |
-| p(95) latency (200 only) | 3.61 s |
+| Total requests | 170,119 |
+| Throughput | **17,009 req/s** |
+| Check pass rate | **100%** (200 or 429) |
+| Rate-limited (429) | 99.93% (170,000) |
+| Passed through (200) | 0.07% (119) |
+| p(95) latency (all) | 3.8 ms |
+| p(95) latency (200 only) | **8.91 ms** |
 
-### Analysis
-
-The rate limiter works correctly. At 4,427 req/s from a single IP:
-- The token bucket (10 tokens/s, burst 20) exhausts immediately and returns 429 in under 1ms without touching the DB or any business logic.
-- The 114 requests that passed through represent the initial burst capacity (20 tokens) plus ~10 tokens/s refilled over the 10s window — exactly correct behaviour.
-- Zero crashes, zero unexpected responses.
+Morning (no cache): 167,584 req, 15,505 req/s, 119 × 200, p95 of 200s **2.91 s**. The 200-count is still the token bucket (burst 20 + ~10/s). Those 200s are now served from RAM, so p95 for allowed requests dropped from seconds to milliseconds. 429 behaviour is unchanged.
 
 ---
 
 ## Summary
 
-| | Normal (50 VUs) | Burst (30 VUs, same IP) |
-|---|---|---|
-| Throughput | 21 req/s | 4,427 req/s |
-| Success rate | 100% | 100% (200 + 429) |
-| p(95) latency | 1.69 s | <1 ms (429) |
-| Rate limiter effect | None (different IPs) | Correctly blocks 99.8% |
+| | Normal (cache) | Normal (same day, no cache) | Burst (cache) | Burst (same day, no cache) |
+|---|---|---|---|---|
+| Throughput | 40 req/s | 12 req/s | 17,009 req/s | 15,505 req/s |
+| Success | 100% 200 | 99.5% 200 | 100% (200 + 429) | 100% (200 + 429) |
+| p(95) | **1.53 ms** | 4.91 s | 3.8 ms (all) | 2.1 ms (all) |
+| p(95) of 200s | 1.53 ms | 4.91 s | **8.91 ms** | 2.91 s |
+| Rate limiter | none | 6 × 429 | 99.93% 429 | 99.92% 429 |
 
 ---
 
-## Identified Bottleneck (June 2026 k6 run)
+## Bottleneck
 
-**`GET /api/content` under concurrent load** when every request hit origin Postgres.
+The origin CTE against Supabase is still expensive on a **cold miss**. Under synthetic concurrency it no longer runs once per request: the in-memory cache + `singleflight` collapses that to one query per TTL (or after admin `Invalidate()`).
 
-Root cause: single heavy CTE query against remote Supabase, ~36 KB JSON, no edge cache at the time of the test.
-
-**Production follow-up (August 2026):** Cloudflare in front of Render caches `/api/content` using the origin `Cache-Control` header. A 10-minute cron keeps the object warm. Grafana shows the step-change on 21 Aug: p95/p99 collapsed from multi-second spikes to a stable sub-500ms band. The k6 numbers above remain a valid origin-only baseline (k6 hits the Go process, not the CDN).
+Cloudflare in production still absorbs student traffic at the edge. This k6 path is origin-only and now matches “warm RAM” rather than “50 concurrent Postgres round-trips.”
 
 ---
 
-## Rate Limiter Trade-offs
+## Rate limiter
 
-The current implementation uses a `sync.Map` keyed by IP with one `*rate.Limiter` per IP (10 req/s, burst 20). Known limitations:
-
-- **No eviction:** limiters are never removed from the map. Memory grows with the number of unique IPs seen since startup. At current traffic (300 daily users) this is negligible (<1 MB), but at scale a cleanup goroutine with a last-seen timestamp would be needed.
-- **Single-process only:** state lives in-process. If horizontally scaled behind a load balancer, each instance has its own limiter map. A Redis-backed distributed rate limiter (e.g. `go-redis/redis_rate`) would be needed for correctness at scale.
-- **Trusted proxy assumption:** `X-Forwarded-For` is trusted because all traffic arrives through Render's proxy. On a raw public server this header could be spoofed.
+Unchanged: 10 req/s, burst 20, per IP; idle eviction after 10 minutes. Burst test still proves 429s do not crash the process.

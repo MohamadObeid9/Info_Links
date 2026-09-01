@@ -1,0 +1,9 @@
+# Local-only: docker compose seed service. Not used in production.
+FROM golang:1.25-alpine
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY internal/models ./internal/models
+COPY cmd/seed ./cmd/seed
+RUN CGO_ENABLED=0 go build -o /seed ./cmd/seed
+ENTRYPOINT ["/seed"]

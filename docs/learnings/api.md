@@ -205,13 +205,26 @@ Render uses `/readyz` to decide whether to send traffic. `/healthz` answers "is 
 
 ### Caching (`GET /api/content` and static files)
 
-Origin does **not** keep an in-memory copy of the course tree. It sets cache headers and lets Cloudflare sit in front of Render:
+Origin keeps a **process-local copy** of `GET /api/content` (60s TTL, `singleflight` on miss) so a flood that bypasses Cloudflare does not run the CTE once per request. Admin `GET /api/admin/content` always hits Postgres (`GetUncached`). Successful course/link/extra/service mutations call `Invalidate()`.
+
+Cloudflare still sits in front of Render:
 
 - **Hashed Vite assets** — `Cache-Control: public, max-age=31536000, immutable`
-- **`GET /api/content`** — `public, max-age=60, stale-while-revalidate=600`
+- **`GET /api/content`** — `public, max-age=3600, stale-while-revalidate=600`
 - **Warm-up** — a cron GET every 10 minutes so the edge object does not expire while students are asleep
 
-Grafana (Prometheus scrape of `/metrics`) showed p95/p99 for `/api/content` collapsing on 21 Aug 2026 after this went live. A cache miss still runs the Postgres JSON aggregation.
+Grafana (Prometheus scrape of `/metrics`) showed p95/p99 for `/api/content` collapsing on 21 Aug 2026 after the CDN headers went live. A **cold** origin miss still runs the Postgres JSON aggregation once (`singleflight` shares that miss).
+
+Origin-only k6 (2026-09-01, local Go + remote Supabase), after the in-memory cache:
+
+| | Normal (50 VUs) | Burst (30 VUs, 10s) |
+|---|---|---|
+| Throughput | 39.9 req/s | **17,009 req/s** |
+| HTTP 200 | 100% | 0.07% (token bucket) |
+| HTTP 429 | 0 | 99.93% |
+| p95 | **1.53 ms** | 8.91 ms (200s only) |
+
+Same day without the origin cache: normal p95 **4.91 s**; burst 200s p95 **2.91 s**. Full write-up: [`docs/load-test.md`](../load-test.md).
 
 ---
 

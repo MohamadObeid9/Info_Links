@@ -151,6 +151,37 @@ function getContentTypeChip(ct) { return getContentTypeChips(ct); }
  * Used by both renderCourses (filtered) and renderAllCourses (all).
  * opts.path is shown on mobile search results (program · year · semester).
  */
+/** One entry per favorite course id, even when the course is offered in several programs. */
+function collectFavoriteCourses(query = "") {
+  const q = query.toLowerCase().trim();
+  const favIds = AppState.favorites;
+  const byId = new Map();
+  AppState.dbPrograms.forEach((prog) => {
+    prog.years.forEach((year) => {
+      year.sems.forEach((sem) => {
+        (sem.courses || []).forEach((c) => {
+          if (!favIds.has(String(c.id))) return;
+          if (
+            q &&
+            !c.name.toLowerCase().includes(q) &&
+            !c.code.toLowerCase().includes(q)
+          ) {
+            return;
+          }
+          const path = `${prog.name} · ${year.name} · ${sem.name}`;
+          const existing = byId.get(c.id);
+          if (existing) {
+            if (!existing.paths.includes(path)) existing.paths.push(path);
+            return;
+          }
+          byId.set(c.id, { course: c, paths: [path] });
+        });
+      });
+    });
+  });
+  return [...byId.values()];
+}
+
 function _buildCourseCard(c, opts = {}) {
   const isFav = AppState.favorites.has(String(c.id));
   const path = opts.path || "";
@@ -195,6 +226,68 @@ function _buildCourseCard(c, opts = {}) {
       </div>
       <div class="links-list">${linksHtml}</div>
     </div>`;
+}
+
+const TELEGRAM_PROMOTE_URL = "https://t.me/Info_Links_Services_Guide";
+const TELEGRAM_CONTRIBUTE_URL = "https://t.me/Info_Links_Contributing_Guide";
+
+function hintLink(url, label) {
+  return `<a class="hint-link" href="${_linkHref(url)}" data-url="${esc(url)}">${esc(label)}</a>`;
+}
+
+const FAVORITES_HINT =
+  "Mark the courses you use most with ★ to reach them more easily in the My Courses section.";
+
+const COMMUNITY_PROMOTE_HINT = `Want to promote your service on Info Links? Contact us on ${hintLink(TELEGRAM_PROMOTE_URL, "Telegram")} to know more.`;
+
+const CONTRIBUTE_HINT = `Want to help and contribute to Info Links? Visit our ${hintLink(TELEGRAM_CONTRIBUTE_URL, "Telegram guide")} to know more on how you can help us make Info Links better.`;
+
+function linkTypesLegendHtml() {
+  return `
+    <div class="hint-link-types">
+      <span class="hint-legend-item">${getLinkBadge("telegram")} Telegram</span>
+      <span class="hint-legend-item">${getLinkBadge("drive")} Google Drive</span>
+      <span class="hint-legend-item">${getLinkBadge("classroom")} Google Classroom</span>
+      <span class="hint-legend-item">${getLinkBadge("other")} Other Type</span>
+      <span class="hint-legend-item"><span class="optional-tag">OPTIONAL</span> Optional course</span>
+    </div>`;
+}
+
+function hintCardHtml(title, bodyHtml, extraClass = "") {
+  const classes = ["fav-hint", extraClass].filter(Boolean).join(" ");
+  return `<div class="${classes}"><div class="fav-hint-title">${esc(title)}</div><div class="fav-hint-body">${bodyHtml}</div></div>`;
+}
+
+const FAVORITES_HINT_CARD = hintCardHtml("Favorites", FAVORITES_HINT);
+const COMMUNITY_HINT_CARD = hintCardHtml("Community Services", COMMUNITY_PROMOTE_HINT);
+const CONTRIBUTE_HINT_CARD = hintCardHtml("Contributing", CONTRIBUTE_HINT);
+const LINK_TYPES_HINT_CARD = hintCardHtml("Link types", linkTypesLegendHtml(), "fav-hint--link-types");
+
+function tipsSectionHtml() {
+  return `
+    <div class="tips-section">
+      ${FAVORITES_HINT_CARD}
+      ${COMMUNITY_HINT_CARD}
+      ${CONTRIBUTE_HINT_CARD}
+      ${LINK_TYPES_HINT_CARD}
+    </div>`;
+}
+
+function setHomeLegendVisible(visible) {
+  const legend = document.querySelector("#view-home .legend");
+  if (legend) legend.hidden = !visible;
+}
+
+function setSectionHint(html) {
+  const el = document.getElementById("sectionHint");
+  if (!el) return;
+  if (!html) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  el.innerHTML = html;
+  el.hidden = false;
 }
 
 // ===================== FAVORITES =====================
@@ -294,4 +387,12 @@ export {
   isMobileView,
   adminTd,
   adminCell,
+  FAVORITES_HINT,
+  COMMUNITY_PROMOTE_HINT,
+  FAVORITES_HINT_CARD,
+  COMMUNITY_HINT_CARD,
+  collectFavoriteCourses,
+  setSectionHint,
+  tipsSectionHtml,
+  setHomeLegendVisible,
 };

@@ -160,9 +160,16 @@ Add the Supabase warning comment at the top if missing. Open a PR with the diff.
 
 ## Local development
 
-Most contributors use a **hosted Supabase** instance via `DATABASE_URL` in `.env` (see root [README](../README.md)).
+Most contributors use a **hosted Supabase** instance via `DATABASE_URL` in `.env` (see root [README](../README.md)) for `go run` against prod-like data.
 
-For a **local Postgres** (integration tests, offline work):
+For **local Postgres** with the app in Docker (does not use `DATABASE_URL`):
+
+```bash
+docker compose up --build
+# schema: migrate; content: seed from db/test-data.json (skipped if already seeded)
+```
+
+Or a **Postgres-only** container (then `go run ./cmd/server` with `APP_ENV=development`):
 
 ```bash
 docker run --rm -d --name infolinks-pg \

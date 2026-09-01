@@ -18,6 +18,7 @@ Project history and planned work.
 | **Phase 8** | Go backend with layered architecture, observability, CI, and SEO |
 | **Phase 9** | Student identity without passwords, synced favorites, and unique-user analytics |
 | **Phase 10** | Community services, agent/API discovery, graceful shutdown, integration tests, Cloudflare cache |
+| **Phase 11** | Origin in-memory `/api/content` cache (`singleflight`); k6 origin p95 1.53 ms (was 4.91 s) |
 
 ---
 
@@ -39,6 +40,7 @@ Project history and planned work.
 - [x] HTTP server timeouts and graceful shutdown on SIGTERM
 - [x] Postgres integration tests (repo + HTTP, CI-gated)
 - [x] Cloudflare CDN cache for static assets and `GET /api/content` (kept warm with a 10-minute ping)
+- [x] Origin in-memory cache for `GET /api/content` (60s TTL, `singleflight`; k6 2026-09-01: normal p95 1.53 ms, burst ~17k req/s)
 - [ ] Mobile app (iOS/Android)
 - [ ] Push notifications for new resources
 - [ ] Course schedule integration

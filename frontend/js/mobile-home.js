@@ -1,10 +1,10 @@
 import { AppState } from "./state.js";
-import { esc, isMobileView, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref } from "./ui.js";
+import { esc, isMobileView, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, collectFavoriteCourses, setSectionHint, tipsSectionHtml, FAVORITES_HINT_CARD } from "./ui.js";
 
 const MOBILE_MQ = "(max-width: 768px)";
 
 function coerceId(raw) {
-  if (raw === "extra" || raw === "favorites" || raw === "all") return raw;
+  if (raw === "extra" || raw === "favorites" || raw === "all" || raw === "tips" || raw === "community") return raw;
   const n = Number(raw);
   return Number.isFinite(n) && String(n) === String(raw) ? n : raw;
 }
@@ -14,7 +14,7 @@ function idsEqual(a, b) {
 }
 
 function isRealProgram(id) {
-  return id != null && id !== "all" && id !== "extra" && id !== "favorites";
+  return id != null && id !== "all" && id !== "extra" && id !== "favorites" && id !== "community" && id !== "tips";
 }
 
 function searchQuery() {
@@ -111,6 +111,7 @@ function collectSearchHits(q) {
 
 function renderMobileSearch(q) {
   hideExtra();
+  setSectionHint("");
   const hits = collectSearchHits(q);
   const extras = extraMatches(q);
   let html = `<div class="mobile-section-label">${hits.length} course${hits.length === 1 ? "" : "s"}</div>`;
@@ -125,6 +126,7 @@ function renderMobileSearch(q) {
 
 function renderMobileProgramPicker() {
   hideExtra();
+  setSectionHint("");
   const programs = AppState.dbPrograms
     .map(
       (p) => `
@@ -162,11 +164,19 @@ function renderMobileProgramPicker() {
         <small>Saved on this account</small>
       </span>
       <span class="pick-chev">›</span>
+    </button>
+    <button type="button" class="pick-card" data-mobile-prog="tips">
+      <span>
+        <span class="pick-title">💡 Tips</span>
+        <small>How to use Info Links and how you can help</small>
+      </span>
+      <span class="pick-chev">›</span>
     </button>`;
 }
 
 function renderMobileYearPicker() {
   hideExtra();
+  setSectionHint("");
   const prog = findProgram(AppState.currentProg);
   if (!prog) {
     AppState.mobileStep = "program";
@@ -198,6 +208,7 @@ function renderMobileYearPicker() {
 
 function renderMobileList() {
   hideExtra();
+  setSectionHint("");
   const prog = findProgram(AppState.currentProg);
   const year = prog?.years.find((y) => idsEqual(y.id, AppState.currentYear));
   const sem = year?.sems.find((s) => idsEqual(s.id, AppState.currentSem));
@@ -207,8 +218,7 @@ function renderMobileList() {
     return;
   }
 
-  const semKey = `${AppState.currentProg}:${AppState.currentYear}:${AppState.currentSem}`;
-  const service = window.pickServices?.(1, `semester:${semKey}:${performance.now()}:${Math.random()}`)[0];
+  const service = window.pickRotatingService?.();
   const courseCards = (sem.courses || []).map((c) => _buildCourseCard(c));
   const cards = service ? window.intersperse?.(courseCards, [service], "semester") : courseCards;
   document.getElementById("coursesOutput").innerHTML = `
@@ -220,6 +230,7 @@ function renderMobileList() {
 
 function renderMobileFavorites() {
   hideExtra();
+  setSectionHint(FAVORITES_HINT_CARD);
   if (!window.isRegisteredStudent?.() && !AppState.adminLoggedIn) {
     document.getElementById("coursesOutput").innerHTML =
       chipsHtml(["My Courses"], "program") +
@@ -233,20 +244,10 @@ function renderMobileFavorites() {
     return;
   }
 
-  const q = searchQuery();
-  const cards = [];
-  AppState.dbPrograms.forEach((prog) => {
-    prog.years.forEach((year) => {
-      year.sems.forEach((sem) => {
-        sem.courses.forEach((c) => {
-          if (!AppState.favorites.has(String(c.id))) return;
-          if (q && !c.name.toLowerCase().includes(q) && !c.code.toLowerCase().includes(q))
-            return;
-          cards.push(_buildCourseCard(c, { path: `${prog.name} · ${year.name} · ${sem.name}` }));
-        });
-      });
-    });
-  });
+  const entries = collectFavoriteCourses(searchQuery());
+  const cards = entries.map((e) =>
+    _buildCourseCard(e.course, { path: e.paths.join(" | ") }),
+  );
 
   document.getElementById("coursesOutput").innerHTML = `
     ${chipsHtml(["My Courses"], "program")}
@@ -255,9 +256,21 @@ function renderMobileFavorites() {
       : '<div class="empty">No matching favorites found.</div>'}`;
 }
 
+function renderMobileTips() {
+  hideExtra();
+  setSectionHint("");
+  document.getElementById("coursesOutput").innerHTML = `
+    <div class="tips-page">
+    ${chipsHtml(["Tips"], "program")}
+    <h2 class="tips-title"><span class="tips-title-emoji" aria-hidden="true">💡</span> Tips</h2>
+    ${tipsSectionHtml()}
+    </div>`;
+}
+
 function renderMobileExtra() {
   AppState.currentProg = "extra";
   AppState.mobileStep = "list";
+  setSectionHint("");
   showExtraOnly();
   window.renderExtra();
   const extra = document.getElementById("extraSection");
@@ -286,6 +299,10 @@ function renderMobileHome() {
   }
   if (AppState.currentProg === "community") {
     window.renderMobileCommunity?.();
+    return true;
+  }
+  if (AppState.currentProg === "tips") {
+    renderMobileTips();
     return true;
   }
   if (AppState.currentProg === "favorites") {
@@ -332,6 +349,11 @@ function selectMobileProg(id) {
   if (id === "community") {
     AppState.mobileStep = "list";
     window.renderMobileCommunity?.();
+    return;
+  }
+  if (id === "tips") {
+    AppState.mobileStep = "list";
+    renderMobileTips();
     return;
   }
   if (id === "favorites") {
@@ -438,7 +460,7 @@ function onMobileHomeClick(e) {
     return;
   }
 
-  if (e.target.closest(".fav-btn, .link-item, .copy-btn")) return;
+  if (e.target.closest(".fav-btn, .link-item, .copy-btn, .hint-link")) return;
 
   const extraTitle = e.target.closest(".extra-title");
   if (extraTitle) {

@@ -13,9 +13,11 @@ import (
 )
 
 type fakeContentService struct {
-	getCalls  int
-	getResult []byte
-	getErr    error
+	getCalls         int
+	getUncachedCalls int
+	invalidateCalls  int
+	getResult        []byte
+	getErr           error
 }
 
 func (f *fakeContentService) Get(ctx context.Context) ([]byte, error) {
@@ -24,6 +26,18 @@ func (f *fakeContentService) Get(ctx context.Context) ([]byte, error) {
 		return nil, f.getErr
 	}
 	return f.getResult, nil
+}
+
+func (f *fakeContentService) GetUncached(ctx context.Context) ([]byte, error) {
+	f.getUncachedCalls++
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	return f.getResult, nil
+}
+
+func (f *fakeContentService) Invalidate() {
+	f.invalidateCalls++
 }
 
 func TestHandleGetContent(t *testing.T) {
@@ -103,6 +117,12 @@ func TestHandleGetAdminContent(t *testing.T) {
 
 	h.handleGetAdminContent(rr, req)
 
+	if fakeContent.getUncachedCalls != 1 {
+		t.Fatalf("GetUncached calls = %d, want 1", fakeContent.getUncachedCalls)
+	}
+	if fakeContent.getCalls != 0 {
+		t.Fatalf("Get calls = %d, want 0 (admin must bypass the student cache)", fakeContent.getCalls)
+	}
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
 	}

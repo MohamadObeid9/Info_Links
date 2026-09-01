@@ -111,6 +111,9 @@ func TestGuardDSN(t *testing.T) {
 	if err := guardDSN(defaultLocalDSN, false); err != nil {
 		t.Fatalf("local dsn: %v", err)
 	}
+	if err := guardDSN("postgres://postgres:postgres@db:5432/infolinks?sslmode=disable", false); err != nil {
+		t.Fatalf("compose db hostname: %v", err)
+	}
 	remote := "postgres://postgres:postgres@db.example.supabase.co:5432/postgres"
 	if err := guardDSN(remote, false); err == nil {
 		t.Fatal("remote dsn without -allow-remote: want error")

@@ -30,10 +30,10 @@ Alternatives considered:
 Deploy as a **single Render Web Service** using **Docker**:
 
 - **Runtime:** `docker` — Render builds from [`Dockerfile`](../../Dockerfile) (Node frontend build → Go compile → distroless runtime)
-- **Infrastructure as code:** [`render.yaml`](../../render.yaml) — Blueprint defines service name, Dockerfile path, health check, domains, and deploy trigger
+- **Dashboard config:** Render web service uses the repo `Dockerfile`; env vars and secrets live in the Render dashboard (not a checked-in Blueprint)
 - **Auto-deploy:** `autoDeployTrigger: checksPass` — Render deploys only after GitHub Actions CI succeeds on `main`
 - **Branch protection:** `main` requires CI status checks (`backend`, `frontend`, `docker-build`) before merge
-- **Environment variables:** set in Render dashboard; secrets listed in `render.yaml` with `sync: false` so Blueprint sync preserves existing values (`DATABASE_URL`, `JWT_SECRET`, Supabase keys, `SITE_BASE_URL`, metrics auth, `APP_ENV`)
+- **Environment variables:** set in Render dashboard (`DATABASE_URL`, `JWT_SECRET`, Supabase keys, `SITE_BASE_URL`, metrics auth, `APP_ENV`)
 - **Readiness probe:** `GET /readyz` — pings Postgres; Render stops routing if DB is unreachable
 - **Liveness:** `GET /healthz` — process up, no DB check
 - **Graceful shutdown:** on `SIGTERM` (Render deploys), `http.Server.Shutdown` drains in-flight requests before the process exits and the DB pool closes
@@ -52,7 +52,7 @@ CI (`.github/workflows/ci.yml`) runs tests, lint, govulncheck, frontend build, a
 - `/readyz` integrates with Render health checks out of the box
 - Graceful shutdown avoids cutting mid-request traffic on every deploy
 - Distroless final stage minimizes attack surface; no shell or package manager in production
-- `render.yaml` documents deploy configuration in the repo; changes are reviewable in PRs
+- Deploy settings live in the Render dashboard; the Dockerfile in git is still the source of truth for the image
 - Docker builds are slower than native Go builds on first deploy, but layer caching speeds up subsequent deploys
 - Local dev can still use Air + Vite or `docker compose up --build --watch` without affecting production deploy path
-- Origin still runs the heavy content query on cache miss; Cloudflare + the warm-up cron absorb student traffic so Grafana p95 stays low after 21 Aug 2026
+- Cloudflare + the warm-up cron absorb student traffic (Grafana p95 after 21 Aug 2026). Origin also keeps a 60s in-memory copy of `/api/content` (ADR 010) so a CDN bypass does not stampede Postgres.

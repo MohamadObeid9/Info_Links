@@ -32,6 +32,15 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  const hintLink = target.closest(".hint-link");
+  if (hintLink) {
+    e.preventDefault();
+    const url = hintLink.dataset.url || hintLink.getAttribute("href");
+    const openLink = () => window.confirmLink(null, url, "link");
+    if (window.requireStudent(openLink)) openLink();
+    return;
+  }
+
   // External link item → confirmation modal (URL read from dataset, never inline JS)
   // Opening a link is gated: the signup modal replaces the confirmation popup
   // until the visitor is a registered student.
