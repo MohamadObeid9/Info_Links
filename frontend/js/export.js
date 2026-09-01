@@ -20,7 +20,7 @@ async function exportData() {
   const btn = document.querySelector(".admin-header .btn-ghost");
   setBtnLoading(btn, true, "Exporting…");
   try {
-    const data = await apiRequest("/api/content");
+    const data = await apiRequest("/api/admin/content", { cache: "no-store" });
     const payload = {
       exported_at: new Date().toISOString(),
       programs: data.programs || [],

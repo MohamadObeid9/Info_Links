@@ -97,6 +97,7 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 
 func registerAdminRoutes(mux *http.ServeMux, h *Handler, jwtSecret string) {
 
+	mux.HandleFunc("GET /api/admin/content", middleware.RequireAdmin(jwtSecret, h.handleGetAdminContent))
 	mux.HandleFunc("GET /api/admin/page_views", middleware.RequireAdmin(jwtSecret, h.handleAdminGetPageViews))
 	mux.HandleFunc("GET /api/admin/link_clicks", middleware.RequireAdmin(jwtSecret, h.handleAdminGetLinkClicks))
 
