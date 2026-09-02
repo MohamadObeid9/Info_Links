@@ -1,8 +1,26 @@
 
 // ===================== HOME RENDER =====================
 import { AppState } from "./state.js";
-import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView, collectFavoriteCourses, setSectionHint, tipsSectionHtml, FAVORITES_HINT, FAVORITES_HINT_CARD, homeSectionHeading, sectionInlineHintHtml, setHomeLegendVisible } from "./ui.js";
+import { esc, _buildCourseCard, getLinkBadge, getContentTypeChips, _linkHref, isMobileView, collectFavoriteCourses, setSectionHint, tipsSectionHtml, FAVORITES_HINT, FAVORITES_HINT_CARD, homeSectionHeading, sectionInlineHintHtml } from "./ui.js";
 import { renderMobileHome, selectMobileProg } from "./mobile-home.js";
+
+function syncProgramSectionHeading() {
+  const el = document.getElementById("programSectionHeading");
+  if (!el) return;
+  if (isMobileView()) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  const prog = AppState.dbPrograms.find((p) => p.id === AppState.currentProg);
+  if (!prog) {
+    el.hidden = true;
+    el.replaceChildren();
+    return;
+  }
+  el.innerHTML = homeSectionHeading(prog.name);
+  el.hidden = false;
+}
 
 function renderProgTabs() {
   document.getElementById("progTabs").innerHTML =
@@ -247,7 +265,6 @@ function renderExtra() {
 
 function renderTips() {
   setSectionHint("");
-  setHomeLegendVisible(false);
   document.getElementById("coursesOutput").innerHTML = `
     <div class="home-section tips-page">
       ${homeSectionHeading("💡 Tips")}
@@ -265,14 +282,12 @@ function selectProg(id) {
     return;
   }
   if (id === "community") {
-    setHomeLegendVisible(true);
     window.selectCommunity?.();
     return;
   }
   AppState.currentProg = id;
   AppState.currentYear = "all";
   AppState.currentSem = "all";
-  if (id !== "tips") setHomeLegendVisible(true);
   renderProgTabs();
   if (id === "extra") {
     setSectionHint("");
@@ -310,6 +325,7 @@ function selectProg(id) {
     renderCourses();
     window.renderDesktopServiceSidebar?.();
   }
+  syncProgramSectionHeading();
 }
 
 function setYear(y) {
@@ -335,6 +351,7 @@ window.renderExtra = renderExtra;
 window.selectProg = selectProg;
 window.setYear = setYear;
 window.setSem = setSem;
+window.syncProgramSectionHeading = syncProgramSectionHeading;
 
 export {
   renderProgTabs,
@@ -345,4 +362,5 @@ export {
   selectProg,
   setYear,
   setSem,
+  syncProgramSectionHeading,
 };

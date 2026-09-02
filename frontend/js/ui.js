@@ -281,11 +281,6 @@ function sectionInlineHintHtml(bodyHtml) {
   return `<div class="section-inline-hint">${bodyHtml}</div>`;
 }
 
-function setHomeLegendVisible(visible) {
-  const legend = document.querySelector("#view-home .legend");
-  if (legend) legend.hidden = !visible;
-}
-
 function setSectionHint(html) {
   const el = document.getElementById("sectionHint");
   if (!el) return;
@@ -402,7 +397,6 @@ export {
   collectFavoriteCourses,
   setSectionHint,
   tipsSectionHtml,
-  setHomeLegendVisible,
   homeSectionHeading,
   sectionInlineHintHtml,
 };

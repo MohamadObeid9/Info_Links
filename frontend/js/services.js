@@ -1,5 +1,6 @@
 import { AppState } from "./state.js";
-import { esc, _linkHref, isMobileView, setSectionHint, COMMUNITY_PROMOTE_HINT, COMMUNITY_HINT_CARD, homeSectionHeading, sectionInlineHintHtml, setHomeLegendVisible } from "./ui.js";
+import { esc, _linkHref, isMobileView, setSectionHint, COMMUNITY_PROMOTE_HINT, COMMUNITY_HINT_CARD, homeSectionHeading, sectionInlineHintHtml } from "./ui.js";
+import { syncProgramSectionHeading } from "./home.js";
 import { apiRequest } from "./supabase.js";
 
 // ===================== COMMUNITY SERVICES =====================
@@ -459,7 +460,6 @@ function highlightServiceCard(serviceId) {
 }
 
 function selectCommunity(serviceId = null) {
-  setHomeLegendVisible(true);
   if (window.showView) window.showView("home");
   if (isMobileView()) {
     renderMobileCommunity();
@@ -471,6 +471,7 @@ function selectCommunity(serviceId = null) {
   AppState.currentSem = "all";
   renderProgTabs();
   renderDesktopCommunity();
+  syncProgramSectionHeading();
   if (serviceId) {
     window.requestAnimationFrame(() => highlightServiceCard(serviceId));
   }
