@@ -364,6 +364,10 @@ select.inp {
     margin-bottom: 32px;
 }
 
+#programSectionHeading:not([hidden]) {
+    margin: 0 0 12px;
+}
+
 .home-section-title {
     font-size: 1.1rem;
     font-weight: 800;
@@ -889,6 +893,7 @@ select.inp {
 }
 
 .footer-links a,
+.footer-external-link,
 .footer-link-btn {
     color: var(--accent);
     text-decoration: none;
@@ -904,6 +909,7 @@ select.inp {
 }
 
 .footer-links a:hover,
+.footer-external-link:hover,
 .footer-link-btn:hover {
     text-decoration: underline;
 }

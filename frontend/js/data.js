@@ -9,6 +9,7 @@ import {
   renderSemFilters,
   renderCourses,
   renderExtra,
+  syncProgramSectionHeading,
 } from "./home.js";
 import { initMobileHomeState } from "./mobile-home.js";
 
@@ -130,6 +131,7 @@ function _renderAfterLoad({ resetMobile = true } = {}) {
   renderYearFilters();
   renderSemFilters();
   renderCourses();
+  syncProgramSectionHeading();
   if (AppState.currentProg === "all") renderExtra();
   window.renderDesktopServiceSidebar?.();
   // Populate the course datalist for Report/Contribute autocomplete

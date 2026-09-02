@@ -41,6 +41,14 @@ document.addEventListener("click", (e) => {
     return;
   }
 
+  const footerExternal = target.closest(".footer-external-link");
+  if (footerExternal) {
+    e.preventDefault();
+    const url = footerExternal.getAttribute("href");
+    if (url) window.confirmLink(null, url, "link");
+    return;
+  }
+
   // External link item → confirmation modal (URL read from dataset, never inline JS)
   // Opening a link is gated: the signup modal replaces the confirmation popup
   // until the visitor is a registered student.
