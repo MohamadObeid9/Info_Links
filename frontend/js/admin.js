@@ -1215,6 +1215,7 @@ function openAdminStudent(id) {
   document.querySelectorAll(".admin-tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.adminTab === "students");
   });
+  syncAdminMobileChrome();
   renderAdminStudents();
 }
 

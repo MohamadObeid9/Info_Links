@@ -40,7 +40,7 @@ func main() {
 	}
 	defer func() { _ = dbClient.Close() }()
 
-	services, userService := app.Wire(dbClient.DB)
+	services, _ := app.Wire(dbClient.DB)
 
 	webBotDir, err := webbotauth.NewDirectory(cfg.JWTSecret, cfg.SiteBaseURL)
 	if err != nil {
@@ -90,8 +90,6 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
-	startStaleGuestCleanup(ctx, userService, logger.With("component", "guest-cleanup"))
 
 	server := newHTTPServer(":"+cfg.Port, handler)
 	logger.Info("backend is starting", "env", cfg.AppEnv, "port", cfg.Port)
@@ -143,39 +141,6 @@ func serveHTTP(ctx context.Context, server *http.Server, ln net.Listener) error 
 	}
 }
 
-// startStaleGuestCleanup deletes unclaimed guests idle for StaleGuestTTL, once
-// at boot and then hourly until ctx is cancelled. Cascaded analytics for those
-// guests go with them.
-func startStaleGuestCleanup(ctx context.Context, svc *service.UserService, logger *slog.Logger) {
-	const every = time.Hour
-
-	run := func() {
-		runCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		n, err := svc.DeleteStaleGuests(runCtx, service.StaleGuestTTL)
-		if err != nil {
-			logger.Error("stale guest cleanup failed", "error", err)
-			return
-		}
-		if n > 0 {
-			logger.Info("deleted stale unclaimed guests", "count", n, "ttl", service.StaleGuestTTL.String())
-		}
-	}
-
-	run()
-	go func() {
-		ticker := time.NewTicker(every)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				run()
-			}
-		}
-	}()
-}
 
 func newLogger(appEnv, logLevel string) *slog.Logger {
 	var logHandler slog.Handler
