@@ -20,6 +20,7 @@ type Config struct {
 	CorsAllowedOrigins   string
 	MetricsBasicAuthUser string
 	MetricsBasicAuthPass string
+	CFSecretToken        string
 }
 
 func Load() (Config, error) {
@@ -37,6 +38,7 @@ func Load() (Config, error) {
 		SupabaseAnonKey:      getenv("SUPABASE_ANON_KEY"),
 		MetricsBasicAuthUser: getenv("METRICS_BASIC_AUTH_USER"),
 		MetricsBasicAuthPass: getenv("METRICS_BASIC_AUTH_PASSWORD"),
+		CFSecretToken:        getenv("CF_SECRET_TOKEN"),
 	}
 
 	if cfg.AppEnv == "development" {
