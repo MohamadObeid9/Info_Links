@@ -82,6 +82,27 @@ func TestRequireCloudflareSecret_bypassesWhenSecretUnset(t *testing.T) {
 	}
 }
 
+func TestRequireCloudflareSecret_allowsOPTIONSWithoutHeader(t *testing.T) {
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	handler := RequireCloudflareSecret("origin-secret", next)
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodOptions, "/api/users/login", nil)
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("status: got %d want %d", rr.Code, http.StatusNoContent)
+	}
+	if !called {
+		t.Fatal("expected next handler to be called for CORS preflight")
+	}
+}
+
 func TestRequireCloudflareSecret_allowsExemptPathsWithoutHeader(t *testing.T) {
 	for _, path := range []string{"/healthz", "/readyz", "/metrics"} {
 		t.Run(path, func(t *testing.T) {
