@@ -60,6 +60,7 @@ func TestLoad(t *testing.T) {
 				"CORS_ALLOWED_ORIGINS":        "https://example.com",
 				"METRICS_BASIC_AUTH_USER":     "grafana-scraper",
 				"METRICS_BASIC_AUTH_PASSWORD": "metrics-secret",
+				"CF_SECRET_TOKEN":             "cf-origin-secret",
 			},
 			want: Config{
 				Port:                 "3000",
@@ -73,6 +74,7 @@ func TestLoad(t *testing.T) {
 				SiteBaseURL:          defaultSiteBaseURL,
 				MetricsBasicAuthUser: "grafana-scraper",
 				MetricsBasicAuthPass: "metrics-secret",
+				CFSecretToken:        "cf-origin-secret",
 			},
 		},
 		{

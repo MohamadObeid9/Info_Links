@@ -36,12 +36,15 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	handlerWithMetrics := middleware.Metrics(handlerWithRateLimit)
 	handlerWithRequestID := middleware.RequestIDWithLogging(logger, cfg.AppEnv, handlerWithMetrics)
 
-	return cors.New(cors.Options{
+	handlerWithCORS := cors.New(cors.Options{
 		AllowedOrigins:   origins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: false,
 	}).Handler(handlerWithRequestID)
+
+	// Outermost: reject direct origin traffic before CORS, metrics, or handlers.
+	return middleware.RequireCloudflareSecret(cfg.CFSecretToken, handlerWithCORS)
 }
 
 func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
