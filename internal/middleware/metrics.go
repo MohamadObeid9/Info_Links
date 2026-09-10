@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -68,6 +69,10 @@ func shouldSkipMetrics(path string) bool {
 }
 
 func NormalizePath(path string) string {
+	// Prometheus label values must be valid UTF-8; scanners often send raw binary paths.
+	if !utf8.ValidString(path) {
+		return "invalid_utf8_path"
+	}
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) == 0 || parts[0] == "" {
 		return path

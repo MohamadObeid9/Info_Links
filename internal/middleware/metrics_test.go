@@ -39,11 +39,35 @@ func TestNormalizePath(t *testing.T) {
 		{"/api/admin/reports", "/api/admin/reports"},
 		{"/course/nfa008", "/course/{code}"},
 		{"/program/licence", "/program/{slug}"},
+		{"/\x04\xd7\x7f", "invalid_utf8_path"},
 	}
 	for _, tt := range tests {
 		if got := NormalizePath(tt.path); got != tt.want {
 			t.Errorf("NormalizePath(%q) = %q, want %q", tt.path, got, tt.want)
 		}
+	}
+}
+
+func TestMetrics_invalidUTF8Path(t *testing.T) {
+	handler := Metrics(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.URL.Path = "/\x04\xd7\x7f"
+	handler.ServeHTTP(rr, req)
+
+	value, ok := counterValue(t, "http_requests_total", map[string]string{
+		"method": "GET",
+		"path":   "invalid_utf8_path",
+		"status": "404",
+	})
+	if !ok {
+		t.Fatal("http_requests_total{GET,invalid_utf8_path,404} not found")
+	}
+	if value < 1 {
+		t.Fatalf("expected counter >= 1, got %v", value)
 	}
 }
 
