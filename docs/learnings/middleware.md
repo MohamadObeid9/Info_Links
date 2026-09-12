@@ -109,10 +109,12 @@ Per-IP token buckets using `golang.org/x/time/rate`, keyed by `clientIP + route 
 | Class | Paths | Limit | Burst |
 |-------|-------|-------|-------|
 | `admin_auth` | `POST /api/auth/login` | 1/s | 3 |
-| `admin_api` | `/api/admin/...` | 2/s | 5 |
+| `admin_api` | `/api/admin/...` without a valid admin JWT | 2/s | 5 |
 | `identity` | `POST /api/users/guest`, `/register`, `/login` | 2/s | 5 |
 | `write_user` | `POST /api/contributions`, `/reports`, `/feedback` | 1/s | 3 |
-| `default` | everything else | 10/s | 20 |
+| `default` | everything else, including **authenticated** admin API calls | 10/s | 20 |
+
+Authenticated admins use the default bucket so the dashboard can load many endpoints at once. Unauthenticated probes of `/api/admin/...` stay on the strict `admin_api` class.
 
 **Cooldown:** after **10** denials on a sensitive class (`admin_auth`, `admin_api`, `identity`, `write_user`), that `IP:class` is blocked for **15 minutes**. When the cooldown ends, the bucket is reset. Default traffic has no cooldown.
 
@@ -163,7 +165,7 @@ Built inside-out in `NewRouter`:
 
 ```go
 handlerWithRecover := middleware.Recover(logger, securedHandler)
-handlerWithRateLimit := middleware.RateLimit(handlerWithRecover)
+handlerWithRateLimit := middleware.RateLimit(cfg.JWTSecret, handlerWithRecover)
 handlerWithMetrics := middleware.Metrics(handlerWithRateLimit)
 handlerWithRequestID := middleware.RequestIDWithLogging(logger, cfg.AppEnv, handlerWithMetrics)
 ```

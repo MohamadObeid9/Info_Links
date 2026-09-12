@@ -106,11 +106,11 @@ func productionRateLimitConfig() rateLimitConfig {
 	}
 }
 
-func RateLimit(next http.Handler) http.Handler {
-	return newRateLimitHandler(next, productionRateLimitConfig())
+func RateLimit(jwtSecret string, next http.Handler) http.Handler {
+	return newRateLimitHandler(jwtSecret, next, productionRateLimitConfig())
 }
 
-func newRateLimitHandler(next http.Handler, cfg rateLimitConfig) http.Handler {
+func newRateLimitHandler(jwtSecret string, next http.Handler, cfg rateLimitConfig) http.Handler {
 	if cfg.now == nil {
 		cfg.now = time.Now
 	}
@@ -132,7 +132,7 @@ func newRateLimitHandler(next http.Handler, cfg rateLimitConfig) http.Handler {
 		}
 
 		ip := getClientIP(r)
-		class := routeClassFor(r)
+		class := routeClassFor(r, jwtSecret)
 		key := ip + ":" + string(class)
 
 		if retryAfter, blocked := store.cooldownActive(key); blocked {
@@ -161,12 +161,17 @@ func writeRateLimited(w http.ResponseWriter, retryAfterSec int) {
 	writeJSONErr(w, http.StatusTooManyRequests, "rate limit exceeded")
 }
 
-func routeClassFor(r *http.Request) routeClass {
+func routeClassFor(r *http.Request, jwtSecret string) routeClass {
 	p := r.URL.Path
 	if r.Method == http.MethodPost && p == "/api/auth/login" {
 		return classAdminAuth
 	}
 	if strings.HasPrefix(p, "/api/admin/") {
+		// Real admin sessions load many endpoints at once; keep the strict
+		// bucket only for unauthenticated / non-admin probes.
+		if jwtSecret != "" && IsAuthenticatedAdmin(jwtSecret, r.Header.Get("Authorization")) {
+			return classDefault
+		}
 		return classAdminAPI
 	}
 	if r.Method == http.MethodPost {

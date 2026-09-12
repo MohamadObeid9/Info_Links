@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/time/rate"
 )
 
 func TestRateLimit_AllowsUnderLimit(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -28,7 +29,7 @@ func TestRateLimit_AllowsUnderLimit(t *testing.T) {
 }
 
 func TestRateLimit_BlocksWhenExceeded(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -54,7 +55,7 @@ func TestRateLimit_BlocksWhenExceeded(t *testing.T) {
 }
 
 func TestRateLimit_DifferentIPsAreIsolated(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -82,7 +83,7 @@ func TestRateLimit_DifferentIPsAreIsolated(t *testing.T) {
 // sending a unique X-Forwarded-For per request: all requests must key off the
 // same RemoteAddr.
 func TestRateLimit_SpoofedXFFFromUntrustedPeerCannotBypass(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -111,7 +112,7 @@ func TestRateLimit_SpoofedXFFFromUntrustedPeerCannotBypass(t *testing.T) {
 }
 
 func TestRateLimit_AdminAuthStricterThanDefault(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -134,7 +135,7 @@ func TestRateLimit_AdminAuthStricterThanDefault(t *testing.T) {
 }
 
 func TestRateLimit_WriteUserStricterThanDefault(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -157,7 +158,7 @@ func TestRateLimit_WriteUserStricterThanDefault(t *testing.T) {
 }
 
 func TestRateLimit_ClassesAreIsolated(t *testing.T) {
-	handler := RateLimit(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := RateLimit("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -202,7 +203,7 @@ func TestRateLimit_CooldownAfterRepeatedDenials(t *testing.T) {
 		now:         func() time.Time { return now },
 	}
 
-	handler := newRateLimitHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := newRateLimitHandler("", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}), cfg)
 
@@ -247,6 +248,52 @@ func TestRateLimit_CooldownAfterRepeatedDenials(t *testing.T) {
 	}
 }
 
+func TestRateLimit_AuthenticatedAdminUsesDefaultClass(t *testing.T) {
+	const secret = "rate-limit-admin-test-secret"
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"admin": true})
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	handler := RateLimit(secret, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+	req.RemoteAddr = "198.51.100.30:4444"
+	req.Header.Set("Authorization", "Bearer "+signed)
+
+	// More than admin_api burst (5), still under default burst (20).
+	for i := 0; i < adminAPIBurst+3; i++ {
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("authed admin request %d: expected 200, got %d", i+1, rr.Code)
+		}
+	}
+}
+
+func TestRouteClassFor_AdminProbeVsAuthed(t *testing.T) {
+	const secret = "rate-limit-admin-class-secret"
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"admin": true})
+	signed, err := token.SignedString([]byte(secret))
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+
+	probe := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+	if got := routeClassFor(probe, secret); got != classAdminAPI {
+		t.Errorf("probe: got %q want %q", got, classAdminAPI)
+	}
+
+	authed := httptest.NewRequest(http.MethodGet, "/api/admin/users", nil)
+	authed.Header.Set("Authorization", "Bearer "+signed)
+	if got := routeClassFor(authed, secret); got != classDefault {
+		t.Errorf("authed admin: got %q want %q", got, classDefault)
+	}
+}
+
 func TestRouteClassFor(t *testing.T) {
 	tests := []struct {
 		method string
@@ -268,7 +315,7 @@ func TestRouteClassFor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, nil)
-			if got := routeClassFor(req); got != tt.want {
+			if got := routeClassFor(req, ""); got != tt.want {
 				t.Errorf("routeClassFor() = %q, want %q", got, tt.want)
 			}
 		})

@@ -32,7 +32,7 @@ func NewRouter(cfg config.Config, logger *slog.Logger, h *Handler, seoH *seo.Han
 	origins := allowedOrigins(cfg.CorsAllowedOrigins)
 	securedHandler := withSecurityHeaders(mux, contentSecurityPolicy(origins))
 	handlerWithRecover := middleware.Recover(logger, securedHandler)
-	handlerWithRateLimit := middleware.RateLimit(handlerWithRecover)
+	handlerWithRateLimit := middleware.RateLimit(cfg.JWTSecret, handlerWithRecover)
 	handlerWithMetrics := middleware.Metrics(handlerWithRateLimit)
 	handlerWithRequestID := middleware.RequestIDWithLogging(logger, cfg.AppEnv, handlerWithMetrics)
 
