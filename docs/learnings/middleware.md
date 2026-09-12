@@ -104,20 +104,31 @@ Uses `crypto/subtle.ConstantTimeCompare` to avoid timing attacks on credentials.
 
 ### Rate limiting (`ratelimit.go`)
 
-Per-IP token bucket using `golang.org/x/time/rate`:
+Per-IP token buckets using `golang.org/x/time/rate`, keyed by `clientIP + route class`:
 
-- **10 req/s** sustained, **20 burst**
-- In-memory map of IP → limiter, protected by `sync.Mutex`
-- Background goroutine evicts idle limiters after 10 minutes
+| Class | Paths | Limit | Burst |
+|-------|-------|-------|-------|
+| `admin_auth` | `POST /api/auth/login` | 1/s | 3 |
+| `admin_api` | `/api/admin/...` without a valid admin JWT | 2/s | 5 |
+| `identity` | `POST /api/users/guest`, `/register`, `/login` | 2/s | 5 |
+| `write_user` | `POST /api/contributions`, `/reports`, `/feedback` | 1/s | 3 |
+| `default` | everything else, including **authenticated** admin API calls | 10/s | 20 |
+
+Authenticated admins use the default bucket so the dashboard can load many endpoints at once. Unauthenticated probes of `/api/admin/...` stay on the strict `admin_api` class.
+
+**Cooldown:** after **10** denials on a sensitive class (`admin_auth`, `admin_api`, `identity`, `write_user`), that `IP:class` is blocked for **15 minutes**. When the cooldown ends, the bucket is reset. Default traffic has no cooldown.
+
+- In-memory maps of limiters + cooldowns, protected by `sync.Mutex`
+- Background goroutine evicts idle entries after 10 minutes
 
 **Client IP detection:**
 
 - Default: `r.RemoteAddr`
 - If remote is a trusted proxy (loopback, private ranges), parse `X-Forwarded-For` right-to-left for first non-trusted IP
 
-**Exempt paths:** `/healthz`, `/readyz`, `/metrics`, `/robots.txt`, static assets (paths with file extensions).
+**Exempt paths:** `/healthz`, `/readyz`, `/metrics`, `/robots.txt`, discovery docs (`/auth.md`, `/openapi.json`, `/.well-known/...`), static assets (paths with file extensions).
 
-Over limit → `429` with `{"error":"rate limit exceeded"}`.
+Over limit / in cooldown → `429` with `{"error":"rate limit exceeded"}` and `Retry-After`.
 
 ---
 
@@ -154,7 +165,7 @@ Built inside-out in `NewRouter`:
 
 ```go
 handlerWithRecover := middleware.Recover(logger, securedHandler)
-handlerWithRateLimit := middleware.RateLimit(handlerWithRecover)
+handlerWithRateLimit := middleware.RateLimit(cfg.JWTSecret, handlerWithRecover)
 handlerWithMetrics := middleware.Metrics(handlerWithRateLimit)
 handlerWithRequestID := middleware.RequestIDWithLogging(logger, cfg.AppEnv, handlerWithMetrics)
 ```

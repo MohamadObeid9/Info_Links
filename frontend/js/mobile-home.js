@@ -100,13 +100,31 @@ function collectSearchHits(q) {
             c.name.toLowerCase().includes(q) ||
             c.code.toLowerCase().includes(q)
           ) {
-            hits.push({ course: c, path: `${p.name} · ${y.name} · ${s.name}` });
+            hits.push({
+              course: c,
+              path: `${p.name} · ${y.name} · ${s.name}`,
+              programId: p.id,
+              yearId: y.id,
+              semesterId: s.id,
+              placementId: c.placement_id,
+            });
           }
         }),
       ),
     ),
   );
   return hits;
+}
+
+function searchHitCardOpts(h) {
+  const opts = { path: h.path };
+  // Prefer placement; fall back to program/year/semester so duplicate course ids stay distinct.
+  if (h.placementId != null && h.placementId !== "") {
+    opts.cardId = `${h.course.id}-p${h.placementId}`;
+  } else {
+    opts.cardId = `${h.course.id}-${h.programId}-${h.yearId}-${h.semesterId}`;
+  }
+  return opts;
 }
 
 function renderMobileSearch(q) {
@@ -116,7 +134,7 @@ function renderMobileSearch(q) {
   const extras = extraMatches(q);
   let html = `<div class="mobile-section-label">${hits.length} course${hits.length === 1 ? "" : "s"}</div>`;
   html += hits.length
-    ? `<div class="courses-grid">${hits.map((h) => _buildCourseCard(h.course, { path: h.path })).join("")}</div>`
+    ? `<div class="courses-grid">${hits.map((h) => _buildCourseCard(h.course, searchHitCardOpts(h))).join("")}</div>`
     : '<div class="empty">No course matches that. Try a code like NFA035.</div>';
   if (extras.length) {
     html += `<div class="mobile-section-label">Extra resources</div>${extraCardsHtml(extras)}`;
@@ -393,8 +411,15 @@ function mobileBrowseBack(step) {
   }
 }
 
-function toggleCourseCard(courseId) {
-  const card = document.getElementById(`course-card-${courseId}`);
+function toggleCourseCard(target) {
+  // Prefer the clicked card element — search can list the same course id under
+  // several programs, so lookup by course id alone always hits the first DOM node.
+  const card =
+    target?.closest?.(".course-card") ||
+    (target != null && typeof target !== "object"
+      ? document.querySelector(`.course-card[data-course-id="${target}"]`) ||
+        document.getElementById(`course-card-${target}`)
+      : null);
   if (!card) return;
   const open = card.classList.contains("open");
   document.querySelectorAll(".course-card.open").forEach((el) => el.classList.remove("open"));
@@ -477,7 +502,7 @@ function onMobileHomeClick(e) {
   const header = e.target.closest("[data-toggle-course]");
   if (header) {
     e.preventDefault();
-    toggleCourseCard(header.dataset.toggleCourse);
+    toggleCourseCard(header);
     return;
   }
 

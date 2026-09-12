@@ -221,14 +221,14 @@ function _renderAuthModal({ mode = "signup", error = "", values = {} } = {}) {
     <button type="button" role="tab" class="auth-mode-btn ${isSignup ? "" : "active"}" aria-selected="${!isSignup}" onclick="switchStudentAuthMode('signin')">Sign in</button>
   </div>
   <p class="auth-hint">${isSignup
-      ? "No email, no password — your first name, last name and a number between 1 and 100 are your login."
-      : "Enter the name and number you signed up with."}</p>
+      ? "No email, no password — your first name, last name and a number between 1 and 100 are your login. Use the same name + number on your phone and laptop — no need for separate accounts."
+      : "Enter the name and number you signed up with. The same login works on phone and laptop."}</p>
   <label for="stFirst">First name</label>
-  <input type="text" id="stFirst" autocomplete="given-name" placeholder="ziad" value="${esc(first)}"/>
+  <input type="text" id="stFirst" autocomplete="given-name" placeholder="e.g. ziad" value="${esc(first)}"/>
   <label for="stLast">Last name</label>
-  <input type="text" id="stLast" autocomplete="family-name" placeholder="baroudi" value="${esc(last)}"/>
+  <input type="text" id="stLast" autocomplete="family-name" placeholder="e.g. baroudi" value="${esc(last)}"/>
   <label for="stNumber">Your number (1–100)</label>
-  <input type="number" id="stNumber" min="1" max="100" step="1" value="${esc(number)}"/>
+  <input type="number" id="stNumber" min="1" max="100" step="1" placeholder="e.g. 33" value="${esc(number)}"/>
   <div class="err" id="stAuthErr">${error ? esc(error) : ""}</div>
   <div class="modal-actions">
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
@@ -393,7 +393,7 @@ function repaintFavoriteStars() {
   document.querySelectorAll(".course-card").forEach((card) => {
     const btn = card.querySelector(".fav-btn");
     if (!btn) return;
-    const id = card.id.replace("course-card-", "");
+    const id = card.dataset.courseId || card.id.replace(/^course-card-/, "").replace(/-p\d+$/, "");
     const isFav = AppState.favorites.has(String(id));
     btn.classList.toggle("active", isFav);
     btn.title = isFav ? "Remove from My Courses" : "Add to My Courses";

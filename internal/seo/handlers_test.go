@@ -135,6 +135,34 @@ func TestHandleCourseEmptyCode(t *testing.T) {
 	}
 }
 
+func TestHandleCourseInvalidUTF8(t *testing.T) {
+	repo := &serviceFakeSEORepo{getCourseErr: errs.ErrDatabaseDown}
+	h := testSEOHandlerWithRepo(t, repo)
+	req := httptest.NewRequest(http.MethodGet, "/course/bad", nil)
+	req.SetPathValue("code", "a\xffb")
+	rr := httptest.NewRecorder()
+
+	h.HandleCourse(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status: got %d want 404 (must not hit DB/500)", rr.Code)
+	}
+}
+
+func TestHandleProgramInvalidUTF8(t *testing.T) {
+	repo := &serviceFakeSEORepo{getProgramErr: errs.ErrDatabaseDown}
+	h := testSEOHandlerWithRepo(t, repo)
+	req := httptest.NewRequest(http.MethodGet, "/program/bad", nil)
+	req.SetPathValue("slug", "\xff\xfe")
+	rr := httptest.NewRecorder()
+
+	h.HandleProgram(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status: got %d want 404 (must not hit DB/500)", rr.Code)
+	}
+}
+
 func TestHandleCourseNotFound(t *testing.T) {
 	repo := &serviceFakeSEORepo{getCourseErr: errs.ErrCourseNotFound}
 	h := testSEOHandlerWithRepo(t, repo)

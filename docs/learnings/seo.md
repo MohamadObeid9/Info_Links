@@ -66,13 +66,14 @@ Routes registered in `api.registerSEORoutes` — static file handler explicitly 
 ### Request flow (example: `/course/INF101`)
 
 1. Extract `code` from path via `r.PathValue("code")`
-2. `context.WithTimeout(r.Context(), 10s)` — cap DB/render time
-3. `SEOService.GetCoursePageByCode(ctx, code)`
-4. On `errs.ErrCourseNotFound` → render HTML 404 page
-5. `renderCoursePage(baseURL, data)` → full HTML string
-6. `writeHTML(w, 200, html)` with `Content-Type: text/html`
+2. Reject empty or **invalid UTF-8** codes with HTML 404 (scanners send binary paths; Postgres would otherwise 500 with `SQLSTATE 22021`)
+3. `context.WithTimeout(r.Context(), 10s)` — cap DB/render time
+4. `SEOService.GetCoursePageByCode(ctx, code)`
+5. On `errs.ErrCourseNotFound` → render HTML 404 page
+6. `renderCoursePage(baseURL, data)` → full HTML string
+7. `writeHTML(w, 200, html)` with `Content-Type: text/html`
 
-Errors during render → HTML 500 page with request ID for support.
+Same UTF-8 guard applies to `/program/{slug}`. Errors during render → HTML 500 page with request ID for support.
 
 ---
 

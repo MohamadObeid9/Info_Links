@@ -43,6 +43,9 @@ func Load() (Config, error) {
 
 	if cfg.AppEnv == "development" {
 		cfg.DatabaseURL = getenv("LOCAL_DATABASE_URL", "postgres://postgres:postgres@localhost:5432/infolinks?sslmode=disable")
+		// Compose still injects production CF_SECRET_TOKEN from .env; browsers have no
+		// X-Cloudflare-Secret header, so disable origin gating locally.
+		cfg.CFSecretToken = ""
 	}
 
 	if cfg.DatabaseURL == "" {

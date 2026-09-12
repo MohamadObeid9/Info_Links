@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/middleware"
@@ -42,7 +43,7 @@ func (h *Handler) loggerWithID(r *http.Request) *slog.Logger {
 
 func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
 	code := strings.TrimSpace(r.PathValue("code"))
-	if code == "" {
+	if code == "" || !utf8.ValidString(code) {
 		h.serve404(w, r)
 		return
 	}
@@ -80,8 +81,8 @@ func (h *Handler) HandleCourse(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) HandleProgram(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(r.PathValue("slug"))
-	if slug == "" {
-		http.NotFound(w, r)
+	if slug == "" || !utf8.ValidString(slug) {
+		h.serve404(w, r)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)

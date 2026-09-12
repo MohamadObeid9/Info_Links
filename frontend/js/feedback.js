@@ -1,7 +1,7 @@
 import { AppState } from "./state.js";
 import { sb, apiRequest, formatApiError, logApiError } from "./supabase.js";
 import { showToast } from "./export.js";
-import { esc, setBtnLoading, adminCell } from "./ui.js";
+import { esc, setBtnLoading, adminCell, adminLongText } from "./ui.js";
 import { loadReportsBadges } from "./data.js";
 import { getAdminTableSkeleton } from "./skeleton.js";
 import { loadStudentDirectory, senderDetail } from "./students.js";
@@ -62,6 +62,7 @@ async function submitFeedback() {
         document.getElementById('feedbackCategory').value = '';
         document.getElementById('feedbackMessage').value = '';
         updateStarDisplay();
+        syncFeedbackFormSteps();
     } catch (err) {
         if (window.handleStudentAuthError?.(err, submitFeedback)) return;
         logApiError(err, 'submitFeedback');
@@ -71,9 +72,40 @@ async function submitFeedback() {
     }
 }
 
+function syncFeedbackFormSteps() {
+    const category = document.getElementById('feedbackCategory')?.value || '';
+    const ratingPlaceholder = document.getElementById('feedbackRatingPlaceholder');
+    const ratingStep = document.getElementById('feedbackRatingStep');
+    const messagePlaceholder = document.getElementById('feedbackMessagePlaceholder');
+    const messageStep = document.getElementById('feedbackMessageStep');
+    if (!ratingStep || !messageStep) return;
+
+    const hasCategory = !!category;
+    const hasRating = currentRating > 0;
+
+    if (!hasCategory && currentRating !== 0) {
+        currentRating = 0;
+        updateStarDisplay();
+        const msg = document.getElementById('feedbackMessage');
+        if (msg) msg.value = '';
+    }
+
+    if (ratingPlaceholder) ratingPlaceholder.hidden = hasCategory;
+    ratingStep.hidden = !hasCategory;
+
+    if (messagePlaceholder) messagePlaceholder.hidden = !(hasCategory && !hasRating);
+    messageStep.hidden = !(hasCategory && hasRating);
+
+    if (!hasRating) {
+        const msg = document.getElementById('feedbackMessage');
+        if (msg && !hasCategory) msg.value = '';
+    }
+}
+
 function setRating(rating) {
     currentRating = rating;
     updateStarDisplay();
+    syncFeedbackFormSteps();
 }
 
 function handleStarHover(rating) {
@@ -154,7 +186,6 @@ async function renderAdminFeedback() {
             const emptyStars = '★'.repeat(5 - item.rating);
             const stars = `<span style="color: gold;">${filledStars}</span><span style="color: #999;">${emptyStars}</span>`;
             const ratingText = `${item.rating}/5`;
-            const message = esc(item.message) || '(no message)';
             const statusClass = item.status === 'new'
                 ? 'tag-blue'
                 : item.status === 'rejected'
@@ -168,7 +199,7 @@ async function renderAdminFeedback() {
                     ${adminCell("admin-detail", "Date", date)}
                     ${adminCell("admin-detail", "Category", `<span class="tag tag-gray">${categoryDisplay}</span>`)}
                     ${adminCell("admin-pri", "Rating", `<span style="font-size: 1.1rem;" title="${ratingText}">${stars}</span><span style="font-size: 0.9rem; color: var(--text); font-weight: 600; margin-left: 8px;">${ratingText}</span>`)}
-                    ${adminCell("admin-sec", "Message", message)}
+                    ${adminCell("admin-sec", "Message", adminLongText(item.message, { empty: "(no message)" }))}
                     ${adminCell("admin-meta", "Status", `<span class="tag ${statusClass}">${esc(item.status || 'new')}</span>`)}
                     ${adminCell("admin-actions action-btns", "Actions", _feedbackActions(item))}
                 </tr>
@@ -228,6 +259,8 @@ Object.assign(window, {
   setRating,
   handleStarHover,
   clearStarHover,
+  syncFeedbackFormSteps,
+  updateStarDisplay,
   renderAdminFeedback,
   setAdminFeedbackPage,
   resetAdminFeedbackPage,
@@ -236,4 +269,6 @@ Object.assign(window, {
   deleteFeedback,
 });
 
-export { updateStarDisplay, renderAdminFeedback };
+syncFeedbackFormSteps();
+
+export { updateStarDisplay, renderAdminFeedback, syncFeedbackFormSteps };

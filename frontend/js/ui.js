@@ -80,6 +80,15 @@ function adminCell(role, label, inner) {
   return `<td class="${role}" data-label="${esc(label)}">${inner}</td>`;
 }
 
+/** Clamp-friendly body text for admin inbox tables (feedback / reports / contributions). */
+function adminLongText(text, { empty = "—" } = {}) {
+  const raw = String(text ?? "").trim();
+  if (!raw) {
+    return `<span class="admin-long-text is-empty">${esc(empty)}</span>`;
+  }
+  return `<div class="admin-long-text" title="${esc(raw)}">${esc(raw)}</div>`;
+}
+
 document.addEventListener("click", (e) => {
   if (e.target.classList.contains("nav-btn")) {
     document.getElementById("hamburgerBtn").classList.remove("open");
@@ -182,9 +191,17 @@ function collectFavoriteCourses(query = "") {
   return [...byId.values()];
 }
 
+function courseCardDomId(c, opts = {}) {
+  if (opts.cardId != null && opts.cardId !== "") return String(opts.cardId);
+  // Placement is unique per program/year/semester offering; course id alone is not.
+  if (c.placement_id != null && c.placement_id !== "") return `${c.id}-p${c.placement_id}`;
+  return String(c.id);
+}
+
 function _buildCourseCard(c, opts = {}) {
   const isFav = AppState.favorites.has(String(c.id));
   const path = opts.path || "";
+  const cardId = courseCardDomId(c, opts);
   const linksHtml = c.links.length
     ? c.links
       .map(
@@ -208,8 +225,12 @@ function _buildCourseCard(c, opts = {}) {
     : '<span class="no-links">No links yet — contribute!</span>';
 
   return `
-    <div class="course-card" id="course-card-${c.id}">
-      <div class="course-header" data-toggle-course="${c.id}">
+    <div class="course-card" id="course-card-${cardId}" data-course-id="${c.id}"${
+      c.placement_id != null && c.placement_id !== ""
+        ? ` data-placement-id="${c.placement_id}"`
+        : ""
+    }>
+      <div class="course-header" data-toggle-course="${cardId}">
         <h2 class="course-name">${esc(c.name)}</h2>
         <div class="course-header-side">
           <div class="course-header-tags">
@@ -299,12 +320,13 @@ function _paintFavorite(courseId) {
     window.renderCourses();
     return;
   }
-  const btn = document.querySelector(`#course-card-${courseId} .fav-btn`);
-  if (btn) {
-    const isFav = AppState.favorites.has(String(courseId));
-    btn.classList.toggle("active", isFav);
-    btn.title = isFav ? "Remove from My Courses" : "Add to My Courses";
-  }
+  const isFav = AppState.favorites.has(String(courseId));
+  document
+    .querySelectorAll(`.course-card[data-course-id="${courseId}"] .fav-btn`)
+    .forEach((btn) => {
+      btn.classList.toggle("active", isFav);
+      btn.title = isFav ? "Remove from My Courses" : "Add to My Courses";
+    });
 }
 
 /** Optimistic star toggle; the server is the source of truth so failures roll back. */
@@ -390,6 +412,7 @@ export {
   isMobileView,
   adminTd,
   adminCell,
+  adminLongText,
   FAVORITES_HINT,
   COMMUNITY_PROMOTE_HINT,
   FAVORITES_HINT_CARD,

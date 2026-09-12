@@ -5,6 +5,11 @@ import { showToast } from "./export.js";
 import { renderAdminContent } from "./admin.js";
 import { loadReportsBadges } from "./data.js";
 import { updateStarDisplay } from "./feedback.js";
+import { initHierarchyPicker, selectedCourse } from "./hierarchy-picker.js";
+import {
+  encodeContributionNote,
+  _readContentTypeCheckboxes,
+} from "./modals.js";
 
 // ===================== VIEWS =====================
 
@@ -68,6 +73,9 @@ function showView(v) {
     renderAdminContent();
     loadReportsBadges();
   }
+  if (v === "report-submit") {
+    refreshReportContributePickers();
+  }
 }
 
 // Restore view on back-button
@@ -78,60 +86,98 @@ window.addEventListener("popstate", (event) => {
 
 // ===================== REPORT & CONTRIB =====================
 
-// When a course is selected in the report form, populate its links dropdown
-function onReportCourseChange() {
-  const courseInput = document.getElementById("rCourse").value.trim().toLowerCase();
-  const linkSel = document.getElementById("rLink");
+function refreshReportContributePickers() {
+  if (document.getElementById("rProg")) initHierarchyPicker("r", { includeCourse: true });
+  if (document.getElementById("cProg")) initHierarchyPicker("c", { includeCourse: true });
+}
 
-  if (!courseInput) {
-    if (!linkSel.disabled) {
-      linkSel.innerHTML = '<option value="">Select a link…</option>';
-      linkSel.disabled = true;
-    }
+function onHierarchyCourseChange(prefix) {
+  if (prefix === "c") {
+    syncContributeLinkDetails();
+    return;
+  }
+  if (prefix !== "r") return;
+  syncReportLinkDetails();
+}
+
+function syncReportLinkDetails() {
+  const details = document.getElementById("rReportDetails");
+  const placeholder = document.getElementById("rReportPlaceholder");
+  const linkSel = document.getElementById("rLink");
+  const linkStep = document.getElementById("rLinkStep");
+  if (!details || !linkSel) return;
+
+  const course = selectedCourse("r");
+  const show = !!course;
+  details.hidden = !show;
+  if (placeholder) placeholder.hidden = show;
+
+  if (!show) {
+    linkSel.innerHTML = `<option value="">Select a link…</option>`;
+    linkSel.disabled = true;
+    if (linkStep) linkStep.hidden = true;
+    const desc = document.getElementById("rDesc");
+    if (desc) desc.value = "";
     return;
   }
 
-  // Find the course in the data tree by name or code
-  let course = null;
-  AppState.dbPrograms.forEach((p) =>
-    p.years.forEach((y) =>
-      y.sems.forEach((s) =>
-        s.courses.forEach((c) => {
-          if (c.name.toLowerCase() === courseInput || c.code.toLowerCase() === courseInput || `${c.name} (${c.code})`.toLowerCase() === courseInput) {
-            course = c;
-          }
-        }),
-      ),
-    ),
-  );
-
-  if (course && course.links.length) {
-    linkSel.innerHTML = '<option value="">Select a link…</option>';
+  if (course.links?.length) {
+    linkSel.innerHTML = `<option value="">Select a link…</option>`;
     course.links.forEach((l) => {
       const opt = document.createElement("option");
-      opt.value = l.label;
-      opt.textContent = l.label;
+      opt.value = l.label || l.url || "";
+      opt.textContent = l.label || l.url || "Link";
       linkSel.appendChild(opt);
     });
     linkSel.disabled = false;
+    if (linkStep) linkStep.hidden = false;
   } else {
-    if (!linkSel.disabled) {
-      linkSel.innerHTML = '<option value="">Select a link…</option>';
-      linkSel.disabled = true;
-    }
+    linkSel.innerHTML = `<option value="">Select a link…</option>`;
+    linkSel.disabled = true;
+    if (linkStep) linkStep.hidden = true;
   }
+
+  queueMicrotask(() => {
+    document.getElementById("rDesc")?.focus();
+  });
+}
+
+function syncContributeLinkDetails() {
+  const details = document.getElementById("cLinkDetails");
+  const placeholder = document.getElementById("cContribPlaceholder");
+  if (!details) return;
+  const course = selectedCourse("c");
+  const show = !!course;
+  details.hidden = !show;
+  if (placeholder) placeholder.hidden = show;
+  if (!show) {
+    const link = document.getElementById("cLink");
+    const type = document.getElementById("cType");
+    const note = document.getElementById("cNote");
+    if (link) link.value = "";
+    if (type) type.value = "";
+    if (note) note.value = "";
+    document.querySelectorAll('input[name="cct"]').forEach((el) => {
+      el.checked = false;
+    });
+    return;
+  }
+  queueMicrotask(() => {
+    document.getElementById("cLink")?.focus();
+  });
 }
 
 async function submitReport() {
   if (!window.requireStudent(submitReport)) return;
   const btn = document.getElementById("submitReportBtn");
-  const courseName = document.getElementById("rCourse").value.trim();
+  const course = selectedCourse("r");
   const link = document.getElementById("rLink").value;
   const desc = document.getElementById("rDesc").value.trim();
-  if (!courseName || !desc) {
+  if (!course || !desc) {
     showToast("Please select a course and describe the issue.", true);
     return;
   }
+  const courseName = course.code ? `${course.name} (${course.code})` : course.name;
   setBtnLoading(btn, true, "Submitting…");
   try {
     await apiRequest("/api/reports", {
@@ -142,9 +188,8 @@ async function submitReport() {
         description: desc,
       },
     });
-    document.getElementById("rCourse").value = "";
-    onReportCourseChange(); // reset link dropdown
-    document.getElementById("rDesc").value = "";
+    initHierarchyPicker("r", { includeCourse: true });
+    syncReportLinkDetails();
     showToast("Report submitted! Thank you.");
   } catch (e) {
     if (window.handleStudentAuthError?.(e, submitReport)) return;
@@ -157,12 +202,13 @@ async function submitReport() {
 async function submitContribution() {
   if (!window.requireStudent(submitContribution)) return;
   const btn = document.getElementById("submitContribBtn");
-  const course = document.getElementById("cCourse").value.trim();
+  const course = selectedCourse("c");
   const link = document.getElementById("cLink").value.trim();
   const linkType = document.getElementById("cType").value;
   const note = document.getElementById("cNote").value.trim();
+  const contentTypes = _readContentTypeCheckboxes("cct");
   if (!course || !link) {
-    showToast("Please fill in course and link.", true);
+    showToast("Please select a course and enter a link.", true);
     return;
   }
   try {
@@ -172,22 +218,31 @@ async function submitContribution() {
     showToast("Please enter a valid URL (https://… or http://…).", true);
     return;
   }
+  const courseName = course.code ? `${course.name} (${course.code})` : course.name;
   setBtnLoading(btn, true, "Submitting…");
   try {
-    const finalNote = linkType ? `[Type:${linkType}] ${note}` : note;
+    const finalNote = encodeContributionNote({
+      linkType,
+      contentTypes,
+      note,
+    });
     await apiRequest("/api/contributions", {
       method: "POST",
       body: {
-        course_name: course,
+        course_name: courseName,
         link_url: link,
         link_type: linkType,
-        note: finalNote.trim(),
+        note: finalNote,
       },
     });
-    document.getElementById("cCourse").value = "";
+    initHierarchyPicker("c", { includeCourse: true });
     document.getElementById("cLink").value = "";
     document.getElementById("cType").value = "";
     document.getElementById("cNote").value = "";
+    document.querySelectorAll('input[name="cct"]').forEach((el) => {
+      el.checked = false;
+    });
+    syncContributeLinkDetails();
     showToast("Contribution submitted! Thank you.");
   } catch (e) {
     if (window.handleStudentAuthError?.(e, submitContribution)) return;
@@ -198,8 +253,15 @@ async function submitContribution() {
 }
 
 window.showView = showView;
-window.onReportCourseChange = onReportCourseChange;
+window.onHierarchyCourseChange = onHierarchyCourseChange;
 window.submitReport = submitReport;
 window.submitContribution = submitContribution;
+window.refreshReportContributePickers = refreshReportContributePickers;
 
-export { showView, onReportCourseChange, submitReport, submitContribution };
+export {
+  showView,
+  onHierarchyCourseChange,
+  submitReport,
+  submitContribution,
+  refreshReportContributePickers,
+};
