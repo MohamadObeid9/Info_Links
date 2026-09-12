@@ -112,7 +112,9 @@ function applyHighlightFromURL() {
       }
     });
     if (targetId) {
-      const card = document.getElementById(`course-card-${targetId}`);
+      const card =
+        document.querySelector(`.course-card[data-course-id="${targetId}"]`) ||
+        document.getElementById(`course-card-${targetId}`);
       card?.classList.add("open");
       card?.scrollIntoView({ behavior: "smooth", block: "center" });
     }

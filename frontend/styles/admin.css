@@ -198,6 +198,50 @@
     background: var(--bg3);
 }
 
+/* Long feedback / report / contribution bodies stay readable without blowing up rows */
+.admin-long-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    line-height: 1.4;
+    max-width: 22rem;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.admin-long-text.is-expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    max-height: none;
+    max-width: min(36rem, 48vw);
+    white-space: pre-wrap;
+}
+
+.admin-long-text.is-empty {
+    cursor: default;
+    display: inline;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+    max-width: none;
+}
+
+.admin-table .admin-url {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 14rem;
+    display: inline-block;
+}
+
+.admin-table .admin-url.is-empty {
+    max-width: none;
+}
+
+.admin-table .admin-url-full {
+    display: none;
+}
+
 .tag {
     display: inline-block;
     font-size: 0.7rem;

@@ -1,12 +1,12 @@
 import { AppState } from "./state.js";
 import { sb, sbAuth, sbLogout, apiRequest } from "./supabase.js";
-import { esc, setBtnLoading, getLinkBadge, getContentTypeChips, adminCell, isMobileView } from "./ui.js";
+import { esc, setBtnLoading, getLinkBadge, getContentTypeChips, adminCell, adminLongText, isMobileView } from "./ui.js";
 import { getAdminTableSkeleton, getAdminAnalyticsSkeleton } from "./skeleton.js";
 import { loadAll, loadReportsBadges } from "./data.js";
 import { _clearCache } from "./cache.js";
 import { showToast } from "./export.js";
 import { renderAdminFeedback } from "./feedback.js";
-import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder } from "./modals.js";
+import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, parseContributionNote, _getNextDisplayOrder } from "./modals.js";
 import { loadStudentDirectory, rememberStudents, senderDetail, studentHandleOf, fmtDateTime } from "./students.js";
 
 // ===================== ADMIN AUTH =====================
@@ -127,6 +127,11 @@ function shortUrl(url) {
   } catch {
     return url.length > 36 ? `${url.slice(0, 34)}…` : url;
   }
+}
+
+function adminUrlDisplay(url) {
+  if (!url) return `<span class="admin-url is-empty">—</span>`;
+  return `<span class="admin-url" title="${esc(url)}"><span class="admin-url-short">${esc(shortUrl(url))}</span><span class="admin-url-full">${esc(url)}</span></span>`;
 }
 
 function _adminLinkRow(l, editOnclick, deleteOnclick) {
@@ -1084,8 +1089,8 @@ async function renderAdminReports() {
       html += `<tr class="admin-row">
         ${senderDetail(r.user_id)}
         ${adminCell("admin-pri", "Course", esc(r.course_name))}
-        ${adminCell(r.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", `<span class="admin-url">${esc(r.link_url || "—")}</span>`)}
-        ${adminCell("admin-sec", "Issue", esc(issue))}
+        ${adminCell(r.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", adminUrlDisplay(r.link_url))}
+        ${adminCell("admin-sec", "Issue", adminLongText(issue))}
         ${adminCell("admin-meta", "Status", `<span class="tag ${statusTag}">${esc(r.status || "open")}</span>`)}
         ${adminCell("admin-actions action-btns", "Actions", _reportActions(r))}
       </tr>`;
@@ -1135,8 +1140,8 @@ async function renderAdminContributions() {
       html += `<tr class="admin-row">
         ${senderDetail(c.user_id)}
         ${adminCell("admin-pri", "Course", esc(c.course_name))}
-        ${adminCell(c.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", `<span class="admin-url">${esc(c.link_url || "—")}</span>`)}
-        ${adminCell("admin-sec", "Note", esc(preview))}
+        ${adminCell(c.link_url ? "admin-detail" : "admin-detail admin-empty", "Link", adminUrlDisplay(c.link_url))}
+        ${adminCell("admin-sec", "Note", adminLongText(preview))}
         ${adminCell("admin-meta", "Status", `<span class="tag ${statusTag}">${esc(c.status || "pending")}</span>`)}
         ${adminCell("admin-actions action-btns", "Actions", _contributionActions(c))}
       </tr>`;
@@ -1335,34 +1340,62 @@ async function renderAdminStudentDetail() {
   }
 }
 
+/** Resolve contribution course_name ("Name (CODE)" or plain) to a course id. */
+function _matchContributionCourseId(courseName) {
+  const raw = String(courseName || "").trim();
+  if (!raw) return null;
+  const lower = raw.toLowerCase();
+  const codeMatch = raw.match(/\(([^)]+)\)\s*$/);
+  const code = codeMatch ? codeMatch[1].trim().toLowerCase() : "";
+  const nameOnly = codeMatch
+    ? raw.slice(0, codeMatch.index).trim().toLowerCase()
+    : lower;
+
+  let byCode = null;
+  let byName = null;
+  AppState.dbPrograms.forEach((p) =>
+    p.years.forEach((y) =>
+      y.sems.forEach((s) =>
+        s.courses.forEach((course) => {
+          const cName = String(course.name || "").toLowerCase();
+          const cCode = String(course.code || "").toLowerCase();
+          if (code && cCode === code) byCode = course.id;
+          if (cName === nameOnly || cName === lower || cCode === lower) byName = course.id;
+        }),
+      ),
+    ),
+  );
+  return byCode || byName || null;
+}
+
 // Auto-Approve Flow
 function openAutoApproveContribModal(c) {
-  let suggestedCourseId = "";
-  AppState.dbPrograms.forEach(p => p.years.forEach(y => y.sems.forEach(s => s.courses.forEach(course => {
-    if (course.name.toLowerCase() === c.course_name.toLowerCase() || course.code.toLowerCase() === c.course_name.toLowerCase()) {
-      suggestedCourseId = course.id;
-    }
-  }))));
+  const suggestedCourseId = _matchContributionCourseId(c.course_name);
 
   let courseOpts = "";
   const seenCourseIds = new Set();
-  AppState.dbPrograms.forEach(p => {
+  AppState.dbPrograms.forEach((p) => {
     courseOpts += `<optgroup label="${esc(p.name)}">`;
-    p.years.forEach(y => y.sems.forEach(s => s.courses.forEach(course => {
-      if (seenCourseIds.has(course.id)) return;
-      seenCourseIds.add(course.id);
-      courseOpts += `<option value="${course.id}" ${course.id === suggestedCourseId ? "selected" : ""}>${esc(course.name)} (${esc(course.code)})</option>`;
-    })));
+    p.years.forEach((y) =>
+      y.sems.forEach((s) =>
+        s.courses.forEach((course) => {
+          if (seenCourseIds.has(course.id)) return;
+          seenCourseIds.add(course.id);
+          const sel = Number(course.id) === Number(suggestedCourseId) ? "selected" : "";
+          courseOpts += `<option value="${course.id}" ${sel}>${esc(course.name)} (${esc(course.code)})</option>`;
+        }),
+      ),
+    );
     courseOpts += `</optgroup>`;
   });
 
   let preType = c.link_type || "drive";
   let cleanNote = c.note || "";
-  const match = cleanNote.match(/^\[Type:\s*([^\]]+)\]\s*(.*)$/i);
-  if (match) {
-    preType = match[1];
-    cleanNote = match[2];
-  }
+  let preContent = "";
+  const parsed = parseContributionNote(cleanNote);
+  if (parsed.linkType) preType = parsed.linkType;
+  if (parsed.contentTypes) preContent = parsed.contentTypes;
+  cleanNote = parsed.note;
 
   window.openModal(`<h2>✅ Approve Contribution</h2>
   <p style="color:var(--muted);font-size:0.9rem;margin-bottom:16px;">Review and add this link directly to the database.</p>
@@ -1370,7 +1403,7 @@ function openAutoApproveContribModal(c) {
   <label>Type</label><select id="acType">${_linkTypeOptions(preType)}</select>
   <label>URL</label><input type="text" id="acUrl" value="${esc(c.link_url)}"/>
   <label>Label</label><input type="text" id="acLabel" value="Link"/>
-  <label>Content Type(s)</label>${_contentTypeCheckboxes("", "acct")}
+  <label>Content Type(s)</label>${_contentTypeCheckboxes(preContent, "acct")}
   <label>Note</label><input type="text" id="acNote" value="${esc(cleanNote)}"/>
   <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="applyAutoApproveContrib(${c.id})">Approve & Add</button></div>`);
 }
@@ -1780,8 +1813,15 @@ function bindAdminMobile() {
   const root = document.getElementById("view-admin");
   if (root && !root.dataset.mobileBound) {
     root.addEventListener("click", (e) => {
-      if (!isMobileView()) return;
       if (e.target.closest(".action-btn, a, select, input, .btn")) return;
+
+      const longText = e.target.closest(".admin-long-text:not(.is-empty)");
+      if (longText && !isMobileView()) {
+        longText.classList.toggle("is-expanded");
+        return;
+      }
+
+      if (!isMobileView()) return;
 
       const toggle = e.target.closest(".admin-entity-toggle");
       if (toggle) {

@@ -120,7 +120,7 @@ function _renderAfterLoad({ resetMobile = true } = {}) {
     document.getElementById("coursesOutput").style.display = "";
     renderProgTabs();
     renderCourses();
-    _populateCourseDatalist();
+    window.refreshReportContributePickers?.();
     return;
   }
   if (AppState.currentProg === "all") {
@@ -134,27 +134,7 @@ function _renderAfterLoad({ resetMobile = true } = {}) {
   syncProgramSectionHeading();
   if (AppState.currentProg === "all") renderExtra();
   window.renderDesktopServiceSidebar?.();
-  // Populate the course datalist for Report/Contribute autocomplete
-  _populateCourseDatalist();
-}
-
-function _populateCourseDatalist() {
-  const dl = document.getElementById("courseDatalist");
-  if (!dl) return;
-  const names = new Set();
-  AppState.dbPrograms.forEach((p) =>
-    p.years.forEach((y) =>
-      y.sems.forEach((s) =>
-        s.courses.forEach((c) => {
-          names.add(`${c.name} (${c.code})`);
-        }),
-      ),
-    ),
-  );
-  dl.innerHTML = [...names]
-    .sort()
-    .map((n) => `<option value="${esc(n)}">`)
-    .join("");
+  window.refreshReportContributePickers?.();
 }
 
 async function loadAll() {

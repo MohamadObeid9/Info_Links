@@ -60,6 +60,8 @@ services:
       SITE_BASE_URL: http://localhost:8080
       # Hostname `db` is the Compose Postgres service — not 127.0.0.1 inside this container.
       LOCAL_DATABASE_URL: postgres://postgres:postgres@db:5432/infolinks?sslmode=disable
+      # Empty overrides .env so local browsers aren't blocked by Cloudflare origin auth.
+      CF_SECRET_TOKEN: ""
     dns:
       - 8.8.8.8
       - 1.1.1.1

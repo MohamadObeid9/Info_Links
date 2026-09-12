@@ -161,10 +161,18 @@ nav {
     padding: 24px;
     max-width: 1100px;
     margin: 0 auto;
+    width: 100%;
 }
 
 .view.active {
     display: block;
+}
+
+/* Secondary pages share one content width + left-aligned titles */
+#view-about,
+#view-report-submit,
+#view-feedback {
+    max-width: 800px;
 }
 
 .hero {

@@ -6,6 +6,7 @@ import "./js/ui.js";
 import "./js/home.js";
 import "./js/mobile-home.js";
 import "./js/data.js";
+import "./js/hierarchy-picker.js";
 import "./js/feedback.js";
 import "./js/export.js";
 import "./js/admin.js";
@@ -176,9 +177,6 @@ document.addEventListener("click", (e) => {
 document.addEventListener("input", (e) => {
   if (e.target.id === "searchInput") {
     window.onSearch();
-  }
-  if (e.target.id === "rCourse") {
-    window.onReportCourseChange();
   }
 });
 

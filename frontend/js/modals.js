@@ -184,6 +184,40 @@ function _readContentTypeCheckboxes(prefix = "ct") {
   return vals.length ? vals.join(",") : null;
 }
 
+/** Encode/decode [Type:…] [Content:…] prefixes used in contribution notes. */
+function encodeContributionNote({ linkType = "", contentTypes = "", note = "" } = {}) {
+  const parts = [];
+  if (linkType) parts.push(`[Type:${linkType}]`);
+  const cts = Array.isArray(contentTypes)
+    ? contentTypes.filter(Boolean).join(",")
+    : String(contentTypes || "").trim();
+  if (cts) parts.push(`[Content:${cts}]`);
+  const rest = String(note || "").trim();
+  if (rest) parts.push(rest);
+  return parts.join(" ").trim();
+}
+
+function parseContributionNote(raw) {
+  let text = String(raw || "").trim();
+  let linkType = "";
+  let contentTypes = "";
+  const typeMatch = text.match(/^\[Type:\s*([^\]]+)\]\s*/i);
+  if (typeMatch) {
+    linkType = typeMatch[1].trim();
+    text = text.slice(typeMatch[0].length);
+  }
+  const contentMatch = text.match(/^\[Content:\s*([^\]]+)\]\s*/i);
+  if (contentMatch) {
+    contentTypes = contentMatch[1]
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+      .join(",");
+    text = text.slice(contentMatch[0].length);
+  }
+  return { linkType, contentTypes, note: text.trim() };
+}
+
 // Keep backward compat for any code using _contentTypeOptions
 function _contentTypeOptions(selected) {
   const opts = [
@@ -648,4 +682,13 @@ Object.assign(window, {
 
 document.addEventListener("keydown", _trapModalFocus);
 
-export { openModal, closeModal, _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, _getNextDisplayOrder };
+export {
+  openModal,
+  closeModal,
+  _linkTypeOptions,
+  _contentTypeCheckboxes,
+  _readContentTypeCheckboxes,
+  encodeContributionNote,
+  parseContributionNote,
+  _getNextDisplayOrder,
+};
