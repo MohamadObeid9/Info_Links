@@ -419,7 +419,23 @@ const (
 		ORDER BY COUNT(*) DESC, query ASC
 		LIMIT 50`
 
-	insertSearchEventQuery = `INSERT INTO search_events (user_id, query) VALUES ($1, $2)`
+	insertSearchEventQuery = `
+		WITH updated AS (
+			UPDATE search_events
+			SET query = $2, created_at = now()
+			WHERE id = (
+				SELECT id FROM search_events
+				WHERE user_id = $1
+				  AND created_at >= now() - interval '30 seconds'
+				  AND ($2 LIKE query || '%' OR query LIKE $2 || '%')
+				ORDER BY created_at DESC
+				LIMIT 1
+			)
+			RETURNING id
+		)
+		INSERT INTO search_events (user_id, query)
+		SELECT $1, $2
+		WHERE NOT EXISTS (SELECT 1 FROM updated)`
 	insertBrowseEventQuery = `INSERT INTO browse_events (user_id, step) VALUES ($1, $2)`
 )
 

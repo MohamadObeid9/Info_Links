@@ -335,6 +335,79 @@ select.inp {
     color: var(--muted);
 }
 
+.auth-cross-device-notice {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    line-height: 1.4;
+    margin-bottom: 12px;
+}
+
+.auth-field-note {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 8px;
+    margin-bottom: 14px;
+    line-height: 1.4;
+}
+
+.student-id-badge {
+    display: inline-flex;
+    align-items: center;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    border-radius: 6px;
+    padding: 1px 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-left: 4px;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.student-id-badge:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.student-credentials-card {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 12px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cred-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.92rem;
+}
+
+.cred-label {
+    color: var(--muted);
+}
+
+.cred-val {
+    color: var(--text);
+    font-family: monospace;
+    font-size: 0.95rem;
+}
+
+.cred-num {
+    color: var(--accent);
+    font-size: 1.1rem;
+}
+
 .toast {
     position: fixed;
     bottom: 24px;

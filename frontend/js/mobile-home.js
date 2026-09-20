@@ -252,7 +252,7 @@ function renderMobileFavorites() {
   if (!window.isRegisteredStudent?.() && !AppState.adminLoggedIn) {
     document.getElementById("coursesOutput").innerHTML =
       chipsHtml(["My Courses"], "program") +
-      '<div class="empty">Sign up to save courses here — it takes a name and a number.</div>';
+      '<div class="empty">Sign in or sign up to save courses here — it takes a name and a number.</div>';
     return;
   }
   if (AppState.favorites.size === 0) {
