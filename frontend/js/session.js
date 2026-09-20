@@ -204,36 +204,47 @@ function _suggestNumber(taken) {
   return next > 100 ? next - 100 : next;
 }
 
-function promptStudentAuth({ retry = null, mode = "signup" } = {}) {
+function promptStudentAuth({ retry = null, mode = "signin" } = {}) {
   _pendingAction = typeof retry === "function" ? retry : null;
   _renderAuthModal({ mode });
 }
 
-function _renderAuthModal({ mode = "signup", error = "", values = {} } = {}) {
-  const isSignup = mode !== "signin";
+function _renderAuthModal({ mode = "signin", error = "", values = {} } = {}) {
+  const isSignup = mode === "signup";
   const first = values.first_name || "";
   const last = values.last_name || "";
-  const number = values.number || (isSignup ? String(_randomNumber()) : "");
+  const number = values.number || "";
 
   openModal(`<h2>${isSignup ? "🎓 Create your student profile" : "👋 Welcome back"}</h2>
   <div class="auth-mode-toggle" role="tablist" aria-label="Account mode">
+    <button type="button" role="tab" class="auth-mode-btn ${!isSignup ? "active" : ""}" aria-selected="${!isSignup}" onclick="switchStudentAuthMode('signin')">Sign in</button>
     <button type="button" role="tab" class="auth-mode-btn ${isSignup ? "active" : ""}" aria-selected="${isSignup}" onclick="switchStudentAuthMode('signup')">Sign up</button>
-    <button type="button" role="tab" class="auth-mode-btn ${isSignup ? "" : "active"}" aria-selected="${!isSignup}" onclick="switchStudentAuthMode('signin')">Sign in</button>
+  </div>
+  <div class="auth-cross-device-notice">
+    ${isSignup
+      ? "📱💻 <strong>Already registered on your phone or laptop?</strong> Switch to <strong>Sign in</strong> — use the same account on phone and laptop so your saved courses stay in sync."
+      : "📱💻 <strong>Same account everywhere:</strong> Enter the name and number from your phone / laptop so your saved courses and history stay in sync."}
   </div>
   <p class="auth-hint">${isSignup
-      ? "No email, no password — your first name, last name and a number between 1 and 100 are your login. Use the same name + number on your phone and laptop — no need for separate accounts."
-      : "Enter the name and number you signed up with. The same login works on phone and laptop."}</p>
+      ? "No password needed. Choose your first name, last name, and pick any number between 1 and 100 as your PIN. Remember this number to log in on your phone or laptop."
+      : "Enter the first name, last name, and 1–100 number you registered with on your phone or laptop."}</p>
   <label for="stFirst">First name</label>
   <input type="text" id="stFirst" autocomplete="given-name" placeholder="e.g. ziad" value="${esc(first)}"/>
   <label for="stLast">Last name</label>
   <input type="text" id="stLast" autocomplete="family-name" placeholder="e.g. baroudi" value="${esc(last)}"/>
-  <label for="stNumber">Your number (1–100)</label>
-  <input type="number" id="stNumber" min="1" max="100" step="1" placeholder="e.g. 33" value="${esc(number)}"/>
+  <label for="stNumber">${isSignup ? "Pick any number (1–100) — PIN, not phone number" : "Your number (1–100, not phone number)"}</label>
+  <input type="number" id="stNumber" min="1" max="100" step="1" placeholder="${isSignup ? "Pick a number 1–100 (e.g. 33)" : "Enter your number 1–100 (e.g. 33)"}" value="${esc(number)}"/>
+  <span class="auth-field-note">${isSignup ? "💡 Pick any number between 1 and 100 (e.g. 7, 25, 42). This is a PIN to identify you, NOT your mobile phone number." : "💡 Enter the 1–100 number you picked when signing up (this is your PIN, NOT your mobile phone number)."}</span>
   <div class="err" id="stAuthErr">${error ? esc(error) : ""}</div>
   <div class="modal-actions">
     <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
     <button class="btn btn-primary" onclick="submitStudentAuth('${isSignup ? "signup" : "signin"}')">${isSignup ? "Create profile" : "Sign in"}</button>
-  </div>`);
+  </div>
+  <p class="auth-hint" style="margin-top:12px;text-align:center;">
+    ${isSignup
+      ? 'Already created an account on another device? <a href="javascript:void(0)" onclick="switchStudentAuthMode(\'signin\')" style="color:var(--accent);font-weight:600;">Sign in here</a>'
+      : 'First time on Info Links? <a href="javascript:void(0)" onclick="switchStudentAuthMode(\'signup\')" style="color:var(--accent);font-weight:600;">Create a student profile</a>'}
+  </p>`);
 }
 
 function _readAuthValues() {
@@ -254,7 +265,7 @@ function switchStudentAuthMode(mode) {
 }
 
 async function submitStudentAuth(mode) {
-  const isSignup = mode !== "signin";
+  const isSignup = mode === "signup";
   const values = _readAuthValues();
 
   if (!values.first_name || !values.last_name) {
@@ -263,7 +274,7 @@ async function submitStudentAuth(mode) {
   }
   const number = parseInt(values.number, 10);
   if (!Number.isInteger(number) || number < 1 || number > 100) {
-    _setAuthError("Pick a whole number between 1 and 100.");
+    _setAuthError("Please enter a number between 1 and 100 (this is a PIN, not a phone number).");
     return;
   }
 
@@ -293,7 +304,7 @@ async function submitStudentAuth(mode) {
     const handle = studentHandle();
     showToast(
       isSignup
-        ? `Profile created — welcome, ${handle || "student"}!`
+        ? `Profile created! Remember your number (#${number}) to sign in on your phone or laptop.`
         : `Signed in as ${handle || "student"}`,
     );
 
@@ -321,15 +332,15 @@ async function submitStudentAuth(mode) {
       _renderAuthModal({
         mode: "signup",
         values: { ...values, number: String(suggestion) },
-        error: `${values.first_name} ${values.last_name} ${number} is already taken — that name + number pair must be unique. Try another number, e.g. ${suggestion}.`,
+        error: `${values.first_name} ${values.last_name} #${number} is already taken. If you already created this profile on your phone or laptop, switch to 'Sign in'! Otherwise try another number, e.g. ${suggestion}.`,
       });
       return;
     }
     if (!isSignup && err?.status === 404) {
       _renderAuthModal({
-        mode: "signup",
+        mode: "signin",
         values,
-        error: "No student with that name and number yet. Sign up instead — your details are already filled in.",
+        error: "No student with that name and number was found. Check the number you used on your phone / laptop, or switch to 'Sign up' if you haven't created a profile yet.",
       });
       return;
     }
@@ -355,6 +366,25 @@ async function signOutStudent() {
   }
 }
 
+function showStudentProfileModal() {
+  const u = AppState.studentUser;
+  if (!u || u.is_guest) return;
+  const first = u.first_name || "";
+  const last = u.last_name || "";
+  const num = u.number || "";
+  openModal(`<h2>📱💻 Your Student Login Info</h2>
+  <p class="auth-hint">Use these exact details to sign in on your phone or laptop so your saved courses and history stay in sync:</p>
+  <div class="student-credentials-card">
+    <div class="cred-row"><span class="cred-label">First name:</span> <strong class="cred-val">${esc(first)}</strong></div>
+    <div class="cred-row"><span class="cred-label">Last name:</span> <strong class="cred-val">${esc(last)}</strong></div>
+    <div class="cred-row"><span class="cred-label">Student number:</span> <strong class="cred-val cred-num">#${esc(String(num))}</strong></div>
+  </div>
+  <p class="auth-hint" style="margin-top:12px;"><strong>Note:</strong> Your student number is a number between 1 and 100 (this is a PIN, NOT your mobile phone number). Enter these 3 fields in <strong>Sign in</strong> on any device.</p>
+  <div class="modal-actions">
+    <button class="btn btn-primary" onclick="closeModal()">Got it</button>
+  </div>`);
+}
+
 // ── Welcome banner ──────────────────────────────────────────────────────────
 function renderStudentBanner() {
   const el = document.getElementById("studentWelcome");
@@ -365,11 +395,16 @@ function renderStudentBanner() {
     el.innerHTML = "";
     return;
   }
-  el.innerHTML = handle
-    ? `<span class="student-welcome-text">👋 Welcome, <strong>${esc(handle)}</strong></span>
-       <button type="button" class="student-welcome-btn" data-action="studentSignOut">Sign out</button>`
-    : `<span class="student-welcome-text">Browsing as a guest — sign up to open links, report issues and save courses.</span>
-       <button type="button" class="student-welcome-btn" data-action="studentSignIn">Sign up / Sign in</button>`;
+  const u = AppState.studentUser;
+  if (u && !u.is_guest) {
+    const displayName = `${u.first_name || ""} ${u.last_name || ""}`.trim() || handle;
+    el.innerHTML = `<span class="student-welcome-text">👋 Welcome, <strong>${esc(displayName)}</strong> <button type="button" class="student-id-badge" data-action="studentProfileInfo" title="View your login credentials">#${esc(String(u.number))}</button></span>
+       <button type="button" class="student-welcome-btn" data-action="studentProfileInfo">📱💻 Sync / Login info</button>
+       <button type="button" class="student-welcome-btn" data-action="studentSignOut">Sign out</button>`;
+  } else {
+    el.innerHTML = `<span class="student-welcome-text">Browsing as a guest — sign in or sign up to open links, report issues and save courses.</span>
+       <button type="button" class="student-welcome-btn" data-action="studentSignIn">Sign in / Sign up</button>`;
+  }
   el.hidden = false;
 }
 
@@ -415,6 +450,7 @@ Object.assign(window, {
   isRegisteredStudent,
   renderStudentBanner,
   repaintFavoriteStars,
+  showStudentProfileModal,
 });
 
 export {
@@ -428,4 +464,5 @@ export {
   isRegisteredStudent,
   renderStudentBanner,
   repaintFavoriteStars,
+  showStudentProfileModal,
 };

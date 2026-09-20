@@ -157,6 +157,9 @@ document.addEventListener("click", (e) => {
       case "studentSignOut":
         window.signOutStudent();
         break;
+      case "studentProfileInfo":
+        window.showStudentProfileModal?.();
+        break;
     }
     return;
   }
@@ -180,7 +183,16 @@ document.addEventListener("input", (e) => {
   }
 });
 
+document.addEventListener("blur", (e) => {
+  if (e.target.id === "searchInput") {
+    window.flushSearch?.();
+  }
+}, true);
+
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.id === "searchInput") {
+    window.flushSearch?.();
+  }
   if (e.key === "Enter" && e.target.id === "adminPass") {
     e.preventDefault();
     window.checkLogin();

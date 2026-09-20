@@ -215,14 +215,24 @@ function trackSearch(query) {
   if (q.length < 2 || q === _lastSearchTracked) return;
   clearTimeout(_searchTrackTimer);
   _searchTrackTimer = setTimeout(() => {
-    _lastSearchTracked = q;
-    apiRequest(`/api/search_events`, {
-      method: "POST",
-      body: { query: q },
-    }).catch((e) => {
-      if (e?.status === 401) window.onStudentTokenRejected?.();
-    });
-  }, 600);
+    flushSearch(q);
+  }, 1200);
+}
+
+function flushSearch(queryOverride) {
+  clearTimeout(_searchTrackTimer);
+  _searchTrackTimer = null;
+  if (AppState.adminLoggedIn || !AppState.studentToken) return;
+  const input = document.getElementById("searchInput");
+  const q = (typeof queryOverride === "string" ? queryOverride : (input?.value || "")).trim().toLowerCase();
+  if (q.length < 2 || q === _lastSearchTracked) return;
+  _lastSearchTracked = q;
+  apiRequest(`/api/search_events`, {
+    method: "POST",
+    body: { query: q },
+  }).catch((e) => {
+    if (e?.status === 401) window.onStudentTokenRejected?.();
+  });
 }
 
 function trackBrowse(step) {
@@ -249,6 +259,7 @@ window.sbLogout = sbLogout;
 window.trackVisit = trackVisit;
 window.trackLinkClick = trackLinkClick;
 window.trackSearch = trackSearch;
+window.flushSearch = flushSearch;
 window.trackBrowse = trackBrowse;
 window.apiRequest = apiRequest;
 window.formatApiError = formatApiError;
@@ -261,6 +272,7 @@ export {
   trackVisit,
   trackLinkClick,
   trackSearch,
+  flushSearch,
   trackBrowse,
   apiRequest,
   formatApiError,

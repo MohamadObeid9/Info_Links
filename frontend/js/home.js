@@ -78,7 +78,7 @@ function renderFavorites() {
 
   let body = "";
   if (!window.isRegisteredStudent?.() && !AppState.adminLoggedIn) {
-    body = '<div class="empty">Sign up to save courses here — it takes a name and a number.</div>';
+    body = '<div class="empty">Sign in or sign up to save courses here — it takes a name and a number.</div>';
   } else if (AppState.favorites.size === 0) {
     body = '<div class="empty">No favorites yet — click ★ on any course card to save it here.</div>';
   } else {
