@@ -7,6 +7,8 @@ import (
 	"infolinks-backend/internal/models"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -35,6 +37,16 @@ type fakeUserService struct {
 
 	listResult []models.UserListItem
 	listErr    error
+	listLimit  int
+	listOffset int
+	listQ      string
+	listSort   string
+	listOrder  string
+
+	deleteCalls  int
+	deleteIDs    []int
+	deleteResult int64
+	deleteErr    error
 
 	detailResult models.UserDetail
 	detailErr    error
@@ -87,11 +99,25 @@ func (f *fakeUserService) RemoveFavorite(ctx context.Context, userID int, course
 	return f.favoriteErr
 }
 
-func (f *fakeUserService) ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error) {
+func (f *fakeUserService) ListStudents(ctx context.Context, limit int, offset int, q string, sort string, order string) ([]models.UserListItem, error) {
+	f.listLimit = limit
+	f.listOffset = offset
+	f.listQ = q
+	f.listSort = sort
+	f.listOrder = order
 	if f.listErr != nil {
 		return nil, f.listErr
 	}
 	return f.listResult, nil
+}
+
+func (f *fakeUserService) DeleteStudents(ctx context.Context, ids []int) (int64, error) {
+	f.deleteCalls++
+	f.deleteIDs = append([]int{}, ids...)
+	if f.deleteErr != nil {
+		return 0, f.deleteErr
+	}
+	return f.deleteResult, nil
 }
 
 func (f *fakeUserService) GetUserDetail(ctx context.Context, idStr string, limit int, offset int) (models.UserDetail, error) {
@@ -425,6 +451,102 @@ func TestHandleFavorites(t *testing.T) {
 			}
 			if fakeUser.favoriteCourseID != "12" {
 				t.Fatalf("course id = %q, want %q", fakeUser.favoriteCourseID, "12")
+			}
+		})
+	}
+}
+
+func TestHandleAdminDeleteUsers(t *testing.T) {
+	tests := []struct {
+		name         string
+		body         string
+		deleteResult int64
+		deleteErr    error
+		statusWanted int
+		errMsg       string
+		wantCalls    int
+		wantIDs      []int
+		wantDeleted  int64
+	}{
+		{
+			name:         "200 with deleted count",
+			body:         `{"ids":[1,2,3]}`,
+			deleteResult: 3,
+			statusWanted: http.StatusOK,
+			wantCalls:    1,
+			wantIDs:      []int{1, 2, 3},
+			wantDeleted:  3,
+		},
+		{
+			name:         "400 on invalid body",
+			body:         `{`,
+			statusWanted: http.StatusBadRequest,
+			errMsg:       "Invalid request body",
+		},
+		{
+			name:         "400 on invalid ids",
+			body:         `{"ids":[]}`,
+			deleteErr:    errs.ErrUserInvalidID,
+			statusWanted: http.StatusBadRequest,
+			errMsg:       "Provide at least one valid student id",
+			wantCalls:    1,
+			wantIDs:      []int{},
+		},
+		{
+			name:         "404 when none match",
+			body:         `{"ids":[99]}`,
+			deleteErr:    errs.ErrUserNotFound,
+			statusWanted: http.StatusNotFound,
+			errMsg:       "No matching students found",
+			wantCalls:    1,
+			wantIDs:      []int{99},
+		},
+		{
+			name:         "500 on service failure",
+			body:         `{"ids":[1]}`,
+			deleteErr:    errs.ErrDatabaseDown,
+			statusWanted: http.StatusInternalServerError,
+			errMsg:       "Internal server error",
+			wantCalls:    1,
+			wantIDs:      []int{1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeUser := &fakeUserService{deleteResult: tt.deleteResult, deleteErr: tt.deleteErr}
+			h := testHandler(t, withUser(fakeUser))
+			req := httptest.NewRequest(http.MethodDelete, "/api/admin/users", strings.NewReader(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rr := httptest.NewRecorder()
+
+			h.handleAdminDeleteUsers(rr, req)
+
+			if fakeUser.deleteCalls != tt.wantCalls {
+				t.Fatalf("delete calls = %d, want %d", fakeUser.deleteCalls, tt.wantCalls)
+			}
+			if tt.wantCalls > 0 && !reflect.DeepEqual(fakeUser.deleteIDs, tt.wantIDs) {
+				t.Fatalf("ids = %v, want %v", fakeUser.deleteIDs, tt.wantIDs)
+			}
+			if rr.Code != tt.statusWanted {
+				t.Fatalf("status = %d, want %d", rr.Code, tt.statusWanted)
+			}
+			if tt.errMsg != "" {
+				var body map[string]string
+				if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+					t.Fatalf("decode error body: %v", err)
+				}
+				if body["error"] != tt.errMsg {
+					t.Fatalf("error = %q, want %q", body["error"], tt.errMsg)
+				}
+				return
+			}
+			var body map[string]int64
+			if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+				t.Fatalf("decode body: %v", err)
+			}
+			if body["deleted"] != tt.wantDeleted {
+				t.Fatalf("deleted = %d, want %d", body["deleted"], tt.wantDeleted)
 			}
 		})
 	}

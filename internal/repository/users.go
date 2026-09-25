@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"infolinks-backend/internal/errs"
@@ -185,11 +186,22 @@ func (r *postgresUserRepository) toggleFavorite(ctx context.Context, userID int,
 
 // ── Admin Queries ───────────────────────────────────────────────────────────
 
-func (r *postgresUserRepository) ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error) {
-	query, args := listStudentsQuery, []any{limit, offset}
-	if q != "" {
-		query, args = listStudentsWithQQuery, []any{"%" + q + "%", limit, offset}
+func (r *postgresUserRepository) ListStudents(ctx context.Context, params StudentListParams) ([]models.UserListItem, error) {
+	orderBy, err := studentOrderBySQL(params.Sort, params.Order)
+	if err != nil {
+		return nil, err
 	}
+
+	query := listStudentsBaseQuery
+	args := []any{}
+	if params.Q != "" {
+		query += ` AND (u.first_name ILIKE $1 OR u.last_name ILIKE $1)`
+		args = append(args, "%"+params.Q+"%")
+	}
+	limitPlaceholder := len(args) + 1
+	offsetPlaceholder := len(args) + 2
+	query += orderBy + listStudentsLimitSQL + fmt.Sprintf("$%d OFFSET $%d", limitPlaceholder, offsetPlaceholder)
+	args = append(args, params.Limit, params.Offset)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -200,7 +212,7 @@ func (r *postgresUserRepository) ListStudents(ctx context.Context, limit int, of
 	students := []models.UserListItem{}
 	for rows.Next() {
 		var s models.UserListItem
-		if err := rows.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Number, &s.CreatedAt, &s.LastSeenAt, &s.VisitCount, &s.ClickCount); err != nil {
+		if err := rows.Scan(&s.ID, &s.FirstName, &s.LastName, &s.Number, &s.CreatedAt, &s.LastSeenAt, &s.VisitCount, &s.ClickCount, &s.FavoriteCount); err != nil {
 			return nil, fmt.Errorf("list students rows scan: %w", err)
 		}
 		s.Handle = models.UserHandle(s.FirstName, s.LastName, s.Number, s.ID)
@@ -211,6 +223,60 @@ func (r *postgresUserRepository) ListStudents(ctx context.Context, limit int, of
 		return nil, fmt.Errorf("list students rows err: %w", err)
 	}
 	return students, nil
+}
+
+// studentOrderBySQL returns a safe ORDER BY clause. sort/order must already be
+// normalized; unknown values are rejected so nothing user-controlled is inlined.
+func studentOrderBySQL(sort, order string) (string, error) {
+	dir := "ASC"
+	if order == "desc" {
+		dir = "DESC"
+	} else if order != "asc" && order != "" {
+		return "", errs.ErrUserInvalidOrder
+	}
+
+	switch sort {
+	case "", "name":
+		return fmt.Sprintf(" ORDER BY u.first_name %s, u.last_name %s, u.number %s, u.id ASC", dir, dir, dir), nil
+	case "first_seen":
+		return fmt.Sprintf(" ORDER BY u.created_at %s, u.id ASC", dir), nil
+	case "last_seen":
+		return fmt.Sprintf(" ORDER BY u.last_seen_at %s, u.id ASC", dir), nil
+	case "visits":
+		return fmt.Sprintf(" ORDER BY visit_count %s, u.first_name ASC, u.id ASC", dir), nil
+	case "clicks":
+		return fmt.Sprintf(" ORDER BY click_count %s, u.first_name ASC, u.id ASC", dir), nil
+	case "favorites":
+		return fmt.Sprintf(" ORDER BY favorite_count %s, u.first_name ASC, u.id ASC", dir), nil
+	default:
+		return "", errs.ErrUserInvalidSort
+	}
+}
+
+// DeleteStudents removes registered students by id. Analytics rows cascade;
+// submission tables keep the row with a null user_id.
+func (r *postgresUserRepository) DeleteStudents(ctx context.Context, ids []int) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+
+	placeholders := make([]string, len(ids))
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+	q := fmt.Sprintf(deleteStudentsQuery, strings.Join(placeholders, ","))
+
+	res, err := r.db.ExecContext(ctx, q, args...)
+	if err != nil {
+		return 0, fmt.Errorf("delete students: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("delete students rows affected: %w", err)
+	}
+	return n, nil
 }
 
 func (r *postgresUserRepository) ListActivity(ctx context.Context, userID int, limit int, offset int) ([]models.UserActivityEvent, error) {

@@ -89,7 +89,6 @@ func registerPublicRoutes(mux *http.ServeMux, h *Handler, cfg config.Config) {
 	mux.HandleFunc("POST /api/page_views", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostPageView)))
 	mux.HandleFunc("POST /api/link_clicks", h.skipForAdmin(middleware.RequireRegisteredUser(jwtSecret, h.handlePostLinkClick)))
 	mux.HandleFunc("POST /api/search_events", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostSearchEvent)))
-	mux.HandleFunc("POST /api/browse_events", h.skipForAdmin(middleware.RequireUser(jwtSecret, h.handlePostBrowseEvent)))
 	mux.HandleFunc("POST /api/reports", middleware.RequireRegisteredUser(jwtSecret, h.handlePostReport))
 	mux.HandleFunc("POST /api/feedback", middleware.RequireRegisteredUser(jwtSecret, h.handlePostFeedback))
 	mux.HandleFunc("POST /api/contributions", middleware.RequireRegisteredUser(jwtSecret, h.handlePostContribution))
@@ -105,8 +104,10 @@ func registerAdminRoutes(mux *http.ServeMux, h *Handler, jwtSecret string) {
 	mux.HandleFunc("GET /api/admin/link_clicks", middleware.RequireAdmin(jwtSecret, h.handleAdminGetLinkClicks))
 
 	mux.HandleFunc("GET /api/admin/users", middleware.RequireAdmin(jwtSecret, h.handleAdminGetUsers))
+	mux.HandleFunc("DELETE /api/admin/users", middleware.RequireAdmin(jwtSecret, h.handleAdminDeleteUsers))
 	mux.HandleFunc("GET /api/admin/users/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminGetUser))
 	mux.HandleFunc("GET /api/admin/analytics/summary", middleware.RequireAdmin(jwtSecret, h.handleAdminGetAnalyticsSummary))
+	mux.HandleFunc("GET /api/admin/analytics/actors", middleware.RequireAdmin(jwtSecret, h.handleAdminGetAnalyticsActors))
 
 	mux.HandleFunc("POST /api/admin/links", middleware.RequireAdmin(jwtSecret, h.handleAdminPostLink))
 	mux.HandleFunc("PATCH /api/admin/links/{id}", middleware.RequireAdmin(jwtSecret, h.handleAdminPatchLink))

@@ -41,7 +41,6 @@ func (h *Handler) handleApiRoot(w http.ResponseWriter, r *http.Request) {
 			{"path": "/api/page_views", "method": "POST", "description": "Record a page view (analytics)."},
 			{"path": "/api/link_clicks", "method": "POST", "description": "Record a link click (analytics)."},
 			{"path": "/api/search_events", "method": "POST", "description": "Record a search query (analytics)."},
-			{"path": "/api/browse_events", "method": "POST", "description": "Record browse depth (analytics)."},
 			{"path": "/api/contributions", "method": "POST", "description": "Submit a user contribution."},
 		},
 		"admin_endpoints": []map[string]string{
@@ -53,6 +52,8 @@ func (h *Handler) handleApiRoot(w http.ResponseWriter, r *http.Request) {
 			{"path": "/api/admin/extra_sections", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra sections."},
 			{"path": "/api/admin/extra_links", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra links."},
 			{"path": "/api/admin/analytics/summary", "method": "GET", "description": "Aggregated unique-user analytics."},
+			{"path": "/api/admin/analytics/actors", "method": "GET", "description": "Who clicked or favorited a link, course, or service."},
+			{"path": "/api/admin/users", "method": "GET/DELETE", "description": "List or delete registered students (cascades analytics)."},
 			{"path": "/api/admin/page_views", "method": "GET", "description": "View analytics (page views)."},
 			{"path": "/api/admin/link_clicks", "method": "GET", "description": "View analytics (link clicks)."},
 		},

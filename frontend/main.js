@@ -70,7 +70,16 @@ document.addEventListener("click", (e) => {
     const linkId = idAttr ? parseInt(idAttr, 10) : null;
     const linkKind = linkItem.dataset.linkKind || "link";
     const url = linkItem.dataset.url || null;
-    const openLink = () => window.confirmLink(linkId, url, linkKind);
+    const programAttr =
+      linkItem.dataset.programId ||
+      linkItem.closest(".course-card")?.dataset.programId ||
+      "";
+    let programId = programAttr ? parseInt(programAttr, 10) : NaN;
+    if (!Number.isFinite(programId) || programId <= 0) {
+      const tabProg = Number(window.AppState?.currentProg);
+      programId = Number.isFinite(tabProg) && tabProg > 0 ? tabProg : null;
+    }
+    const openLink = () => window.confirmLink(linkId, url, linkKind, programId);
     if (window.requireStudent(openLink)) openLink();
     return;
   }

@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/middleware"
@@ -125,8 +126,10 @@ func (h *Handler) handleRemoveFavorite(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleAdminGetUsers(w http.ResponseWriter, r *http.Request) {
 	limit, offset, q := parsePaginationParams(r, 25)
+	sort := strings.TrimSpace(r.URL.Query().Get("sort"))
+	order := strings.TrimSpace(r.URL.Query().Get("order"))
 
-	students, err := h.userService.ListStudents(r.Context(), limit, offset, q)
+	students, err := h.userService.ListStudents(r.Context(), limit, offset, q, sort, order)
 	if err != nil {
 		mapListStudentsErr(h, w, r, err)
 		return
@@ -143,6 +146,22 @@ func (h *Handler) handleAdminGetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, detail)
+}
+
+func (h *Handler) handleAdminDeleteUsers(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		IDs []int `json:"ids"`
+	}
+	if !decodeJSONBody(w, r, &body) {
+		return
+	}
+
+	n, err := h.userService.DeleteStudents(r.Context(), body.IDs)
+	if err != nil {
+		mapDeleteStudentsErr(h, w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]int64{"deleted": n})
 }
 
 // Helpers functions
@@ -211,6 +230,10 @@ func mapListStudentsErr(h *Handler, w http.ResponseWriter, r *http.Request, err 
 	switch {
 	case errors.Is(err, errs.ErrInvalidParams):
 		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
+	case errors.Is(err, errs.ErrUserInvalidSort):
+		writeJSONError(w, r, http.StatusBadRequest, "sort must be name, first_seen, last_seen, visits, clicks, or favorites")
+	case errors.Is(err, errs.ErrUserInvalidOrder):
+		writeJSONError(w, r, http.StatusBadRequest, "order must be asc or desc")
 	default:
 		h.LoggerWithID(r).Error("list students failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
@@ -227,6 +250,20 @@ func mapUserDetailErr(h *Handler, w http.ResponseWriter, r *http.Request, err er
 		writeJSONError(w, r, http.StatusBadRequest, "Limit should be between 1-100 and Offset >= 0")
 	default:
 		h.LoggerWithID(r).Error("get user detail failed", "error", err)
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
+func mapDeleteStudentsErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, errs.ErrUserInvalidID):
+		writeJSONError(w, r, http.StatusBadRequest, "Provide at least one valid student id")
+	case errors.Is(err, errs.ErrInvalidParams):
+		writeJSONError(w, r, http.StatusBadRequest, "At most 100 student ids may be deleted at once")
+	case errors.Is(err, errs.ErrUserNotFound):
+		writeJSONError(w, r, http.StatusNotFound, "No matching students found")
+	default:
+		h.LoggerWithID(r).Error("delete students failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 	}
 }

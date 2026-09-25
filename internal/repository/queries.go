@@ -12,6 +12,18 @@ const (
 	getUserByIDQuery          = `SELECT ` + userColumns + ` FROM users WHERE id = $1`
 	getUserByCredentialsQuery = `SELECT ` + userColumns + ` FROM users WHERE first_name = $1 AND last_name = $2 AND number = $3 AND is_guest = false`
 
+	// Exact program from the click row (alias lc), e.g. " - AISL".
+	linkClickProgramSuffixSQL = `COALESCE((
+			SELECT ' - ' || CASE
+				WHEN lower(pr.name) LIKE '%aisl%' THEN 'AISL'
+				WHEN lower(pr.name) LIKE '%irsm%' THEN 'IRSM'
+				WHEN lower(pr.name) LIKE '%licence%' OR lower(pr.name) LIKE '%license%' THEN 'License'
+				ELSE NULLIF(trim(regexp_replace(pr.name, '^master[[:space:]]+', '', 'i')), '')
+			END
+			FROM programs pr
+			WHERE pr.id = lc.program_id
+		), '')`
+
 	// Sign-in cannot claim the guest row (that name already belongs to a student),
 	// so activity is moved across and the empty guest is deleted.
 	lockGuestForAdoptQuery      = `SELECT id FROM users WHERE id = $1 AND is_guest = true FOR UPDATE`
@@ -27,7 +39,10 @@ const (
 	deleteGuestQuery            = `DELETE FROM users WHERE id = $1 AND is_guest = true`
 	// Cascades page_views / search / browse for those guests; registered rows are untouched.
 	deleteStaleGuestsQuery = `DELETE FROM users WHERE is_guest = true AND last_seen_at < $1`
-	touchLastSeenQuery     = `UPDATE users SET last_seen_at = now() WHERE id = $1`
+	// Admin delete: only registered students. Related analytics cascade; reports /
+	// contributions / feedback keep the row and SET NULL on user_id.
+	deleteStudentsQuery = `DELETE FROM users WHERE is_guest = false AND id IN (%s)`
+	touchLastSeenQuery  = `UPDATE users SET last_seen_at = now() WHERE id = $1`
 )
 
 // Favorites Queries
@@ -40,14 +55,12 @@ const (
 // Admin Students Queries
 const (
 	studentColumns = `u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), u.created_at, u.last_seen_at,
-		       (SELECT COUNT(*) FROM page_views pv WHERE pv.user_id = u.id),
-		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id)`
+		       (SELECT COUNT(*) FROM page_views pv WHERE pv.user_id = u.id) AS visit_count,
+		       (SELECT COUNT(*) FROM link_clicks lc WHERE lc.user_id = u.id) AS click_count,
+		       COALESCE(cardinality(u.favorite_course_ids), 0) AS favorite_count`
 
-	listStudentsBaseQuery  = `SELECT ` + studentColumns + ` FROM users u WHERE u.is_guest = false`
-	listStudentsOrderQuery = ` ORDER BY u.first_name ASC, u.last_name ASC LIMIT `
-
-	listStudentsQuery      = listStudentsBaseQuery + listStudentsOrderQuery + `$1 OFFSET $2`
-	listStudentsWithQQuery = listStudentsBaseQuery + ` AND (u.first_name ILIKE $1 OR u.last_name ILIKE $1)` + listStudentsOrderQuery + `$2 OFFSET $3`
+	listStudentsBaseQuery = `SELECT ` + studentColumns + ` FROM users u WHERE u.is_guest = false`
+	listStudentsLimitSQL  = ` LIMIT `
 
 	// serviceClickTargetLabelSQL picks a display label from stored target or clicked URL.
 	serviceClickTargetLabelSQL = `COALESCE(
@@ -86,6 +99,10 @@ const (
 			           ELSE
 			               'opened ' || COALESCE(l.label, 'a link')
 			                   || COALESCE(' in ' || co.name, '')
+			                   || CASE
+			                          WHEN lc.program_id IS NOT NULL THEN ` + linkClickProgramSuffixSQL + `
+			                          ELSE ''
+			                      END
 			       END,
 			       lc.id, ''
 			FROM link_clicks lc
@@ -124,6 +141,11 @@ const (
 			FROM service_clicks sc
 			LEFT JOIN services s ON s.id = sc.service_id
 			WHERE sc.user_id = $1
+			UNION ALL
+			SELECT 'search', se.created_at,
+			       'searched for "' || se.query || '"',
+			       se.id, ''
+			FROM search_events se WHERE se.user_id = $1
 		) timeline
 		ORDER BY at DESC
 		LIMIT $2 OFFSET $3`
@@ -166,22 +188,10 @@ const (
 				WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1) AND device_type IS NOT NULL
 				GROUP BY user_id HAVING COUNT(DISTINCT device_type) > 1
 			) both_range),
-			(SELECT COUNT(DISTINCT pv.user_id) FROM page_views pv
-				WHERE pv.user_id IS NOT NULL AND pv.visited_at >= now() - make_interval(days => $1)
-				AND EXISTS (SELECT 1 FROM page_views older WHERE older.user_id = pv.user_id AND older.visited_at < now() - make_interval(days => $1))),
-			(SELECT COUNT(DISTINCT pv.user_id) FROM page_views pv
-				WHERE pv.user_id IS NOT NULL AND pv.visited_at >= now() - make_interval(days => $1)
-				AND NOT EXISTS (SELECT 1 FROM page_views older WHERE older.user_id = pv.user_id AND older.visited_at < now() - make_interval(days => $1))),
-			(SELECT COUNT(*) FROM users WHERE created_at >= now() - make_interval(days => $1)),
-			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - make_interval(days => $1)),
 			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - make_interval(days => $1 * 2) AND created_at < now() - make_interval(days => $1)),
-			(SELECT COUNT(*) FROM users WHERE is_guest = true AND created_at >= now() - make_interval(days => $1)),
-			(SELECT COUNT(*) FROM users WHERE is_guest = true),
 			(SELECT COUNT(*) FROM reports WHERE status = 'open'),
 			(SELECT COUNT(*) FROM contributions WHERE status = 'pending'),
 			(SELECT COUNT(*) FROM feedback WHERE status = 'new'),
-			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'year' AND created_at >= now() - make_interval(days => $1)),
-			(SELECT COUNT(DISTINCT user_id) FROM browse_events WHERE step = 'list' AND created_at >= now() - make_interval(days => $1)),
 			(SELECT COUNT(DISTINCT u.id) FROM users u
 				WHERE u.is_guest = false
 				AND (
@@ -297,21 +307,37 @@ const (
 		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT $1 OFFSET $2`
 
+	analyticsNewStudentsTodayQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), 0
+		FROM users u
+		WHERE u.is_guest = false AND u.created_at >= date_trunc('day', now())
+		ORDER BY u.created_at DESC, u.id DESC
+		LIMIT 50`
+
 	analyticsTopCoursesQuery = `
-		SELECT c.id, c.name, c.code, COUNT(*)::int, COALESCE((
-			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
-			FROM course_placements pl
-			JOIN semesters s ON s.id = pl.semester_id
-			JOIN years y ON y.id = s.year_id
-			JOIN programs pr ON pr.id = y.program_id
-			WHERE pl.course_id = c.id
-		), '')
-		FROM link_clicks lc
-		JOIN links l ON l.id = lc.link_id
-		JOIN courses c ON c.id = l.course_id
-		WHERE lc.clicked_at >= now() - make_interval(days => $1)
-		GROUP BY c.id, c.name, c.code
-		ORDER BY COUNT(*) DESC, c.name ASC
+		SELECT id, name, code, clicks, program_name FROM (
+			SELECT c.id, c.name, c.code, COUNT(*)::int AS clicks, COALESCE((
+				SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+				FROM course_placements pl
+				JOIN semesters s ON s.id = pl.semester_id
+				JOIN years y ON y.id = s.year_id
+				JOIN programs pr ON pr.id = y.program_id
+				WHERE pl.course_id = c.id
+			), '') AS program_name
+			FROM link_clicks lc
+			JOIN links l ON l.id = lc.link_id
+			JOIN courses c ON c.id = l.course_id
+			WHERE lc.clicked_at >= now() - make_interval(days => $1)
+			GROUP BY c.id, c.name, c.code
+			UNION ALL
+			SELECT es.id, es.title, 'extra', COUNT(*)::int, 'Extra'
+			FROM link_clicks lc
+			JOIN extra_links el ON el.id = lc.extra_link_id
+			JOIN extra_sections es ON es.id = el.section_id
+			WHERE lc.clicked_at >= now() - make_interval(days => $1)
+			GROUP BY es.id, es.title
+		) ranked
+		ORDER BY clicks DESC, name ASC
 		LIMIT 50`
 
 	analyticsTopServicesQuery = `
@@ -324,22 +350,33 @@ const (
 		LIMIT 50`
 
 	analyticsZeroClickCoursesQuery = `
-		SELECT c.id, c.name, c.code, 0, COALESCE((
-			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
-			FROM course_placements pl
-			JOIN semesters s ON s.id = pl.semester_id
-			JOIN years y ON y.id = s.year_id
-			JOIN programs pr ON pr.id = y.program_id
-			WHERE pl.course_id = c.id
-		), '')
-		FROM courses c
-		WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id)
-		  AND NOT EXISTS (
-			SELECT 1 FROM links l
-			JOIN link_clicks lc ON lc.link_id = l.id AND lc.clicked_at >= now() - make_interval(days => $1)
-			WHERE l.course_id = c.id
-		  )
-		ORDER BY c.name ASC
+		SELECT id, name, code, 0, program_name FROM (
+			SELECT c.id, c.name, c.code, COALESCE((
+				SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+				FROM course_placements pl
+				JOIN semesters s ON s.id = pl.semester_id
+				JOIN years y ON y.id = s.year_id
+				JOIN programs pr ON pr.id = y.program_id
+				WHERE pl.course_id = c.id
+			), '') AS program_name
+			FROM courses c
+			WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id)
+			  AND NOT EXISTS (
+				SELECT 1 FROM links l
+				JOIN link_clicks lc ON lc.link_id = l.id AND lc.clicked_at >= now() - make_interval(days => $1)
+				WHERE l.course_id = c.id
+			  )
+			UNION ALL
+			SELECT es.id, es.title, 'extra', 'Extra'
+			FROM extra_sections es
+			WHERE EXISTS (SELECT 1 FROM extra_links el WHERE el.section_id = es.id)
+			  AND NOT EXISTS (
+				SELECT 1 FROM extra_links el
+				JOIN link_clicks lc ON lc.extra_link_id = el.id AND lc.clicked_at >= now() - make_interval(days => $1)
+				WHERE el.section_id = es.id
+			  )
+		) gaps
+		ORDER BY name ASC
 		LIMIT 50`
 
 	analyticsZeroClickServicesQuery = `
@@ -419,6 +456,61 @@ const (
 		ORDER BY COUNT(*) DESC, query ASC
 		LIMIT 50`
 
+	// Actor breakdowns: who interacted, with per-person counts (multi-clicks included).
+	analyticsActorsLinkQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(*)::int
+		FROM link_clicks lc
+		JOIN users u ON u.id = lc.user_id
+		WHERE lc.link_id = $1 AND lc.clicked_at >= $2
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY COUNT(*) DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsExtraLinkQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(*)::int
+		FROM link_clicks lc
+		JOIN users u ON u.id = lc.user_id
+		WHERE lc.extra_link_id = $1 AND lc.clicked_at >= $2
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY COUNT(*) DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsCourseQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(*)::int
+		FROM link_clicks lc
+		JOIN links l ON l.id = lc.link_id
+		JOIN users u ON u.id = lc.user_id
+		WHERE l.course_id = $1 AND lc.clicked_at >= $2
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY COUNT(*) DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsExtraSectionQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(*)::int
+		FROM link_clicks lc
+		JOIN extra_links el ON el.id = lc.extra_link_id
+		JOIN users u ON u.id = lc.user_id
+		WHERE el.section_id = $1 AND lc.clicked_at >= $2
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY COUNT(*) DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsServiceQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(*)::int
+		FROM service_clicks sc
+		JOIN users u ON u.id = sc.user_id
+		WHERE sc.service_id = $1 AND sc.clicked_at >= $2
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY COUNT(*) DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsFavoriteQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), 1
+		FROM users u
+		WHERE u.is_guest = false AND u.favorite_course_ids @> ARRAY[$1::integer]
+		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
 	insertSearchEventQuery = `
 		WITH updated AS (
 			UPDATE search_events
@@ -436,38 +528,40 @@ const (
 		INSERT INTO search_events (user_id, query)
 		SELECT $1, $2
 		WHERE NOT EXISTS (SELECT 1 FROM updated)`
-	insertBrowseEventQuery = `INSERT INTO browse_events (user_id, step) VALUES ($1, $2)`
 )
 
 // Page Views Queries
 const (
 	// One statement keeps the visit row and the last_seen_at touch atomic.
 	insertPageViewQuery = `WITH visit AS (INSERT INTO page_views (page,user_id,device_type) VALUES ($1,$2,$3)) UPDATE users SET last_seen_at = now() WHERE id = $2`
-	GetPageViewQuery    = `SELECT id, page, visited_at FROM page_views ORDER BY visited_at DESC`
+	GetPageViewQuery    = `SELECT id, page, visited_at FROM page_views ORDER BY visited_at DESC LIMIT 500`
 )
 
 // Link Clicks Queries
 const (
-	insertLinkClickQuery = `WITH click AS (INSERT INTO link_clicks (link_id,extra_link_id,user_id) VALUES ($1,$2,$3)) UPDATE users SET last_seen_at = now() WHERE id = $3`
-	GetLinkClickQuery    = `SELECT id, link_id, extra_link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC`
+	insertLinkClickQuery = `WITH click AS (INSERT INTO link_clicks (link_id,extra_link_id,user_id,program_id) VALUES ($1,$2,$3,$4)) UPDATE users SET last_seen_at = now() WHERE id = $3`
+	GetLinkClickQuery    = `SELECT id, link_id, extra_link_id, clicked_at FROM link_clicks ORDER BY clicked_at DESC LIMIT 500`
 )
 
 // Courses Queries
 const (
 	getCourseByIDQuery      = `SELECT id, name, code, is_optional FROM courses WHERE id = $1`
 	deleteCourseQuery       = `DELETE FROM courses WHERE id = $1`
-	updateCourseQuery       = `UPDATE courses SET name = $1, code = $2, is_optional = $3 WHERE id = $4`
+	updateCourseQuery       = `UPDATE courses SET name = $1, code = $2 WHERE id = $3`
 	findCourseIDByCodeQuery = `
 		SELECT id FROM courses
 		WHERE lower(trim(code)) = lower(trim($1))
 		LIMIT 1`
-	insertCanonicalCourseQuery = `INSERT INTO courses (name, code, is_optional) VALUES ($1, $2, $3) RETURNING id`
+	insertCanonicalCourseQuery = `INSERT INTO courses (name, code, is_optional) VALUES ($1, $2, false) RETURNING id`
 	insertCoursePlacementQuery = `
-		INSERT INTO course_placements (course_id, semester_id, display_order)
-		VALUES ($1, $2, $3)`
+		INSERT INTO course_placements (course_id, semester_id, display_order, is_optional)
+		VALUES ($1, $2, $3, $4)`
 	updateCoursePlacementQuery = `
 		UPDATE course_placements SET semester_id = $1, display_order = $2
 		WHERE id = $3 AND course_id = $4`
+	updateCoursePlacementOptionalQuery = `
+		UPDATE course_placements SET is_optional = $1
+		WHERE id = $2 AND course_id = $3`
 	deleteCoursePlacementQuery = `DELETE FROM course_placements WHERE id = $1 AND course_id = $2`
 	deleteOrphanCourseQuery    = `
 		DELETE FROM courses c
@@ -541,7 +635,7 @@ const (
 // SEO Queries
 const (
 	getSEOCoursePlacementsQuery = `
-		SELECT c.id, c.name, c.code, c.is_optional,
+		SELECT c.id, c.name, c.code, pl.is_optional,
 		       p.id, p.name, y.name, s.name
 		FROM courses c
 		JOIN course_placements pl ON pl.course_id = c.id
@@ -594,7 +688,7 @@ const (
 		SELECT
 			(SELECT COALESCE(json_agg(y ORDER BY display_order ASC), '[]') FROM years y) as years,
 			(SELECT COALESCE(json_agg(c ORDER BY c.display_order ASC), '[]') FROM (
-				SELECT c.id, pl.id AS placement_id, pl.semester_id, c.name, c.code, c.is_optional, pl.display_order
+				SELECT c.id, pl.id AS placement_id, pl.semester_id, c.name, c.code, pl.is_optional, pl.display_order
 				FROM course_placements pl
 				JOIN courses c ON c.id = pl.course_id
 			) c) as courses,

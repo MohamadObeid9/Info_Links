@@ -84,7 +84,9 @@ function renderFavorites() {
   } else {
     const entries = collectFavoriteCourses(q);
     const cardsHtml = entries
-      .map((e) => _buildCourseCard(e.course, { path: e.paths.join(" | ") }))
+      .map((e) =>
+        _buildCourseCard(e.course, { path: e.path, programId: e.programId }),
+      )
       .join("");
     body = cardsHtml
       ? `<div class="courses-grid">${cardsHtml}</div>`
@@ -143,7 +145,7 @@ function renderCourses() {
       );
       if (!filtered.length) return;
 
-      const courseCards = filtered.map(_buildCourseCard);
+      const courseCards = filtered.map((c) => _buildCourseCard(c, { programId: prog.id }));
 
       yearHtml += `
         <div class="sem-block">
@@ -183,7 +185,7 @@ function renderAllCourses() {
         );
         if (!filtered.length) return;
 
-        const courseCards = filtered.map(_buildCourseCard);
+        const courseCards = filtered.map((c) => _buildCourseCard(c, { programId: prog.id }));
         yearHtml += `
           <div class="sem-block">
             <div class="sem-title">${esc(sem.name)}</div>
@@ -331,14 +333,12 @@ function selectProg(id) {
 function setYear(y) {
   AppState.currentYear = y;
   AppState.currentSem = "all";
-  window.trackBrowse?.("year");
   renderYearFilters();
   renderSemFilters();
   renderCourses();
 }
 function setSem(s) {
   AppState.currentSem = s;
-  window.trackBrowse?.("list");
   renderSemFilters();
   renderCourses();
 }

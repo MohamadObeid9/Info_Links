@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -463,11 +464,22 @@ func TestUserRepository_Favorites(t *testing.T) {
 }
 
 func TestUserRepository_ListStudents(t *testing.T) {
-	columns := []string{"id", "first_name", "last_name", "number", "created_at", "last_seen_at", "visit_count", "click_count"}
+	columns := []string{"id", "first_name", "last_name", "number", "created_at", "last_seen_at", "visit_count", "click_count", "favorite_count"}
+	defaultOrder, err := studentOrderBySQL("name", "asc")
+	if err != nil {
+		t.Fatalf("studentOrderBySQL: %v", err)
+	}
+	listQuery := listStudentsBaseQuery + defaultOrder + listStudentsLimitSQL + `$1 OFFSET $2`
+	listWithQ := listStudentsBaseQuery + ` AND (u.first_name ILIKE $1 OR u.last_name ILIKE $1)` + defaultOrder + listStudentsLimitSQL + `$2 OFFSET $3`
+	visitsOrder, err := studentOrderBySQL("visits", "desc")
+	if err != nil {
+		t.Fatalf("studentOrderBySQL: %v", err)
+	}
+	listVisitsDesc := listStudentsBaseQuery + visitsOrder + listStudentsLimitSQL + `$1 OFFSET $2`
 
 	tests := []struct {
 		name      string
-		q         string
+		params    StudentListParams
 		query     string
 		queryArgs []any
 		queryErr  error
@@ -477,29 +489,44 @@ func TestUserRepository_ListStudents(t *testing.T) {
 	}{
 		{
 			name:      "list without search",
-			query:     listStudentsQuery,
+			params:    StudentListParams{Limit: 25, Offset: 0, Sort: "name", Order: "asc"},
+			query:     listQuery,
 			queryArgs: []any{25, 0},
 			rows: [][]any{
-				{1, "mohamad", "hassan", 55, "2026-08-01T10:00:00Z", "2026-08-18T10:00:00Z", 12, 4},
+				{1, "mohamad", "hassan", 55, "2026-08-01T10:00:00Z", "2026-08-18T10:00:00Z", 12, 4, 3},
 			},
 			want: []models.UserListItem{
 				{
 					ID: 1, Handle: "mohamad_hassan_55", FirstName: "mohamad", LastName: "hassan", Number: 55,
-					CreatedAt: "2026-08-01T10:00:00Z", LastSeenAt: "2026-08-18T10:00:00Z", VisitCount: 12, ClickCount: 4,
+					CreatedAt: "2026-08-01T10:00:00Z", LastSeenAt: "2026-08-18T10:00:00Z", VisitCount: 12, ClickCount: 4, FavoriteCount: 3,
 				},
 			},
 		},
 		{
 			name:      "list with search",
-			q:         "moh",
-			query:     listStudentsWithQQuery,
+			params:    StudentListParams{Limit: 10, Offset: 5, Q: "moh", Sort: "name", Order: "asc"},
+			query:     listWithQ,
 			queryArgs: []any{"%moh%", 10, 5},
 			rows:      [][]any{},
 			want:      []models.UserListItem{},
 		},
 		{
+			name:      "list sorted by visits desc",
+			params:    StudentListParams{Limit: 25, Offset: 0, Sort: "visits", Order: "desc"},
+			query:     listVisitsDesc,
+			queryArgs: []any{25, 0},
+			rows:      [][]any{},
+			want:      []models.UserListItem{},
+		},
+		{
+			name:     "rejects unknown sort",
+			params:   StudentListParams{Limit: 25, Sort: "email", Order: "asc"},
+			err:      errs.ErrUserInvalidSort,
+		},
+		{
 			name:      "query error",
-			query:     listStudentsQuery,
+			params:    StudentListParams{Limit: 25, Offset: 0, Sort: "name", Order: "asc"},
+			query:     listQuery,
 			queryArgs: []any{25, 0},
 			queryErr:  errs.ErrDatabaseDown,
 			err:       errs.ErrDatabaseDown,
@@ -510,23 +537,20 @@ func TestUserRepository_ListStudents(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestUserRepo(t)
 
-			limit, offset := 25, 0
-			if tt.q != "" {
-				limit, offset = 10, 5
-			}
-
-			exp := mock.ExpectQuery(tt.query).WithArgs(driverValues(tt.queryArgs)...)
-			if tt.queryErr != nil {
-				exp.WillReturnError(tt.queryErr)
-			} else {
-				rows := sqlmock.NewRows(columns)
-				for _, row := range tt.rows {
-					rows.AddRow(driverValues(row)...)
+			if tt.query != "" {
+				exp := mock.ExpectQuery(tt.query).WithArgs(driverValues(tt.queryArgs)...)
+				if tt.queryErr != nil {
+					exp.WillReturnError(tt.queryErr)
+				} else {
+					rows := sqlmock.NewRows(columns)
+					for _, row := range tt.rows {
+						rows.AddRow(driverValues(row)...)
+					}
+					exp.WillReturnRows(rows)
 				}
-				exp.WillReturnRows(rows)
 			}
 
-			got, err := repo.ListStudents(context.Background(), limit, offset, tt.q)
+			got, err := repo.ListStudents(context.Background(), tt.params)
 			if tt.err != nil {
 				assertRepoErr(t, mock, err, tt.err)
 				return
@@ -670,6 +694,40 @@ func TestUserRepository_DeleteStaleGuests(t *testing.T) {
 			WillReturnError(errs.ErrDatabaseDown)
 
 		_, err := repo.DeleteStaleGuests(context.Background(), cutoff)
+		assertRepoErr(t, mock, err, errs.ErrDatabaseDown)
+	})
+}
+
+func TestUserRepository_DeleteStudents(t *testing.T) {
+	query := fmt.Sprintf(deleteStudentsQuery, "$1,$2")
+
+	t.Run("deletes matching students", func(t *testing.T) {
+		repo, mock := newTestUserRepo(t)
+		mock.ExpectExec(query).WithArgs(1, 2).
+			WillReturnResult(sqlmock.NewResult(0, 2))
+
+		got, err := repo.DeleteStudents(context.Background(), []int{1, 2})
+		assertRepoErr(t, mock, err, nil)
+		if got != 2 {
+			t.Fatalf("deleted = %d, want 2", got)
+		}
+	})
+
+	t.Run("empty ids is a no-op", func(t *testing.T) {
+		repo, mock := newTestUserRepo(t)
+		got, err := repo.DeleteStudents(context.Background(), nil)
+		assertRepoErr(t, mock, err, nil)
+		if got != 0 {
+			t.Fatalf("deleted = %d, want 0", got)
+		}
+	})
+
+	t.Run("query error", func(t *testing.T) {
+		repo, mock := newTestUserRepo(t)
+		mock.ExpectExec(query).WithArgs(1, 2).
+			WillReturnError(errs.ErrDatabaseDown)
+
+		_, err := repo.DeleteStudents(context.Background(), []int{1, 2})
 		assertRepoErr(t, mock, err, errs.ErrDatabaseDown)
 	})
 }

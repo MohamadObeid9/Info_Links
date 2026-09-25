@@ -24,6 +24,9 @@ func (s *LinkClickService) Create(ctx context.Context, lc models.LinkClick) erro
 	if lc.LinkID != nil && lc.ExtraLinkID != nil {
 		return errs.ErrLinkClickLinkIDAndExtraLinkIDSet
 	}
+	if lc.ProgramID != nil && *lc.ProgramID <= 0 {
+		lc.ProgramID = nil
+	}
 	if err := s.repo.Create(ctx, lc); err != nil {
 		return fmt.Errorf("create link click: %w", err)
 	}

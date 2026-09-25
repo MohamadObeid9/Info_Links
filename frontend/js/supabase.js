@@ -59,7 +59,7 @@ function logApiError(err, context, status) {
 // Endpoints where the server derives the acting student from the token, so the
 // student session token wins over any admin token present in the same browser.
 const STUDENT_AUTH_PATHS =
-  /^\/api\/(page_views|link_clicks|service_clicks|search_events|browse_events|reports|feedback|contributions|users)(\/|$|\?)/;
+  /^\/api\/(page_views|link_clicks|service_clicks|search_events|reports|feedback|contributions|users)(\/|$|\?)/;
 
 function _usesStudentToken(url) {
   return STUDENT_AUTH_PATHS.test(String(url).split("?")[0]);
@@ -192,12 +192,14 @@ async function trackVisit() {
   }
 }
 
-function trackLinkClick(linkId, linkKind = "link") {
+function trackLinkClick(linkId, linkKind = "link", programId = null) {
   if (!linkId || AppState.adminLoggedIn) return;
   const payload =
     linkKind === "extra_link"
       ? { extra_link_id: linkId }
       : { link_id: linkId };
+  const pid = Number(programId);
+  if (Number.isFinite(pid) && pid > 0) payload.program_id = pid;
   apiRequest(`/api/link_clicks`, {
     method: "POST",
     body: payload,
@@ -235,23 +237,6 @@ function flushSearch(queryOverride) {
   });
 }
 
-function trackBrowse(step) {
-  if (AppState.adminLoggedIn || !AppState.studentToken) return;
-  if (step !== "year" && step !== "list") return;
-  const key = `browse_${step}`;
-  if (sessionStorage.getItem(key)) return;
-  sessionStorage.setItem(key, "1");
-  apiRequest(`/api/browse_events`, {
-    method: "POST",
-    body: { step },
-  }).catch((e) => {
-    if (e?.status === 401) {
-      sessionStorage.removeItem(key);
-      window.onStudentTokenRejected?.();
-    }
-  });
-}
-
 // Global Bridge
 window.sb = sb;
 window.sbAuth = sbAuth;
@@ -260,7 +245,6 @@ window.trackVisit = trackVisit;
 window.trackLinkClick = trackLinkClick;
 window.trackSearch = trackSearch;
 window.flushSearch = flushSearch;
-window.trackBrowse = trackBrowse;
 window.apiRequest = apiRequest;
 window.formatApiError = formatApiError;
 window.logApiError = logApiError;
@@ -273,7 +257,6 @@ export {
   trackLinkClick,
   trackSearch,
   flushSearch,
-  trackBrowse,
   apiRequest,
   formatApiError,
   logApiError,

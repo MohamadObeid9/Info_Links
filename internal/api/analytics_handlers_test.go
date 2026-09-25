@@ -19,13 +19,16 @@ type fakeAnalyticsService struct {
 	summary         models.AnalyticsSummary
 	summaryErr      error
 
+	actorsCalls int
+	actorsKind  string
+	actorsID    string
+	actorsRange string
+	actors      models.AnalyticsActorsResult
+	actorsErr   error
+
 	searchCalls int
 	searchQuery string
 	searchErr   error
-
-	browseCalls int
-	browseStep  string
-	browseErr   error
 }
 
 func (f *fakeAnalyticsService) GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error) {
@@ -38,16 +41,21 @@ func (f *fakeAnalyticsService) GetSummary(ctx context.Context, rangeStr string, 
 	return f.summary, nil
 }
 
+func (f *fakeAnalyticsService) ListActors(ctx context.Context, kind, idStr, rangeStr string) (models.AnalyticsActorsResult, error) {
+	f.actorsCalls++
+	f.actorsKind = kind
+	f.actorsID = idStr
+	f.actorsRange = rangeStr
+	if f.actorsErr != nil {
+		return models.AnalyticsActorsResult{}, f.actorsErr
+	}
+	return f.actors, nil
+}
+
 func (f *fakeAnalyticsService) TrackSearch(ctx context.Context, userID int, query string) error {
 	f.searchCalls++
 	f.searchQuery = query
 	return f.searchErr
-}
-
-func (f *fakeAnalyticsService) TrackBrowse(ctx context.Context, userID int, step string) error {
-	f.browseCalls++
-	f.browseStep = step
-	return f.browseErr
 }
 
 func TestHandleAdminGetAnalyticsSummary(t *testing.T) {
@@ -173,16 +181,112 @@ func TestHandlePostSearchEvent(t *testing.T) {
 	}
 }
 
-func TestHandlePostBrowseEvent(t *testing.T) {
-	fake := &fakeAnalyticsService{}
-	h := testHandler(t, withAnalytics(fake))
-	req := studentRequest(http.MethodPost, "/api/browse_events", `{"step":"list"}`)
-	rr := httptest.NewRecorder()
-	h.handlePostBrowseEvent(rr, req)
-	if rr.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201", rr.Code)
+func TestHandleAdminGetAnalyticsActors(t *testing.T) {
+	actors := models.AnalyticsActorsResult{
+		Kind:  "link",
+		ID:    9,
+		Total: 4,
+		People: []models.UserClickCount{
+			{UserID: 7, Handle: "mohamad_hassan_55", Clicks: 4},
+		},
 	}
-	if fake.browseCalls != 1 || fake.browseStep != "list" {
-		t.Fatalf("browse = %d %q", fake.browseCalls, fake.browseStep)
+
+	tests := []struct {
+		name         string
+		query        string
+		actorsErr    error
+		statusWanted int
+		errMsg       string
+		wantKind     string
+		wantID       string
+		wantRange    string
+	}{
+		{
+			name:         "200 with people and counts",
+			query:        "?kind=link&id=9&range=7",
+			statusWanted: http.StatusOK,
+			wantKind:     "link",
+			wantID:       "9",
+			wantRange:    "7",
+		},
+		{
+			name:         "400 on bad kind",
+			query:        "?kind=widget&id=1&range=7",
+			actorsErr:    errs.ErrAnalyticsInvalidActorKind,
+			statusWanted: http.StatusBadRequest,
+			errMsg:       "kind must be link, extra_link, course, extra_section, service, or favorite",
+			wantKind:     "widget",
+			wantID:       "1",
+			wantRange:    "7",
+		},
+		{
+			name:         "400 on bad id",
+			query:        "?kind=link&id=abc&range=7",
+			actorsErr:    errs.ErrAnalyticsInvalidActorID,
+			statusWanted: http.StatusBadRequest,
+			errMsg:       "Invalid id",
+			wantKind:     "link",
+			wantID:       "abc",
+			wantRange:    "7",
+		},
+		{
+			name:         "400 on bad range",
+			query:        "?kind=link&id=1&range=5",
+			actorsErr:    errs.ErrAnalyticsInvalidRange,
+			statusWanted: http.StatusBadRequest,
+			errMsg:       "Range must be today, 7, 30 or 90",
+			wantKind:     "link",
+			wantID:       "1",
+			wantRange:    "5",
+		},
+		{
+			name:         "500 when the service fails",
+			query:        "?kind=service&id=2&range=30",
+			actorsErr:    errs.ErrDatabaseDown,
+			statusWanted: http.StatusInternalServerError,
+			errMsg:       "Internal server error",
+			wantKind:     "service",
+			wantID:       "2",
+			wantRange:    "30",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &fakeAnalyticsService{actors: actors, actorsErr: tt.actorsErr}
+			h := testHandler(t, withAnalytics(fake))
+			req := httptest.NewRequest(http.MethodGet, "/api/admin/analytics/actors"+tt.query, nil)
+			rr := httptest.NewRecorder()
+
+			h.handleAdminGetAnalyticsActors(rr, req)
+
+			if fake.actorsCalls != 1 {
+				t.Fatalf("actors calls = %d, want 1", fake.actorsCalls)
+			}
+			if fake.actorsKind != tt.wantKind || fake.actorsID != tt.wantID || fake.actorsRange != tt.wantRange {
+				t.Fatalf("args = %s/%s/%s, want %s/%s/%s", fake.actorsKind, fake.actorsID, fake.actorsRange, tt.wantKind, tt.wantID, tt.wantRange)
+			}
+			if rr.Code != tt.statusWanted {
+				t.Fatalf("status = %d, want %d", rr.Code, tt.statusWanted)
+			}
+			if tt.errMsg != "" {
+				var body map[string]string
+				if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+					t.Fatalf("decode error body: %v", err)
+				}
+				if body["error"] != tt.errMsg {
+					t.Fatalf("error = %q, want %q", body["error"], tt.errMsg)
+				}
+				return
+			}
+
+			var got models.AnalyticsActorsResult
+			if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
+				t.Fatalf("decode body: %v", err)
+			}
+			if got.Total != actors.Total || len(got.People) != 1 || got.People[0].Handle != "mohamad_hassan_55" {
+				t.Fatalf("actors = %+v, want %+v", got, actors)
+			}
+		})
 	}
 }

@@ -77,14 +77,15 @@ type userService interface {
 	GetUser(ctx context.Context, userID int) (models.User, error)
 	AddFavorite(ctx context.Context, userID int, courseIDStr string) error
 	RemoveFavorite(ctx context.Context, userID int, courseIDStr string) error
-	ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error)
+	ListStudents(ctx context.Context, limit int, offset int, q string, sort string, order string) ([]models.UserListItem, error)
+	DeleteStudents(ctx context.Context, ids []int) (int64, error)
 	GetUserDetail(ctx context.Context, idStr string, limit int, offset int) (models.UserDetail, error)
 }
 
 type analyticsService interface {
 	GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error)
 	TrackSearch(ctx context.Context, userID int, query string) error
-	TrackBrowse(ctx context.Context, userID int, step string) error
+	ListActors(ctx context.Context, kind, idStr, rangeStr string) (models.AnalyticsActorsResult, error)
 }
 
 type pageViewService interface {

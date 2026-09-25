@@ -31,20 +31,21 @@ type FavoriteEvent struct {
 
 // UserListItem is one row of the admin students list, with activity counters.
 type UserListItem struct {
-	ID         int    `json:"id"`
-	Handle     string `json:"handle"`
-	FirstName  string `json:"first_name"`
-	LastName   string `json:"last_name"`
-	Number     int    `json:"number"`
-	CreatedAt  string `json:"created_at"`
-	LastSeenAt string `json:"last_seen_at"`
-	VisitCount int    `json:"visit_count"`
-	ClickCount int    `json:"click_count"`
+	ID            int    `json:"id"`
+	Handle        string `json:"handle"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
+	Number        int    `json:"number"`
+	CreatedAt     string `json:"created_at"`
+	LastSeenAt    string `json:"last_seen_at"`
+	VisitCount    int    `json:"visit_count"`
+	ClickCount    int    `json:"click_count"`
+	FavoriteCount int    `json:"favorite_count"`
 }
 
 // UserActivityEvent is one entry of a student activity timeline.
 type UserActivityEvent struct {
-	Type       string `json:"type"` // visit, link_click, service_click, report, contribution, feedback, favorite_added, favorite_removed
+	Type       string `json:"type"` // visit, link_click, service_click, search, report, contribution, feedback, favorite_added, favorite_removed
 	At         string `json:"at"`
 	Summary    string `json:"summary"`
 	RefID      int    `json:"ref_id"`
@@ -73,6 +74,7 @@ type AnalyticsSummary struct {
 	TopLinksToday           []LinkClickCount  `json:"top_links_today"`
 	TopUsers                []UserClickCount  `json:"top_users"`
 	VisitorsToday           VisitorsTodayPage `json:"visitors_today"`
+	NewStudentsToday        []UserClickCount  `json:"new_students_today"`
 	ActiveInRange           int               `json:"active_in_range"`
 	ActiveRegisteredInRange int               `json:"active_registered_in_range"`
 	ClicksInRange           int               `json:"clicks_in_range"`
@@ -82,11 +84,7 @@ type AnalyticsSummary struct {
 	PrevClicksInRange       int               `json:"prev_clicks_in_range"`
 	PrevStudentsGained      int               `json:"prev_students_gained"`
 	DevicesInRange          DeviceSplit       `json:"devices_in_range"`
-	ReturningInRange        int               `json:"returning_in_range"`
-	NewInRange              int               `json:"new_in_range"`
-	Funnel                  SignupFunnel      `json:"funnel"`
 	Inbox                   AnalyticsInbox    `json:"inbox"`
-	Browse                  BrowseDepth       `json:"browse"`
 	TopCourses              []CourseDemand    `json:"top_courses"`
 	TopServices             []ServiceDemand   `json:"top_services"`
 	ZeroClickCourses        []CourseDemand    `json:"zero_click_courses"`
@@ -105,14 +103,6 @@ type DeviceSplit struct {
 	Both   int `json:"both"`
 }
 
-// SignupFunnel is guest creation vs signup in the selected range.
-type SignupFunnel struct {
-	Arrivals   int `json:"arrivals"`
-	SignedUp   int `json:"signed_up"`
-	StillGuest int `json:"still_guest"`
-	GuestsOpen int `json:"guests_open"`
-}
-
 // AnalyticsInbox is open admin work, not scoped to the chart range.
 type AnalyticsInbox struct {
 	Reports       int `json:"reports"`
@@ -120,13 +110,7 @@ type AnalyticsInbox struct {
 	Feedback      int `json:"feedback"`
 }
 
-// BrowseDepth is unique students who reached each mobile/desktop picker step.
-type BrowseDepth struct {
-	ReachedYear int `json:"reached_year"`
-	ReachedList int `json:"reached_list"`
-}
-
-// CourseDemand is a course ranked by clicks or stars.
+// CourseDemand is a course or extra section ranked by clicks or stars.
 type CourseDemand struct {
 	CourseID    int    `json:"course_id"`
 	Name        string `json:"name"`
@@ -197,6 +181,14 @@ type UserClickCount struct {
 	Clicks int    `json:"clicks"`
 }
 
+// AnalyticsActorsResult lists who interacted with a link, course, service, or favorite.
+type AnalyticsActorsResult struct {
+	Kind   string           `json:"kind"`
+	ID     int              `json:"id"`
+	Total  int              `json:"total"`
+	People []UserClickCount `json:"people"`
+}
+
 // UserHandle builds the display handle of a student, e.g. mohamad_hassan_55.
 // Guests have no name yet, so they fall back to guest_<id>.
 func UserHandle(firstName, lastName string, number, id int) string {
@@ -240,6 +232,8 @@ type Course struct {
 	SemesterID   int    `json:"semester_id"`
 	PlacementID  int    `json:"placement_id,omitempty"`
 	DisplayOrder int    `json:"display_order"`
+	// TouchOptional tells the repo to write is_optional on the placement.
+	TouchOptional bool `json:"-"`
 }
 
 // CoursePatch represents an updating course
@@ -332,6 +326,7 @@ type LinkClick struct {
 	UserID      int    `json:"user_id,omitempty"`
 	LinkID      *int   `json:"link_id,omitempty"`
 	ExtraLinkID *int   `json:"extra_link_id,omitempty"`
+	ProgramID   *int   `json:"program_id,omitempty"`
 	ClickedAt   string `json:"clicked_at"`
 }
 

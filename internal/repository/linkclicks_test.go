@@ -47,7 +47,7 @@ func TestLinkClickRepository_Create(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestLinkClickRepo(t)
 			exp := mock.ExpectExec(insertLinkClickQuery).
-				WithArgs(tt.lc.LinkID, tt.lc.ExtraLinkID, tt.lc.UserID)
+				WithArgs(tt.lc.LinkID, tt.lc.ExtraLinkID, tt.lc.UserID, tt.lc.ProgramID)
 			if tt.execErr != nil {
 				exp.WillReturnError(tt.execErr)
 			} else {

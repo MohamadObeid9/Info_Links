@@ -10,6 +10,8 @@ var (
 	ErrUsernameTaken     = errors.New("username already taken")
 	ErrUserNumberRange   = errors.New("number must be between 1 and 100")
 	ErrUserNameRequired  = errors.New("first and last name are required")
+	ErrUserInvalidSort   = errors.New("sort must be name, first_seen, last_seen, visits, clicks, or favorites")
+	ErrUserInvalidOrder  = errors.New("order must be asc or desc")
 )
 
 // Analytics errors
@@ -17,7 +19,8 @@ var (
 	ErrAnalyticsInvalidRange        = errors.New("range must be 7, 30 or 90")
 	ErrAnalyticsInvalidVisitorsSort = errors.New("visitors_sort must be clicks or name")
 	ErrAnalyticsInvalidSearchQuery  = errors.New("search query is required")
-	ErrAnalyticsInvalidBrowseStep   = errors.New("browse step must be year or list")
+	ErrAnalyticsInvalidActorKind    = errors.New("kind must be link, extra_link, course, extra_section, service, or favorite")
+	ErrAnalyticsInvalidActorID      = errors.New("invalid actor target id")
 )
 
 // Link clicks errors

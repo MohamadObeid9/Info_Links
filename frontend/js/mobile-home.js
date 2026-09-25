@@ -117,7 +117,7 @@ function collectSearchHits(q) {
 }
 
 function searchHitCardOpts(h) {
-  const opts = { path: h.path };
+  const opts = { path: h.path, programId: h.programId };
   // Prefer placement; fall back to program/year/semester so duplicate course ids stay distinct.
   if (h.placementId != null && h.placementId !== "") {
     opts.cardId = `${h.course.id}-p${h.placementId}`;
@@ -237,7 +237,7 @@ function renderMobileList() {
   }
 
   const service = window.pickRotatingService?.();
-  const courseCards = (sem.courses || []).map((c) => _buildCourseCard(c));
+  const courseCards = (sem.courses || []).map((c) => _buildCourseCard(c, { programId: prog.id }));
   const cards = service ? window.intersperse?.(courseCards, [service], "semester") : courseCards;
   document.getElementById("coursesOutput").innerHTML = `
     ${chipsHtml([prog.name, year.name, sem.name], "year")}
@@ -264,7 +264,7 @@ function renderMobileFavorites() {
 
   const entries = collectFavoriteCourses(searchQuery());
   const cards = entries.map((e) =>
-    _buildCourseCard(e.course, { path: e.paths.join(" | ") }),
+    _buildCourseCard(e.course, { path: e.path, programId: e.programId }),
   );
 
   document.getElementById("coursesOutput").innerHTML = `
@@ -381,7 +381,6 @@ function selectMobileProg(id) {
   }
 
   AppState.mobileStep = "year";
-  window.trackBrowse?.("year");
   renderMobileYearPicker();
 }
 
@@ -389,7 +388,6 @@ function selectMobileSem(yearId, semId) {
   AppState.currentYear = coerceId(yearId);
   AppState.currentSem = coerceId(semId);
   AppState.mobileStep = "list";
-  window.trackBrowse?.("list");
   renderMobileList();
 }
 

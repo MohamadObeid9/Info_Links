@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
 
@@ -39,18 +41,10 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 		&summary.DevicesInRange.Phone,
 		&summary.DevicesInRange.Laptop,
 		&summary.DevicesInRange.Both,
-		&summary.ReturningInRange,
-		&summary.NewInRange,
-		&summary.Funnel.Arrivals,
-		&summary.Funnel.SignedUp,
 		&summary.PrevStudentsGained,
-		&summary.Funnel.StillGuest,
-		&summary.Funnel.GuestsOpen,
 		&summary.Inbox.Reports,
 		&summary.Inbox.Contributions,
 		&summary.Inbox.Feedback,
-		&summary.Browse.ReachedYear,
-		&summary.Browse.ReachedList,
 		&summary.ActiveRegisteredInRange,
 	); err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics counts: %w", err)
@@ -94,6 +88,12 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics visitors today: %w", err)
 	}
 	summary.VisitorsToday = visitorsToday
+
+	newStudentsToday, err := r.userClicks(ctx, analyticsNewStudentsTodayQuery)
+	if err != nil {
+		return models.AnalyticsSummary{}, fmt.Errorf("analytics new students today: %w", err)
+	}
+	summary.NewStudentsToday = newStudentsToday
 
 	topCourses, err := r.courseDemand(ctx, analyticsTopCoursesQuery, params.Days)
 	if err != nil {
@@ -159,11 +159,46 @@ func (r *postgresAnalyticsRepository) InsertSearch(ctx context.Context, userID i
 	return nil
 }
 
-func (r *postgresAnalyticsRepository) InsertBrowse(ctx context.Context, userID int, step string) error {
-	if _, err := r.db.ExecContext(ctx, insertBrowseEventQuery, userID, step); err != nil {
-		return fmt.Errorf("insert browse event: %w", err)
+func (r *postgresAnalyticsRepository) ListActors(ctx context.Context, kind string, id int, since time.Time) (models.AnalyticsActorsResult, error) {
+	query, args, err := analyticsActorsQuery(kind, id, since)
+	if err != nil {
+		return models.AnalyticsActorsResult{}, err
 	}
-	return nil
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return models.AnalyticsActorsResult{}, fmt.Errorf("list actors query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	people, err := r.scanUserClickRows(rows)
+	if err != nil {
+		return models.AnalyticsActorsResult{}, err
+	}
+	total := 0
+	for _, p := range people {
+		total += p.Clicks
+	}
+	return models.AnalyticsActorsResult{Kind: kind, ID: id, Total: total, People: people}, nil
+}
+
+func analyticsActorsQuery(kind string, id int, since time.Time) (string, []any, error) {
+	switch kind {
+	case "link":
+		return analyticsActorsLinkQuery, []any{id, since}, nil
+	case "extra_link":
+		return analyticsActorsExtraLinkQuery, []any{id, since}, nil
+	case "course":
+		return analyticsActorsCourseQuery, []any{id, since}, nil
+	case "extra_section":
+		return analyticsActorsExtraSectionQuery, []any{id, since}, nil
+	case "service":
+		return analyticsActorsServiceQuery, []any{id, since}, nil
+	case "favorite":
+		return analyticsActorsFavoriteQuery, []any{id}, nil
+	default:
+		return "", nil, errs.ErrAnalyticsInvalidActorKind
+	}
 }
 
 func (r *postgresAnalyticsRepository) dailyUniqueVisits(ctx context.Context, days int) ([]models.DailyUniqueDay, error) {

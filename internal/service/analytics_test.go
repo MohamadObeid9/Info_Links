@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
@@ -21,9 +22,12 @@ type fakeAnalyticsRepo struct {
 	searchQuery string
 	searchErr   error
 
-	browseCalls int
-	browseStep  string
-	browseErr   error
+	actorsCalls int
+	actorsKind  string
+	actorsID    int
+	actorsSince time.Time
+	actors      models.AnalyticsActorsResult
+	actorsErr   error
 }
 
 func (f *fakeAnalyticsRepo) GetSummary(ctx context.Context, params repository.AnalyticsSummaryParams) (models.AnalyticsSummary, error) {
@@ -41,10 +45,15 @@ func (f *fakeAnalyticsRepo) InsertSearch(ctx context.Context, userID int, query 
 	return f.searchErr
 }
 
-func (f *fakeAnalyticsRepo) InsertBrowse(ctx context.Context, userID int, step string) error {
-	f.browseCalls++
-	f.browseStep = step
-	return f.browseErr
+func (f *fakeAnalyticsRepo) ListActors(ctx context.Context, kind string, id int, since time.Time) (models.AnalyticsActorsResult, error) {
+	f.actorsCalls++
+	f.actorsKind = kind
+	f.actorsID = id
+	f.actorsSince = since
+	if f.actorsErr != nil {
+		return models.AnalyticsActorsResult{}, f.actorsErr
+	}
+	return f.actors, nil
 }
 
 func TestAnalyticsService_GetSummary(t *testing.T) {
@@ -194,25 +203,45 @@ func TestAnalyticsService_TrackSearch(t *testing.T) {
 	}
 }
 
-func TestAnalyticsService_TrackBrowse(t *testing.T) {
+func TestAnalyticsService_ListActors(t *testing.T) {
+	result := models.AnalyticsActorsResult{
+		Kind:  "link",
+		ID:    9,
+		Total: 5,
+		People: []models.UserClickCount{
+			{UserID: 1, Handle: "mohamad_hassan_55", Clicks: 3},
+			{UserID: 2, Handle: "sara_ali_3", Clicks: 2},
+		},
+	}
+
 	tests := []struct {
 		name      string
-		step      string
+		kind      string
+		id        string
+		rangeStr  string
+		repoErr   error
 		wantCalls int
-		wantStep  string
+		wantKind  string
+		wantID    int
+		wantZero  bool // favorites ignore since
 		wantErr   error
 	}{
-		{name: "accepts year", step: "year", wantCalls: 1, wantStep: "year"},
-		{name: "accepts list", step: "list", wantCalls: 1, wantStep: "list"},
-		{name: "rejects junk", step: "program", wantErr: errs.ErrAnalyticsInvalidBrowseStep},
+		{name: "link in range", kind: "link", id: "9", rangeStr: "7", wantCalls: 1, wantKind: "link", wantID: 9},
+		{name: "today start of day", kind: "course", id: "3", rangeStr: "today", wantCalls: 1, wantKind: "course", wantID: 3},
+		{name: "favorite ignores range", kind: "favorite", id: "4", rangeStr: "90", wantCalls: 1, wantKind: "favorite", wantID: 4, wantZero: true},
+		{name: "rejects bad id", kind: "link", id: "0", wantErr: errs.ErrAnalyticsInvalidActorID},
+		{name: "rejects bad kind", kind: "widget", id: "1", rangeStr: "7", repoErr: errs.ErrAnalyticsInvalidActorKind, wantCalls: 1, wantKind: "widget", wantID: 1, wantErr: errs.ErrAnalyticsInvalidActorKind},
+		{name: "rejects bad range", kind: "link", id: "1", rangeStr: "5", wantErr: errs.ErrAnalyticsInvalidRange},
+		{name: "wraps repo error", kind: "service", id: "2", rangeStr: "30", repoErr: errs.ErrDatabaseDown, wantCalls: 1, wantKind: "service", wantID: 2, wantErr: errs.ErrDatabaseDown},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &fakeAnalyticsRepo{}
+			repo := &fakeAnalyticsRepo{actors: result, actorsErr: tt.repoErr}
 			svc := NewAnalyticsService(repo)
-			err := svc.TrackBrowse(context.Background(), 7, tt.step)
-			if repo.browseCalls != tt.wantCalls {
-				t.Fatalf("calls = %d, want %d", repo.browseCalls, tt.wantCalls)
+			got, err := svc.ListActors(context.Background(), tt.kind, tt.id, tt.rangeStr)
+			if repo.actorsCalls != tt.wantCalls {
+				t.Fatalf("repo calls = %d, want %d", repo.actorsCalls, tt.wantCalls)
 			}
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -221,10 +250,20 @@ func TestAnalyticsService_TrackBrowse(t *testing.T) {
 				return
 			}
 			if err != nil {
-				t.Fatalf("TrackBrowse: %v", err)
+				t.Fatalf("ListActors: %v", err)
 			}
-			if repo.browseStep != tt.wantStep {
-				t.Fatalf("step = %q, want %q", repo.browseStep, tt.wantStep)
+			if repo.actorsKind != tt.wantKind || repo.actorsID != tt.wantID {
+				t.Fatalf("repo kind/id = %s/%d, want %s/%d", repo.actorsKind, repo.actorsID, tt.wantKind, tt.wantID)
+			}
+			if tt.wantZero {
+				if !repo.actorsSince.IsZero() {
+					t.Fatalf("favorite since = %v, want zero", repo.actorsSince)
+				}
+			} else if repo.actorsSince.IsZero() {
+				t.Fatal("expected non-zero since")
+			}
+			if !reflect.DeepEqual(got, result) {
+				t.Fatalf("got %+v, want %+v", got, result)
 			}
 		})
 	}
