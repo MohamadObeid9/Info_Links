@@ -631,10 +631,10 @@
 
     .admin-table tr.admin-row {
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: auto 1fr auto;
         grid-template-areas:
-            "pri meta"
-            "sec meta";
+            "sel pri meta"
+            "sel sec meta";
         gap: 2px 10px;
         align-items: center;
         background: var(--bg2);
@@ -667,6 +667,14 @@
         font-weight: 700;
         font-size: 0.92rem;
         min-width: 0;
+    }
+
+    .admin-table td.admin-select-col {
+        display: flex;
+        grid-area: sel;
+        align-items: center;
+        justify-content: center;
+        padding-right: 4px;
     }
 
     .admin-table td.admin-sec {
@@ -772,6 +780,10 @@
         padding-top: 10px;
         margin-top: 8px;
         border-top: 1px solid var(--border);
+    }
+
+    .admin-table tr.open td.admin-select-col::before {
+        display: none;
     }
 
     .admin-table tr.open td.admin-actions .action-btn {

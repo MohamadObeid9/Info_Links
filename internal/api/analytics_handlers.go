@@ -14,10 +14,6 @@ type searchEventBody struct {
 	Query string `json:"query"`
 }
 
-type browseEventBody struct {
-	Step string `json:"step"`
-}
-
 // ── Admin Protected Handlers ────────────────────────────────────────────────
 
 func (h *Handler) handleAdminGetAnalyticsSummary(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +26,16 @@ func (h *Handler) handleAdminGetAnalyticsSummary(w http.ResponseWriter, r *http.
 	writeJSON(w, http.StatusOK, summary)
 }
 
+func (h *Handler) handleAdminGetAnalyticsActors(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	result, err := h.analyticsService.ListActors(r.Context(), q.Get("kind"), q.Get("id"), q.Get("range"))
+	if err != nil {
+		mapAnalyticsActorsErr(h, w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (h *Handler) handlePostSearchEvent(w http.ResponseWriter, r *http.Request) {
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -40,22 +46,6 @@ func (h *Handler) handlePostSearchEvent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.analyticsService.TrackSearch(r.Context(), userID, body.Query); err != nil {
-		mapAnalyticsTrackErr(h, w, r, err)
-		return
-	}
-	w.WriteHeader(http.StatusCreated)
-}
-
-func (h *Handler) handlePostBrowseEvent(w http.ResponseWriter, r *http.Request) {
-	userID, ok := requireUserID(w, r)
-	if !ok {
-		return
-	}
-	var body browseEventBody
-	if !decodeJSONBody(w, r, &body) {
-		return
-	}
-	if err := h.analyticsService.TrackBrowse(r.Context(), userID, body.Step); err != nil {
 		mapAnalyticsTrackErr(h, w, r, err)
 		return
 	}
@@ -94,12 +84,24 @@ func mapAnalyticsSummaryErr(h *Handler, w http.ResponseWriter, r *http.Request, 
 	}
 }
 
+func mapAnalyticsActorsErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, errs.ErrAnalyticsInvalidActorKind):
+		writeJSONError(w, r, http.StatusBadRequest, "kind must be link, extra_link, course, extra_section, service, or favorite")
+	case errors.Is(err, errs.ErrAnalyticsInvalidActorID):
+		writeJSONError(w, r, http.StatusBadRequest, "Invalid id")
+	case errors.Is(err, errs.ErrAnalyticsInvalidRange):
+		writeJSONError(w, r, http.StatusBadRequest, "Range must be today, 7, 30 or 90")
+	default:
+		h.LoggerWithID(r).Error("get analytics actors failed", "error", err)
+		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
+	}
+}
+
 func mapAnalyticsTrackErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrAnalyticsInvalidSearchQuery):
 		writeJSONError(w, r, http.StatusBadRequest, "Search query is required")
-	case errors.Is(err, errs.ErrAnalyticsInvalidBrowseStep):
-		writeJSONError(w, r, http.StatusBadRequest, "Browse step must be year or list")
 	default:
 		h.LoggerWithID(r).Error("track analytics event failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")

@@ -160,11 +160,11 @@ function getContentTypeChip(ct) { return getContentTypeChips(ct); }
  * Used by both renderCourses (filtered) and renderAllCourses (all).
  * opts.path is shown on mobile search results (program · year · semester).
  */
-/** One entry per favorite course id, even when the course is offered in several programs. */
+/** One card per program offering for each favorited course (so clicks keep program_id). */
 function collectFavoriteCourses(query = "") {
   const q = query.toLowerCase().trim();
   const favIds = AppState.favorites;
-  const byId = new Map();
+  const entries = [];
   AppState.dbPrograms.forEach((prog) => {
     prog.years.forEach((year) => {
       year.sems.forEach((sem) => {
@@ -177,18 +177,16 @@ function collectFavoriteCourses(query = "") {
           ) {
             return;
           }
-          const path = `${prog.name} · ${year.name} · ${sem.name}`;
-          const existing = byId.get(c.id);
-          if (existing) {
-            if (!existing.paths.includes(path)) existing.paths.push(path);
-            return;
-          }
-          byId.set(c.id, { course: c, paths: [path] });
+          entries.push({
+            course: c,
+            path: `${prog.name} · ${year.name} · ${sem.name}`,
+            programId: prog.id,
+          });
         });
       });
     });
   });
-  return [...byId.values()];
+  return entries;
 }
 
 function courseCardDomId(c, opts = {}) {
@@ -202,6 +200,9 @@ function _buildCourseCard(c, opts = {}) {
   const isFav = AppState.favorites.has(String(c.id));
   const path = opts.path || "";
   const cardId = courseCardDomId(c, opts);
+  const programId = Number(opts.programId);
+  const programAttr =
+    Number.isFinite(programId) && programId > 0 ? ` data-program-id="${programId}"` : "";
   const linksHtml = c.links.length
     ? c.links
       .map(
@@ -209,7 +210,11 @@ function _buildCourseCard(c, opts = {}) {
             <a class="link-item"
                data-url="${esc(l.url)}"
                data-link-id="${l.id}"
-               data-link-kind="link"
+               data-link-kind="link"${
+                 Number.isFinite(programId) && programId > 0
+                   ? ` data-program-id="${programId}"`
+                   : ""
+               }
                href="${_linkHref(l.url)}">
               <span class="link-item-main">
                 ${getLinkBadge(l.type)}
@@ -225,7 +230,7 @@ function _buildCourseCard(c, opts = {}) {
     : '<span class="no-links">No links yet — contribute!</span>';
 
   return `
-    <div class="course-card" id="course-card-${cardId}" data-course-id="${c.id}"${
+    <div class="course-card" id="course-card-${cardId}" data-course-id="${c.id}"${programAttr}${
       c.placement_id != null && c.placement_id !== ""
         ? ` data-placement-id="${c.placement_id}"`
         : ""

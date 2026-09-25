@@ -66,7 +66,7 @@ func (r *postgresCourseRepository) Create(ctx context.Context, course models.Cou
 		return fmt.Errorf("find course by code: %w", err)
 	}
 	if errors.Is(err, sql.ErrNoRows) {
-		insErr := tx.QueryRowContext(ctx, insertCanonicalCourseQuery, course.Name, course.Code, course.IsOptional).Scan(&courseID)
+		insErr := tx.QueryRowContext(ctx, insertCanonicalCourseQuery, course.Name, course.Code).Scan(&courseID)
 		if insErr != nil {
 			mapped := mapCourseConstraint(insErr)
 			if !errors.Is(mapped, errs.ErrCourseCodeTaken) {
@@ -78,7 +78,7 @@ func (r *postgresCourseRepository) Create(ctx context.Context, course models.Cou
 		}
 	}
 
-	if _, err := tx.ExecContext(ctx, insertCoursePlacementQuery, courseID, course.SemesterID, course.DisplayOrder); err != nil {
+	if _, err := tx.ExecContext(ctx, insertCoursePlacementQuery, courseID, course.SemesterID, course.DisplayOrder, course.IsOptional); err != nil {
 		return fmt.Errorf("insert course placement: %w", mapCourseConstraint(err))
 	}
 	if err := tx.Commit(); err != nil {
@@ -102,7 +102,7 @@ func (r *postgresCourseRepository) GetByID(ctx context.Context, id int) (models.
 }
 
 func (r *postgresCourseRepository) Update(ctx context.Context, course models.Course, id int) error {
-	resp, err := r.db.ExecContext(ctx, updateCourseQuery, course.Name, course.Code, course.IsOptional, id)
+	resp, err := r.db.ExecContext(ctx, updateCourseQuery, course.Name, course.Code, id)
 	if err != nil {
 		return fmt.Errorf("update course: %w", mapCourseConstraint(err))
 	}
@@ -113,7 +113,10 @@ func (r *postgresCourseRepository) Update(ctx context.Context, course models.Cou
 	if affected == 0 {
 		return errs.ErrCourseNotFound
 	}
-	if course.PlacementID > 0 && course.SemesterID > 0 {
+	if course.PlacementID <= 0 {
+		return nil
+	}
+	if course.SemesterID > 0 {
 		presp, err := r.db.ExecContext(ctx, updateCoursePlacementQuery, course.SemesterID, course.DisplayOrder, course.PlacementID, id)
 		if err != nil {
 			return fmt.Errorf("update course placement: %w", mapCourseConstraint(err))
@@ -121,6 +124,19 @@ func (r *postgresCourseRepository) Update(ctx context.Context, course models.Cou
 		paffected, err := presp.RowsAffected()
 		if err != nil {
 			return fmt.Errorf("update course placement rows affected: %w", err)
+		}
+		if paffected == 0 {
+			return errs.ErrCourseNotFound
+		}
+	}
+	if course.TouchOptional {
+		presp, err := r.db.ExecContext(ctx, updateCoursePlacementOptionalQuery, course.IsOptional, course.PlacementID, id)
+		if err != nil {
+			return fmt.Errorf("update course placement optional: %w", err)
+		}
+		paffected, err := presp.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("update course placement optional rows affected: %w", err)
 		}
 		if paffected == 0 {
 			return errs.ErrCourseNotFound

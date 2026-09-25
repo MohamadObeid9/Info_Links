@@ -134,7 +134,8 @@ CREATE TABLE public.course_placements (
     id integer NOT NULL,
     course_id integer NOT NULL,
     semester_id integer NOT NULL,
-    display_order integer DEFAULT 0 NOT NULL
+    display_order integer DEFAULT 0 NOT NULL,
+    is_optional boolean DEFAULT false NOT NULL
 );
 
 
@@ -877,6 +878,13 @@ CREATE INDEX link_clicks_user_id_clicked_at_idx ON public.link_clicks USING btre
 
 
 --
+-- Name: link_clicks_clicked_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX link_clicks_clicked_at_idx ON public.link_clicks USING btree (clicked_at DESC);
+
+
+--
 -- Name: links_course_url_lower_uidx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -888,6 +896,13 @@ CREATE UNIQUE INDEX links_course_url_lower_uidx ON public.links USING btree (cou
 --
 
 CREATE INDEX page_views_user_id_visited_at_idx ON public.page_views USING btree (user_id, visited_at DESC);
+
+
+--
+-- Name: page_views_visited_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX page_views_visited_at_idx ON public.page_views USING btree (visited_at DESC);
 
 
 --

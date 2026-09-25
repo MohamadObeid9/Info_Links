@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
@@ -29,6 +31,7 @@ var analyticsQueryOrder = []string{
 	analyticsTopUsersQuery,
 	analyticsTopLinksTodayQuery,
 	analyticsVisitorsTodayByClicksQuery,
+	analyticsNewStudentsTodayQuery,
 	analyticsTopCoursesQuery,
 	analyticsTopServicesQuery,
 	analyticsZeroClickCoursesQuery,
@@ -101,12 +104,8 @@ func TestAnalyticsRepository_GetSummary(t *testing.T) {
 				PrevActiveInRange:       6,
 				PrevClicksInRange:       30,
 				DevicesInRange:          models.DeviceSplit{Phone: 4, Laptop: 3, Both: 1},
-				ReturningInRange:        5,
-				NewInRange:              3,
-				Funnel:                  models.SignupFunnel{Arrivals: 10, SignedUp: 2, StillGuest: 8, GuestsOpen: 20},
 				PrevStudentsGained:      1,
 				Inbox:                   models.AnalyticsInbox{Reports: 1, Contributions: 2, Feedback: 3},
-				Browse:                  models.BrowseDepth{ReachedYear: 7, ReachedList: 4},
 				DailyUniqueVisits:       []models.DailyUniqueDay{{Day: "2026-08-18", Users: 12}},
 				DailyRoster:             []models.DailyRosterDay{{Day: "2026-08-18", Total: 4}},
 				TopLinks:                []models.LinkClickCount{{LinkID: &linkID, Clicks: 9}},
@@ -129,6 +128,7 @@ func TestAnalyticsRepository_GetSummary(t *testing.T) {
 					},
 					HasMore: true,
 				},
+				NewStudentsToday:  []models.UserClickCount{{UserID: 11, Handle: "sara_ali_3", Clicks: 0}},
 				TopCourses:        []models.CourseDemand{{CourseID: 9, Name: "Réseaux", Code: "NFA035", Count: 12, ProgramName: "Licence Info"}},
 				TopServices:       []models.ServiceDemand{{ServiceID: 3, Title: "Rolita's Soap", Category: "Beauty", Count: 5}},
 				ZeroClickCourses:  []models.CourseDemand{{CourseID: 3, Name: "Quiet Course", Code: "QC01", Count: 0, ProgramName: "AISL"}},
@@ -208,6 +208,7 @@ func TestAnalyticsRepository_GetSummary_visitorsSortName(t *testing.T) {
 		sqlmock.NewRows([]string{"id", "first_name", "last_name", "number", "clicks"}).
 			AddRow(1, "ali", "ahmad", 1, 0),
 	)
+	mock.ExpectQuery(analyticsNewStudentsTodayQuery).WillReturnRows(sqlmock.NewRows([]string{"id", "first_name", "last_name", "number", "clicks"}))
 	mock.ExpectQuery(analyticsTopCoursesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}))
 	mock.ExpectQuery(analyticsTopServicesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "title", "category", "count"}))
 	mock.ExpectQuery(analyticsZeroClickCoursesQuery).WithArgs(7).WillReturnRows(sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}))
@@ -225,18 +226,55 @@ func TestAnalyticsRepository_GetSummary_visitorsSortName(t *testing.T) {
 	}
 }
 
-func TestAnalyticsRepository_InsertSearchAndBrowse(t *testing.T) {
+func TestAnalyticsRepository_InsertSearch(t *testing.T) {
 	repo, mock := newTestAnalyticsRepo(t)
 	mock.ExpectExec(insertSearchEventQuery).WithArgs(7, "nfa035").WillReturnResult(sqlmock.NewResult(1, 1))
-	mock.ExpectExec(insertBrowseEventQuery).WithArgs(7, "year").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	if err := repo.InsertSearch(context.Background(), 7, "nfa035"); err != nil {
 		t.Fatalf("InsertSearch: %v", err)
 	}
-	if err := repo.InsertBrowse(context.Background(), 7, "year"); err != nil {
-		t.Fatalf("InsertBrowse: %v", err)
-	}
 	assertRepoErr(t, mock, nil, nil)
+}
+
+func TestAnalyticsRepository_ListActors(t *testing.T) {
+	since := time.Date(2026, 9, 18, 0, 0, 0, 0, time.Local)
+	repo, mock := newTestAnalyticsRepo(t)
+	mock.ExpectQuery(analyticsActorsLinkQuery).
+		WithArgs(9, since).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "first_name", "last_name", "number", "clicks"}).
+			AddRow(1, "mohamad", "hassan", 55, 3).
+			AddRow(2, "sara", "ali", 3, 2))
+
+	got, err := repo.ListActors(context.Background(), "link", 9, since)
+	assertRepoErr(t, mock, err, nil)
+	if got.Kind != "link" || got.ID != 9 || got.Total != 5 {
+		t.Fatalf("got %+v", got)
+	}
+	if len(got.People) != 2 || got.People[0].Handle != "mohamad_hassan_55" || got.People[0].Clicks != 3 {
+		t.Fatalf("people = %+v", got.People)
+	}
+}
+
+func TestAnalyticsRepository_ListActors_favorite(t *testing.T) {
+	repo, mock := newTestAnalyticsRepo(t)
+	mock.ExpectQuery(analyticsActorsFavoriteQuery).
+		WithArgs(4).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "first_name", "last_name", "number", "clicks"}).
+			AddRow(8, "ziad", "baroud", 25, 1))
+
+	got, err := repo.ListActors(context.Background(), "favorite", 4, time.Time{})
+	assertRepoErr(t, mock, err, nil)
+	if got.Total != 1 || len(got.People) != 1 || got.People[0].Handle != "ziad_baroud_25" {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestAnalyticsRepository_ListActors_invalidKind(t *testing.T) {
+	repo, _ := newTestAnalyticsRepo(t)
+	_, err := repo.ListActors(context.Background(), "widget", 1, time.Now())
+	if !errors.Is(err, errs.ErrAnalyticsInvalidActorKind) {
+		t.Fatalf("got %v, want invalid kind", err)
+	}
 }
 
 func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows {
@@ -248,10 +286,8 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			"active_in_range", "clicks_in_range", "clickers_in_range",
 			"prev_active", "prev_clicks",
 			"phone_range", "laptop_range", "both_range",
-			"returning", "new_in_range",
-			"arrivals", "signed_up", "prev_students_gained", "still_guest", "guests_open",
+			"prev_students_gained",
 			"reports", "contributions", "feedback",
-			"reached_year", "reached_list",
 			"active_registered_in_range",
 		}).AddRow(
 			4, 1, 2, 3,
@@ -259,10 +295,8 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			8, 40, 5,
 			6, 30,
 			4, 3, 1,
-			5, 3,
-			10, 2, 1, 8, 20,
+			1,
 			1, 2, 3,
-			7, 4,
 			3,
 		)
 	case analyticsDailyUniqueVisitsQuery:
@@ -276,6 +310,9 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			AddRow(1, "mohamad", "hassan", 55, 9)
 	case analyticsTopLinksTodayQuery:
 		return sqlmock.NewRows([]string{"link_id", "extra_link_id", "clicks"}).AddRow(1, nil, 3)
+	case analyticsNewStudentsTodayQuery:
+		return sqlmock.NewRows([]string{"id", "first_name", "last_name", "number", "clicks"}).
+			AddRow(11, "sara", "ali", 3, 0)
 	case analyticsTopCoursesQuery:
 		return sqlmock.NewRows([]string{"id", "name", "code", "count", "program_name"}).AddRow(9, "Réseaux", "NFA035", 12, "Licence Info")
 	case analyticsTopServicesQuery:

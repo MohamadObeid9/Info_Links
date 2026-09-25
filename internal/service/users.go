@@ -127,16 +127,39 @@ func (s *UserService) RemoveFavorite(ctx context.Context, userID int, courseIDSt
 	return nil
 }
 
-func (s *UserService) ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error) {
+func (s *UserService) ListStudents(ctx context.Context, limit int, offset int, q string, sort string, order string) ([]models.UserListItem, error) {
 	if limit <= 0 || limit > 100 || offset < 0 {
 		return nil, errs.ErrInvalidParams
 	}
 
-	students, err := s.repo.ListStudents(ctx, limit, offset, strings.TrimSpace(q))
+	params, err := normalizeStudentListParams(limit, offset, q, sort, order)
+	if err != nil {
+		return nil, err
+	}
+
+	students, err := s.repo.ListStudents(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("list students: %w", err)
 	}
 	return students, nil
+}
+
+// DeleteStudents removes registered students and their cascaded analytics.
+// ids must be non-empty, positive, and at most 100 unique values.
+func (s *UserService) DeleteStudents(ctx context.Context, ids []int) (int64, error) {
+	cleaned, err := normalizeStudentIDs(ids)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := s.repo.DeleteStudents(ctx, cleaned)
+	if err != nil {
+		return 0, fmt.Errorf("delete students: %w", err)
+	}
+	if n == 0 {
+		return 0, errs.ErrUserNotFound
+	}
+	return n, nil
 }
 
 func (s *UserService) GetUserDetail(ctx context.Context, idStr string, limit int, offset int) (models.UserDetail, error) {
@@ -179,6 +202,61 @@ func normalizeCredentials(u models.User) (models.User, error) {
 		return models.User{}, errs.ErrUserNumberRange
 	}
 	return u, nil
+}
+
+func normalizeStudentIDs(ids []int) ([]int, error) {
+	if len(ids) == 0 {
+		return nil, errs.ErrUserInvalidID
+	}
+	seen := make(map[int]struct{}, len(ids))
+	out := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			return nil, errs.ErrUserInvalidID
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	if len(out) == 0 {
+		return nil, errs.ErrUserInvalidID
+	}
+	if len(out) > 100 {
+		return nil, errs.ErrInvalidParams
+	}
+	return out, nil
+}
+
+func normalizeStudentListParams(limit, offset int, q, sort, order string) (repository.StudentListParams, error) {
+	sort = strings.ToLower(strings.TrimSpace(sort))
+	order = strings.ToLower(strings.TrimSpace(order))
+	if sort == "" {
+		sort = "name"
+	}
+	if order == "" {
+		order = "asc"
+	}
+
+	switch sort {
+	case "name", "first_seen", "last_seen", "visits", "clicks", "favorites":
+	default:
+		return repository.StudentListParams{}, errs.ErrUserInvalidSort
+	}
+	switch order {
+	case "asc", "desc":
+	default:
+		return repository.StudentListParams{}, errs.ErrUserInvalidOrder
+	}
+
+	return repository.StudentListParams{
+		Limit:  limit,
+		Offset: offset,
+		Q:      strings.TrimSpace(q),
+		Sort:   sort,
+		Order:  order,
+	}, nil
 }
 
 func parseCourseID(courseIDStr string) (int, error) {

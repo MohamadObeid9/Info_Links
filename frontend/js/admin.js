@@ -6,7 +6,7 @@ import { loadAll, loadReportsBadges } from "./data.js";
 import { _clearCache } from "./cache.js";
 import { showToast } from "./export.js";
 import { renderAdminFeedback } from "./feedback.js";
-import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, parseContributionNote, _getNextDisplayOrder } from "./modals.js";
+import { _linkTypeOptions, _contentTypeCheckboxes, _readContentTypeCheckboxes, parseContributionNote, _getNextDisplayOrder, confirmAction } from "./modals.js";
 import { loadStudentDirectory, rememberStudents, senderDetail, studentHandleOf, fmtDateTime } from "./students.js";
 
 // ===================== ADMIN AUTH =====================
@@ -104,6 +104,9 @@ function adminTab(t) {
   AppState.adminFilterYear = "all";
   AppState.adminFilterSem = "all";
   AppState.adminStudentId = null;
+  AppState.adminSelectedStudentIds = new Set();
+  AppState.adminStudentSort = "name";
+  AppState.adminStudentOrder = "asc";
   _setAdminPage("studentTimeline", 0);
   if (AdminPager[t]) _setAdminPage(t, 0);
   if (t === "feedback" && typeof window.resetAdminFeedbackPage === "function") {
@@ -253,10 +256,13 @@ function buildTopLinksList(topLinks, expandKey = null) {
 
   const expanded = Boolean(expandKey && AppState[expandKey]);
   const visible = expanded ? rows : rows.slice(0, 10);
+  const range = AppState.analyticsLinksTab === "range" ? _analyticsRangeKey() : "today";
   const items = visible
     .map((row) => {
       const info = resolveLinkInfo(row.kind, row.id);
-      return `<li><strong>${_num(row.clicks)}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})${_programSuffix(info.programName)}</span></li>`;
+      const label = `${info.label} (${info.courseName})`;
+      const body = `<strong>${_num(row.clicks)}</strong> clicks: ${esc(info.label)} <span style="color:var(--muted);font-size:0.8rem">(${esc(info.courseName)})${_programSuffix(info.programName)}</span>`;
+      return `<li class="analytics-actor-item">${_analyticsActorButton(row.kind, row.id, label, range, body)}</li>`;
     })
     .join("");
 
@@ -398,11 +404,18 @@ function _deviceTodayParts(devices) {
   const laptop = Number(devices.laptop) || 0;
   const both = Number(devices.both) || 0;
   if (!phone && !laptop) return { val: "0", sub: "" };
-  let sub = "unique students";
-  if (both) sub += ` · ${_num(both)} used both`;
-  if (phone && laptop) return { val: `${_num(phone)}/${_num(laptop)}`, sub: `phone / laptop · ${sub}` };
-  if (phone) return { val: _num(phone), sub: `phone · ${sub}` };
-  return { val: _num(laptop), sub: `laptop · ${sub}` };
+
+  const bothBit = both ? `${_num(both)} used both` : "";
+  if (phone && laptop) {
+    const sub = bothBit ? `phone / laptop · ${bothBit}` : "phone / laptop";
+    return { val: `${_num(phone)}/${_num(laptop)}`, sub };
+  }
+  if (phone) {
+    const sub = bothBit ? `phone · ${bothBit}` : "phone";
+    return { val: _num(phone), sub };
+  }
+  const sub = bothBit ? `laptop · ${bothBit}` : "laptop";
+  return { val: _num(laptop), sub };
 }
 
 function _deviceLabel(type) {
@@ -448,16 +461,32 @@ function _showAllList(rows, expandKey, emptyMsg, renderItem) {
   return `<ul style="list-style:none;padding:0;margin:0;">${items}</ul>${expandBtn}`;
 }
 
-function _courseDemandList(rows, emptyMsg, countLabel = "clicks", expandKey = null) {
-  return _showAllList(rows, expandKey, emptyMsg, (row) =>
-    `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.name)} <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.code)})${_programSuffix(row.program_name)}</span></li>`,
-  );
+function _analyticsActorButton(kind, id, label, range, innerHtml) {
+  const idNum = Number(id);
+  if (!kind || !Number.isFinite(idNum) || idNum <= 0) return innerHtml;
+  const rangeArg = range == null || range === "" ? _analyticsRangeKey() : String(range);
+  return `<button type="button" class="analytics-actor-btn" title="See who interacted" onclick='openAnalyticsActors(${JSON.stringify(String(kind))},${idNum},${JSON.stringify(String(label || ""))},${JSON.stringify(rangeArg)})'>${innerHtml}</button>`;
 }
 
-function _serviceDemandList(rows, emptyMsg, countLabel = "opens", expandKey = null) {
+function _courseDemandList(rows, emptyMsg, countLabel = "clicks", expandKey = null, actorsMode = null) {
+  const range = _analyticsRangeKey();
+  return _showAllList(rows, expandKey, emptyMsg, (row) => {
+    const code = row.code ? ` <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.code)})</span>` : "";
+    const body = `<strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.name)}${code}${_programSuffix(row.program_name)}`;
+    if (!actorsMode) return `<li style="margin-bottom:8px;">${body}</li>`;
+    const kind = actorsMode === "favorite" ? "favorite" : row.code === "extra" ? "extra_section" : "course";
+    const id = Number(row.course_id);
+    return `<li class="analytics-actor-item" style="margin-bottom:8px;">${_analyticsActorButton(kind, id, row.name, range, body)}</li>`;
+  });
+}
+
+function _serviceDemandList(rows, emptyMsg, countLabel = "opens", expandKey = null, actorsEnabled = false) {
+  const range = _analyticsRangeKey();
   return _showAllList(rows, expandKey, emptyMsg, (row) => {
     const cat = row.category ? ` <span style="color:var(--muted);font-size:0.8rem;">(${esc(row.category)})</span>` : "";
-    return `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.title)}${cat}</li>`;
+    const body = `<strong>${_num(row.count)}</strong> ${esc(countLabel)}: ${esc(row.title)}${cat}`;
+    if (!actorsEnabled) return `<li style="margin-bottom:8px;">${body}</li>`;
+    return `<li class="analytics-actor-item" style="margin-bottom:8px;">${_analyticsActorButton("service", row.service_id, row.title, range, body)}</li>`;
   });
 }
 
@@ -565,7 +594,12 @@ function _formatGain(value) {
 
 function _statsInRangeSection(summary, range) {
   const total = Number(summary.total_students) || 0;
-  const newStudents = Number(summary.funnel?.signed_up) || 0;
+  const gainedByRange = {
+    7: summary.students_gained_7d,
+    30: summary.students_gained_30d,
+    90: summary.students_gained_90d,
+  };
+  const newStudents = Number(gainedByRange[range]) || 0;
   const rosterAtStart = Math.max(0, total - newStudents);
   const active = Number(summary.active_registered_in_range) || 0;
   const newPct = _pctGrowth(newStudents, rosterAtStart);
@@ -583,6 +617,43 @@ function _statsInRangeSection(summary, range) {
         <div class="analytics-stat-label">Active registered students of total roster</div>
       </div>
     </div>
+  </div>`;
+}
+
+function _newStudentsTodaySection(summary) {
+  const list = Array.isArray(summary.new_students_today) ? summary.new_students_today : [];
+  const expandKey = "analyticsNewStudentsExpanded";
+  const expanded = Boolean(AppState[expandKey]);
+  const visible = expanded ? list : list.slice(0, 12);
+  const title = `🆕 New students today${list.length ? ` <span style="color:var(--muted);font-weight:500;font-size:0.85rem;">${_num(list.length)}${list.length >= 50 ? "+" : ""}</span>` : ""}`;
+
+  if (!list.length) {
+    return `<div class="chart-wrap analytics-card">
+      <div class="chart-title">${title}</div>
+      <div style="color:var(--muted);font-size:0.9rem;">No new sign-ups today.</div>
+    </div>`;
+  }
+
+  const chips = visible
+    .map((row) => {
+      const id = Number(row.user_id);
+      const handle = row.handle || (Number.isFinite(id) ? `#${id}` : "unknown");
+      const onclick = Number.isFinite(id) ? `openAdminStudent(${id})` : "";
+      return `<button type="button" class="visitor-chip" ${onclick ? `onclick="${onclick}"` : ""} title="Open student history">
+        <span class="visitor-chip-handle">${esc(handle)}</span>
+      </button>`;
+    })
+    .join("");
+
+  const expandBtn =
+    list.length > 12
+      ? `<button type="button" class="filter-btn" style="margin-top:12px;" onclick="analyticsToggleExpand('${expandKey}')">${expanded ? "Show less" : "Show all"}</button>`
+      : "";
+
+  return `<div class="chart-wrap analytics-card">
+    <div class="chart-title">${title}</div>
+    <div class="visitor-chips">${chips}</div>
+    ${expandBtn}
   </div>`;
 }
 
@@ -704,13 +775,6 @@ async function _fetchAnalyticsSummary(range, gen) {
   }
 }
 
-function _prefetchAnalyticsRanges(currentRange, gen) {
-  for (const r of ["7", "30", "90"]) {
-    if (r === currentRange || _analyticsRangeCache[r]) continue;
-    _fetchAnalyticsSummary(r, gen).catch(() => {});
-  }
-}
-
 function analyticsSelectRange(range) {
   if (["7", "30", "90"].includes(String(range))) AppState.analyticsRange = String(range);
   const key = _analyticsRangeKey();
@@ -728,6 +792,66 @@ function analyticsSelectRange(range) {
 function analyticsToggleExpand(key) {
   AppState[key] = !AppState[key];
   analyticsPaintLocal();
+}
+
+async function openAnalyticsActors(kind, id, label, range) {
+  const title = label || "Who interacted";
+  const countNoun =
+    kind === "favorite" ? "students" : kind === "service" ? "opens" : "clicks";
+  window.openModal(
+    `<h2>${esc(title)}</h2><p style="color:var(--muted);margin:8px 0 0;">Loading…</p>`,
+  );
+  try {
+    const query = new URLSearchParams({
+      kind: String(kind || ""),
+      id: String(id),
+      range: String(range || _analyticsRangeKey()),
+    });
+    const result = (await apiRequest(`/api/admin/analytics/actors?${query}`)) || {};
+    const people = Array.isArray(result.people) ? result.people : [];
+    const total = Number(result.total) || people.reduce((n, p) => n + (Number(p.clicks) || 0), 0);
+    let body;
+    if (!people.length) {
+      body = `<p style="color:var(--muted);margin-top:12px;">Nobody yet.</p>`;
+    } else {
+      const rows = people
+        .map((p) => {
+          const uid = Number(p.user_id);
+          const handle = p.handle || (Number.isFinite(uid) ? `#${uid}` : "unknown");
+          const clicks = Number(p.clicks) || 0;
+          const name = Number.isFinite(uid)
+            ? `<button type="button" class="action-btn" onclick="closeModal();openAdminStudent(${uid})">${esc(handle)}</button>`
+            : esc(handle);
+          const count =
+            kind === "favorite"
+              ? `<span style="color:var(--muted);font-size:0.85rem;">★ favorited</span>`
+              : `<strong>${_num(clicks)}</strong> ${esc(countNoun === "opens" ? (clicks === 1 ? "open" : "opens") : clicks === 1 ? "click" : "clicks")}`;
+          return `<li class="analytics-actors-row"><span>${name}</span><span>${count}</span></li>`;
+        })
+        .join("");
+      const summary =
+        kind === "favorite"
+          ? `${_num(people.length)} student${people.length === 1 ? "" : "s"}`
+          : `${_num(total)} ${countNoun} · ${_num(people.length)} student${people.length === 1 ? "" : "s"}`;
+      body = `<p style="color:var(--muted);margin:10px 0 14px;font-size:0.9rem;">${summary}</p>
+        <ul class="analytics-actors-list">${rows}</ul>`;
+    }
+    window.openModal(`
+      <h2>${esc(title)}</h2>
+      ${body}
+      <div style="margin-top:18px;display:flex;justify-content:flex-end;">
+        <button type="button" class="action-btn" onclick="closeModal()">Close</button>
+      </div>
+    `);
+  } catch (e) {
+    window.openModal(`
+      <h2>${esc(title)}</h2>
+      <p class="empty" style="margin-top:12px;">⚠️ ${esc(e.message || "Could not load")}</p>
+      <div style="margin-top:18px;display:flex;justify-content:flex-end;">
+        <button type="button" class="action-btn" onclick="closeModal()">Close</button>
+      </div>
+    `);
+  }
 }
 
 function analyticsPaintLocal() {
@@ -776,12 +900,12 @@ function paintAdminAnalytics(summary) {
 
     const gained7 = Number(summary.students_gained_7d) || 0;
     const deviceRange = _deviceTodayParts(summary.devices_in_range);
+    const activeToday = Number(summary.active_today) || 0;
     const activeRange = Number(summary.active_in_range) || 0;
     const clicksRange = Number(summary.clicks_in_range) || 0;
     const clickers = Number(summary.clickers_in_range) || 0;
     const clicksPerActive = Number(summary.clicks_per_active) || 0;
-    const funnel = summary.funnel || {};
-    const browse = summary.browse || {};
+    const activeDelta = _pctDelta(activeRange, summary.prev_active_in_range);
 
     document.getElementById("adminContent").innerHTML = `
       <div class="analytics-stack">
@@ -792,36 +916,19 @@ function paintAdminAnalytics(summary) {
             <div class="stat-label">Registered students</div>
           </div>
           <div class="stat-card">
-            <div class="stat-val">${_num(activeRange)}</div>
-            <div class="stat-mid"><span class="stat-sub">today ${_num(summary.active_today)} · ${_pctDelta(activeRange, summary.prev_active_in_range)} vs prior</span></div>
+            <div class="stat-val">${_num(activeToday)} / ${_num(activeRange)}</div>
+            <div class="stat-mid"><span class="stat-delta">today / ${esc(range)} days · ${esc(activeDelta)}</span></div>
             <div class="stat-label">Active in range</div>
           </div>
           <div class="stat-card">
             <div class="stat-val">${_num(clicksRange)}</div>
-            <div class="stat-mid"><span class="stat-sub">${_num(clickers)} people · ${clicksPerActive.toFixed(1)} / active</span></div>
+            <div class="stat-mid"><span class="stat-delta">${_num(clickers)} people · ${clicksPerActive.toFixed(1)} / active</span></div>
             <div class="stat-label">Clicks in range</div>
           </div>
           <div class="stat-card">
             <div class="stat-val">${deviceRange.val}</div>
-            <div class="stat-mid">${deviceRange.sub ? `<span class="stat-sub">${deviceRange.sub}</span>` : ""}</div>
+            <div class="stat-mid">${deviceRange.sub ? `<span class="stat-delta">${esc(deviceRange.sub)}</span>` : `<span class="stat-delta">—</span>`}</div>
             <div class="stat-label">Device in range</div>
-          </div>
-      </div>
-      <div class="stat-grid analytics-kpis">
-          <div class="stat-card">
-            <div class="stat-val">${_num(summary.returning_in_range)} / ${_num(summary.new_in_range)}</div>
-            <div class="stat-mid"><span class="stat-sub">returning / new visitors</span></div>
-            <div class="stat-label">Audience mix</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val">${_num(funnel.signed_up)} / ${_num(funnel.arrivals)}</div>
-            <div class="stat-mid"><span class="stat-sub">${_num(funnel.still_guest)} still guest · ${_num(funnel.guests_open)} open guests</span></div>
-            <div class="stat-label">Signup funnel</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-val">${_num(browse.reached_year)} → ${_num(browse.reached_list)}</div>
-            <div class="stat-mid"><span class="stat-sub">reached year → semester list</span></div>
-            <div class="stat-label">Browse depth</div>
           </div>
       </div>
       <div class="chart-wrap analytics-card">
@@ -831,7 +938,10 @@ function paintAdminAnalytics(summary) {
           <div class="chart-title" style="margin-top:0;margin-bottom:12px;font-size:0.88rem;font-weight:600;">${chartTitle}</div>
           <div class="bar-chart-scroll"><div class="bar-chart">${barsHtml}</div></div>
       </div>
-      ${_statsInRangeSection(summary, range)}
+      <div class="analytics-two-col">
+        ${_statsInRangeSection(summary, range)}
+        ${_newStudentsTodaySection(summary)}
+      </div>
       <div class="analytics-two-col">
         ${buildVisitorChipsSection(summary)}
         ${buildTabbedTopLinksCard(summary)}
@@ -839,17 +949,17 @@ function paintAdminAnalytics(summary) {
       <div class="analytics-two-col">
         <div class="chart-wrap analytics-card">
           <div class="chart-title">📚 Top courses (in range)</div>
-          ${_courseDemandList(summary.top_courses, "No course clicks in this range.", "clicks", "analyticsTopCoursesExpanded")}
+          ${_courseDemandList(summary.top_courses, "No course clicks in this range.", "clicks", "analyticsTopCoursesExpanded", "course")}
         </div>
         <div class="chart-wrap analytics-card">
           <div class="chart-title">🤝 Top services (in range)</div>
-          ${_serviceDemandList(summary.top_services, "No service opens in this range.", "opens", "analyticsTopServicesExpanded")}
+          ${_serviceDemandList(summary.top_services, "No service opens in this range.", "opens", "analyticsTopServicesExpanded", true)}
         </div>
       </div>
       <div class="analytics-two-col">
         <div class="chart-wrap analytics-card">
           <div class="chart-title">🕳️ Courses with zero clicks</div>
-          ${_courseDemandList(summary.zero_click_courses, "Every course with links got clicks.", "links ignored", "analyticsZeroCoursesExpanded")}
+          ${_courseDemandList(summary.zero_click_courses, "Every course and extra section with links got clicks.", "links ignored", "analyticsZeroCoursesExpanded")}
         </div>
         <div class="chart-wrap analytics-card">
           <div class="chart-title">🕳️ Services with zero clicks</div>
@@ -866,7 +976,7 @@ function paintAdminAnalytics(summary) {
       <div class="analytics-two-col">
         <div class="chart-wrap analytics-card">
           <div class="chart-title">⭐ Most favorited</div>
-          ${_courseDemandList(summary.top_favorites, "No favorites yet.", "stars", "analyticsTopFavoritesExpanded")}
+          ${_courseDemandList(summary.top_favorites, "No favorites yet.", "stars", "analyticsTopFavoritesExpanded", "favorite")}
         </div>
         <div class="chart-wrap analytics-card">
           <div class="chart-title">🔎 Search terms</div>
@@ -885,7 +995,7 @@ function paintAdminAnalytics(summary) {
           ${_buildHeatmap(summary.click_heatmap, "clicks")}
         </div>
       </div>
-      <p class="analytics-footnote">Unique students where noted — device counts people, not tab loads. Search and browse depth fill in as new traffic arrives after deploy.</p>
+      <p class="analytics-footnote">Unique students where noted — device counts people, not tab loads. Search terms fill in as new traffic arrives after deploy.</p>
       </div>`;
 }
 
@@ -900,7 +1010,6 @@ async function renderAdminAnalytics() {
     if (gen !== _analyticsFetchGen) return;
     _analyticsVisitorsAll = _visitorsTodayPage(summary).visitors.slice();
     paintAdminAnalytics(_withLocalVisitors(summary));
-    _prefetchAnalyticsRanges(range, gen);
   } catch (e) {
     if (gen !== _analyticsFetchGen) return;
     _analyticsRangeCache = Object.create(null);
@@ -986,7 +1095,7 @@ function renderAdminCourses() {
                 <span class="course-chev" aria-hidden="true">›</span>
               </button>
               <div class="action-btns">
-                <button class="action-btn" onclick="toggleOptional(${c.id},${c.is_optional})">${c.is_optional ? "✅ Optional" : "⬜ Optional"}</button>
+                <button class="action-btn" onclick="toggleOptional(${c.id},${c.is_optional},${Number(c.placement_id) || 0})">${c.is_optional ? "✅ Optional" : "⬜ Optional"}</button>
                 <button class="action-btn" onclick="openEditCourseModal(${c.id}, ${Number(c.placement_id) || 0})">✏️ Edit</button>
                 <button class="action-btn" onclick="openAddLinkModal(${c.id})">+ Link</button>
                 <button class="action-btn del" onclick="confirmAction('Remove this course from this program? Links stay if it is still offered elsewhere.',()=>deleteCourse(${c.id}, ${Number(c.placement_id) || 0}))">🗑 Delete</button>
@@ -1205,6 +1314,7 @@ const TIMELINE_META = {
   visit: { icon: "👣", label: "Visit" },
   link_click: { icon: "🔗", label: "Link opened" },
   service_click: { icon: "🤝", label: "Service opened" },
+  search: { icon: "🔍", label: "Search" },
   report: { icon: "🚨", label: "Report" },
   contribution: { icon: "➕", label: "Contribution" },
   feedback: { icon: "⭐", label: "Feedback" },
@@ -1230,6 +1340,110 @@ function closeAdminStudent() {
   renderAdminStudents();
 }
 
+function toggleStudentSelection(id, checked) {
+  const n = Number(id);
+  if (!Number.isFinite(n) || n <= 0) return;
+  if (checked) AppState.adminSelectedStudentIds.add(n);
+  else AppState.adminSelectedStudentIds.delete(n);
+  _syncStudentSelectionUI();
+}
+
+function toggleSelectAllStudents(checked) {
+  document.querySelectorAll("#adminContent tr[data-student-id]").forEach((row) => {
+    const id = Number(row.dataset.studentId);
+    if (!Number.isFinite(id) || id <= 0) return;
+    if (checked) AppState.adminSelectedStudentIds.add(id);
+    else AppState.adminSelectedStudentIds.delete(id);
+    const box = row.querySelector('input[type="checkbox"]');
+    if (box) box.checked = checked;
+  });
+  _syncStudentSelectionUI();
+}
+
+function _syncStudentSelectionUI() {
+  const selectedCount = AppState.adminSelectedStudentIds.size;
+  const btn = document.querySelector(".admin-students-toolbar .action-btn.del");
+  if (btn) {
+    btn.disabled = selectedCount === 0;
+    btn.textContent = selectedCount
+      ? `🗑 Delete selected (${selectedCount})`
+      : "🗑 Delete selected";
+  }
+  const pageBoxes = [...document.querySelectorAll('#adminContent tbody tr[data-student-id] input[type="checkbox"]')];
+  const header = document.querySelector('#adminContent thead .admin-select-col input[type="checkbox"]');
+  if (header && pageBoxes.length) {
+    header.checked = pageBoxes.every((b) => b.checked);
+    header.indeterminate = !header.checked && pageBoxes.some((b) => b.checked);
+  }
+}
+
+function confirmDeleteSelectedStudents() {
+  const ids = [...AppState.adminSelectedStudentIds];
+  if (!ids.length) {
+    showToast("Select at least one student first.", true);
+    return;
+  }
+  const n = ids.length;
+  confirmAction(
+    `Delete ${n} selected student${n === 1 ? "" : "s"} and all their views, clicks, and interactions? Reports and feedback stay in the inbox without their names.`,
+    () => deleteStudents(ids),
+  );
+}
+
+async function deleteStudents(ids) {
+  const cleaned = [...new Set((ids || []).map(Number).filter((id) => Number.isFinite(id) && id > 0))];
+  if (!cleaned.length) {
+    showToast("No students selected.", true);
+    return;
+  }
+  try {
+    const res = await apiRequest("/api/admin/users", { method: "DELETE", body: { ids: cleaned } });
+    cleaned.forEach((id) => AppState.adminSelectedStudentIds.delete(id));
+    if (cleaned.includes(Number(AppState.adminStudentId))) {
+      AppState.adminStudentId = null;
+      _setAdminPage("studentTimeline", 0);
+    }
+    loadStudentDirectory({ force: true });
+    renderAdminStudents();
+    const n = Number(res?.deleted) || cleaned.length;
+    showToast(`Deleted ${n} student${n === 1 ? "" : "s"}.`);
+  } catch (e) {
+    showToast(e.message, true);
+  }
+}
+
+const STUDENT_SORT_DEFAULT_ORDER = {
+  name: "asc",
+  first_seen: "desc",
+  last_seen: "desc",
+  visits: "desc",
+  clicks: "desc",
+  favorites: "desc",
+};
+
+function setStudentSort(sort) {
+  const key = String(sort || "name");
+  if (AppState.adminStudentSort === key) {
+    AppState.adminStudentOrder = AppState.adminStudentOrder === "asc" ? "desc" : "asc";
+  } else {
+    AppState.adminStudentSort = key;
+    AppState.adminStudentOrder = STUDENT_SORT_DEFAULT_ORDER[key] || "asc";
+  }
+  _setAdminPage("students", 0);
+  renderAdminStudents();
+}
+
+function _studentSortHeader(sort, label) {
+  const active = AppState.adminStudentSort === sort;
+  const arrow = active ? (AppState.adminStudentOrder === "asc" ? " ↑" : " ↓") : "";
+  const ariaSort = active
+    ? (AppState.adminStudentOrder === "asc" ? "ascending" : "descending")
+    : "none";
+  return `<th aria-sort="${ariaSort}">
+    <button type="button" class="admin-sort-btn${active ? " active" : ""}" onclick="setStudentSort('${sort}')">${esc(label)}${arrow}</button>
+  </th>`;
+}
+
 async function renderAdminStudents() {
   if (AppState.adminStudentId) {
     renderAdminStudentDetail();
@@ -1239,9 +1453,14 @@ async function renderAdminStudents() {
   const q = AppState.adminSearch.trim();
   const page = AdminPager.students.page;
   const offset = page * ADMIN_PAGE_SIZE;
+  const sort = AppState.adminStudentSort || "name";
+  const order = AppState.adminStudentOrder || "asc";
   try {
     const studentsPage = _pageSlice(
-      (await sb(`users?limit=${ADMIN_PAGE_FETCH}&offset=${offset}&q=${encodeURIComponent(q)}`, "GET")) || [],
+      (await sb(
+        `users?limit=${ADMIN_PAGE_FETCH}&offset=${offset}&q=${encodeURIComponent(q)}&sort=${encodeURIComponent(sort)}&order=${encodeURIComponent(order)}`,
+        "GET",
+      )) || [],
     );
     const students = studentsPage.items;
     if (page > 0 && students.length === 0) {
@@ -1252,22 +1471,48 @@ async function renderAdminStudents() {
     AdminPager.students.hasNext = studentsPage.hasNext;
     rememberStudents(students);
 
-    let html = `<input class="admin-search" placeholder="🔍 Search students…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;_setAdminPage('students',0);renderAdminStudents()"/>`;
+    const selected = AppState.adminSelectedStudentIds;
+    const pageIds = students.map((u) => Number(u.id));
+    const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+    const selectedCount = selected.size;
+
+    let html = `<div class="admin-students-toolbar">
+      <input class="admin-search" placeholder="🔍 Search students…" value="${esc(AppState.adminSearch)}" oninput="AppState.adminSearch=this.value;AppState.adminSelectedStudentIds=new Set();_setAdminPage('students',0);renderAdminStudents()"/>
+      <button type="button" class="action-btn del" ${selectedCount ? "" : "disabled"} onclick="confirmDeleteSelectedStudents()" title="Delete selected students and their activity">
+        🗑 Delete selected${selectedCount ? ` (${selectedCount})` : ""}
+      </button>
+    </div>`;
     if (!students.length) {
       const emptyMsg = q ? `No student matching "${esc(q)}" found.` : "No students yet.";
       document.getElementById("adminContent").innerHTML = html + `<div class="empty">${emptyMsg}</div>`;
       return;
     }
 
-    html += `<table class="admin-table"><thead><tr><th>Student</th><th>First seen</th><th>Last seen</th><th>Visits</th><th>Clicks</th><th>Actions</th></tr></thead><tbody>`;
+    html += `<table class="admin-table admin-students-table"><thead><tr>
+      <th class="admin-select-col"><input type="checkbox" aria-label="Select all on this page" ${allPageSelected ? "checked" : ""} onchange="toggleSelectAllStudents(this.checked)"/></th>
+      ${_studentSortHeader("name", "Student")}
+      ${_studentSortHeader("first_seen", "First seen")}
+      ${_studentSortHeader("last_seen", "Last seen")}
+      ${_studentSortHeader("visits", "Visits")}
+      ${_studentSortHeader("clicks", "Clicks")}
+      ${_studentSortHeader("favorites", "Favorites")}
+      <th>Actions</th>
+    </tr></thead><tbody>`;
     students.forEach((u) => {
-      html += `<tr class="admin-row" data-student-id="${Number(u.id)}">
+      const id = Number(u.id);
+      const checked = selected.has(id) ? "checked" : "";
+      html += `<tr class="admin-row" data-student-id="${id}">
+        ${adminCell("admin-select-col", "Select", `<input type="checkbox" aria-label="Select ${esc(studentHandleOf(u))}" ${checked} onchange="toggleStudentSelection(${id}, this.checked)"/>`)}
         ${adminCell("admin-pri", "Student", `<strong>${esc(studentHandleOf(u))}</strong>`)}
         ${adminCell("admin-detail", "First seen", esc(fmtDateTime(u.created_at)))}
         ${adminCell("admin-sec", "Last seen", esc(fmtDateTime(u.last_seen_at)))}
         ${adminCell("admin-meta", "Visits", String(_num(u.visit_count)))}
         ${adminCell("admin-detail", "Clicks", String(_num(u.click_count)))}
-        ${adminCell("admin-actions action-btns", "Actions", `<button class="action-btn" onclick="openAdminStudent(${Number(u.id)})">👤 History</button>`)}
+        ${adminCell("admin-detail", "Favorites", String(_num(u.favorite_count)))}
+        ${adminCell("admin-actions action-btns", "Actions", `
+          <button class="action-btn" onclick="openAdminStudent(${id})">👤 History</button>
+          <button class="action-btn del" onclick="confirmAction('Delete this student and all their views, clicks, and interactions? Reports and feedback stay in the inbox without their name.',()=>deleteStudents([${id}]))">🗑 Delete</button>
+        `)}
       </tr>`;
     });
     html += "</tbody></table>";
@@ -1319,7 +1564,10 @@ async function renderAdminStudentDetail() {
       : `<tr class="admin-table-empty"><td colspan="3" style="color:var(--muted);">No activity on this page.</td></tr>`;
 
     document.getElementById("adminContent").innerHTML = `
-      <button class="action-btn" style="margin-bottom:16px;" onclick="closeAdminStudent()">← All students</button>
+      <div class="admin-students-toolbar" style="margin-bottom:16px;">
+        <button class="action-btn" onclick="closeAdminStudent()">← All students</button>
+        <button class="action-btn del" onclick="confirmAction('Delete this student and all their views, clicks, and interactions? Reports and feedback stay in the inbox without their name.',()=>deleteStudents([${id}]))">🗑 Delete student</button>
+      </div>
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-val" style="font-size:1.2rem;word-break:break-all;">${esc(studentHandleOf(user))}</div><div class="stat-label">Student</div></div>
         <div class="stat-card"><div class="stat-val" style="font-size:1rem;">${esc(fmtDateTime(user.created_at))}</div><div class="stat-label">Signed up</div></div>
@@ -1740,13 +1988,18 @@ async function deleteCourse(id, placementId) {
     showToast("Course removed from this program.");
   } catch (e) { showToast(e.message, true); }
 }
-async function toggleOptional(id, current) {
+async function toggleOptional(id, current, placementId) {
+  const pid = Number(placementId);
+  if (!Number.isFinite(pid) || pid <= 0) {
+    showToast("Missing placement for this course offering.", true);
+    return;
+  }
   try {
-    await sb(`courses?id=eq.${id}`, "PATCH", { is_optional: !current });
+    await sb(`courses?id=eq.${id}`, "PATCH", { is_optional: !current, placement_id: pid });
     _clearCache();
     loadAll();
     renderAdminCourses();
-    showToast(current ? "Marked as required." : "Marked as optional.");
+    showToast(current ? "Marked as required for this program." : "Marked as optional for this program.");
   } catch (e) { showToast(e.message, true); }
 }
 function confirmDeleteLink(linkId, _courseId) {
@@ -1813,7 +2066,7 @@ function bindAdminMobile() {
   const root = document.getElementById("view-admin");
   if (root && !root.dataset.mobileBound) {
     root.addEventListener("click", (e) => {
-      if (e.target.closest(".action-btn, a, select, input, .btn")) return;
+      if (e.target.closest(".action-btn, .admin-sort-btn, a, select, input, .btn, button")) return;
 
       const longText = e.target.closest(".admin-long-text:not(.is-empty)");
       if (longText && !isMobileView()) {
@@ -1863,6 +2116,7 @@ Object.assign(window, {
   renderAdminContributions,
   renderAdminAnalytics,
   analyticsToggleExpand,
+  openAnalyticsActors,
   analyticsPaintLocal,
   analyticsSelectRange,
   renderAdminCourses,
@@ -1883,6 +2137,11 @@ Object.assign(window, {
   deleteContrib,
   openAdminStudent,
   closeAdminStudent,
+  toggleStudentSelection,
+  toggleSelectAllStudents,
+  confirmDeleteSelectedStudents,
+  deleteStudents,
+  setStudentSort,
   renderAdminStudents,
   renderAdminStudentDetail,
   renderAdminServices,
@@ -1908,3 +2167,4 @@ export {
   renderAdminContributions,
   renderAdminServices,
 };
+

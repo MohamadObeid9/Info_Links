@@ -9,6 +9,7 @@ import (
 
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
+	"infolinks-backend/internal/repository"
 )
 
 type fakeUserRepo struct {
@@ -52,8 +53,14 @@ type fakeUserRepo struct {
 	favoriteErr      error
 
 	studentsCalls  int
+	studentsParams repository.StudentListParams
 	studentsResult []models.UserListItem
 	studentsErr    error
+
+	deleteCalls  int
+	deleteIDs    []int
+	deleteResult int64
+	deleteErr    error
 
 	activityCalls  int
 	activityResult []models.UserActivityEvent
@@ -138,12 +145,22 @@ func (f *fakeUserRepo) RemoveFavorite(ctx context.Context, userID int, courseID 
 	return f.favoriteErr
 }
 
-func (f *fakeUserRepo) ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error) {
+func (f *fakeUserRepo) ListStudents(ctx context.Context, params repository.StudentListParams) ([]models.UserListItem, error) {
 	f.studentsCalls++
+	f.studentsParams = params
 	if f.studentsErr != nil {
 		return nil, f.studentsErr
 	}
 	return f.studentsResult, nil
+}
+
+func (f *fakeUserRepo) DeleteStudents(ctx context.Context, ids []int) (int64, error) {
+	f.deleteCalls++
+	f.deleteIDs = append([]int{}, ids...)
+	if f.deleteErr != nil {
+		return 0, f.deleteErr
+	}
+	return f.deleteResult, nil
 }
 
 func (f *fakeUserRepo) ListActivity(ctx context.Context, userID int, limit int, offset int) ([]models.UserActivityEvent, error) {
@@ -595,9 +612,12 @@ func TestUserService_ListStudents(t *testing.T) {
 		name       string
 		limit      int
 		offset     int
+		sort       string
+		order      string
 		repoResult []models.UserListItem
 		repoErr    error
 		wantCalls  int
+		wantParams repository.StudentListParams
 		want       []models.UserListItem
 		wantErr    error
 	}{
@@ -606,6 +626,17 @@ func TestUserService_ListStudents(t *testing.T) {
 			limit:      25,
 			repoResult: students,
 			wantCalls:  1,
+			wantParams: repository.StudentListParams{Limit: 25, Offset: 0, Q: "moh", Sort: "name", Order: "asc"},
+			want:       students,
+		},
+		{
+			name:       "normalizes sort and order",
+			limit:      25,
+			sort:       " Visits ",
+			order:      "DESC",
+			repoResult: students,
+			wantCalls:  1,
+			wantParams: repository.StudentListParams{Limit: 25, Offset: 0, Q: "moh", Sort: "visits", Order: "desc"},
 			want:       students,
 		},
 		{
@@ -620,10 +651,23 @@ func TestUserService_ListStudents(t *testing.T) {
 			wantErr: errs.ErrInvalidParams,
 		},
 		{
+			name:    "rejects an unknown sort",
+			limit:   25,
+			sort:    "email",
+			wantErr: errs.ErrUserInvalidSort,
+		},
+		{
+			name:    "rejects an unknown order",
+			limit:   25,
+			order:   "sideways",
+			wantErr: errs.ErrUserInvalidOrder,
+		},
+		{
 			name:      "wraps a repo error",
 			limit:     25,
 			repoErr:   errs.ErrDatabaseDown,
 			wantCalls: 1,
+			wantParams: repository.StudentListParams{Limit: 25, Offset: 0, Q: "moh", Sort: "name", Order: "asc"},
 			wantErr:   errs.ErrDatabaseDown,
 		},
 	}
@@ -633,7 +677,7 @@ func TestUserService_ListStudents(t *testing.T) {
 			repo := &fakeUserRepo{studentsResult: tt.repoResult, studentsErr: tt.repoErr}
 			svc := NewUserService(repo)
 
-			got, err := svc.ListStudents(context.Background(), tt.limit, tt.offset, "moh")
+			got, err := svc.ListStudents(context.Background(), tt.limit, tt.offset, "moh", tt.sort, tt.order)
 
 			if repo.studentsCalls != tt.wantCalls {
 				t.Fatalf("repo calls = %d, want %d", repo.studentsCalls, tt.wantCalls)
@@ -647,8 +691,100 @@ func TestUserService_ListStudents(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ListStudents: %v", err)
 			}
+			if !reflect.DeepEqual(repo.studentsParams, tt.wantParams) {
+				t.Fatalf("params = %+v, want %+v", repo.studentsParams, tt.wantParams)
+			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("got %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUserService_DeleteStudents(t *testing.T) {
+	tooMany := make([]int, 101)
+	for i := range tooMany {
+		tooMany[i] = i + 1
+	}
+
+	tests := []struct {
+		name       string
+		ids        []int
+		repoResult int64
+		repoErr    error
+		wantCalls  int
+		wantIDs    []int
+		want       int64
+		wantErr    error
+	}{
+		{
+			name:       "deletes unique positive ids",
+			ids:        []int{3, 1, 3, 2},
+			repoResult: 3,
+			wantCalls:  1,
+			wantIDs:    []int{3, 1, 2},
+			want:       3,
+		},
+		{
+			name:    "rejects empty ids",
+			ids:     nil,
+			wantErr: errs.ErrUserInvalidID,
+		},
+		{
+			name:    "rejects non-positive ids",
+			ids:     []int{1, 0},
+			wantErr: errs.ErrUserInvalidID,
+		},
+		{
+			name:    "rejects more than 100 ids",
+			ids:     tooMany,
+			wantErr: errs.ErrInvalidParams,
+		},
+		{
+			name:       "not found when repo deletes nothing",
+			ids:        []int{9},
+			repoResult: 0,
+			wantCalls:  1,
+			wantIDs:    []int{9},
+			wantErr:    errs.ErrUserNotFound,
+		},
+		{
+			name:      "wraps a repo error",
+			ids:       []int{1},
+			repoErr:   errs.ErrDatabaseDown,
+			wantCalls: 1,
+			wantIDs:   []int{1},
+			wantErr:   errs.ErrDatabaseDown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &fakeUserRepo{deleteResult: tt.repoResult, deleteErr: tt.repoErr}
+			svc := NewUserService(repo)
+
+			got, err := svc.DeleteStudents(context.Background(), tt.ids)
+
+			if repo.deleteCalls != tt.wantCalls {
+				t.Fatalf("repo calls = %d, want %d", repo.deleteCalls, tt.wantCalls)
+			}
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Fatalf("got %v, want %v", err, tt.wantErr)
+				}
+				if tt.wantIDs != nil && !reflect.DeepEqual(repo.deleteIDs, tt.wantIDs) {
+					t.Fatalf("repo ids = %v, want %v", repo.deleteIDs, tt.wantIDs)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("DeleteStudents: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("deleted = %d, want %d", got, tt.want)
+			}
+			if !reflect.DeepEqual(repo.deleteIDs, tt.wantIDs) {
+				t.Fatalf("repo ids = %v, want %v", repo.deleteIDs, tt.wantIDs)
 			}
 		})
 	}

@@ -26,7 +26,7 @@ function executeModalAction() {
 }
 
 // ── confirmLink: Fixed XSS — URL stored in dataset, not inline onclick ─────
-function confirmLink(linkId, rawUrl, linkKind = "link") {
+function confirmLink(linkId, rawUrl, linkKind = "link", programId = null) {
   // Resolve URL safely from dataset rather than injecting into onclick attr
   let url = rawUrl;
   if (!url && linkId) {
@@ -87,7 +87,7 @@ function confirmLink(linkId, rawUrl, linkKind = "link") {
   // Attach click handler safely — no inline eval
   // Track click only after the user confirms they want to open the link
   document.getElementById("openLinkBtn").addEventListener("click", () => {
-    if (linkId) trackLinkClick(linkId, linkKind);
+    if (linkId) trackLinkClick(linkId, linkKind, programId);
     closeModal();
     window.open(parsed.href, "_blank", "noopener,noreferrer");
   });
@@ -685,6 +685,7 @@ document.addEventListener("keydown", _trapModalFocus);
 export {
   openModal,
   closeModal,
+  confirmAction,
   _linkTypeOptions,
   _contentTypeCheckboxes,
   _readContentTypeCheckboxes,

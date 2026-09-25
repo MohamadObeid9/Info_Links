@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"infolinks-backend/internal/errs"
@@ -83,15 +85,39 @@ func (s *AnalyticsService) TrackSearch(ctx context.Context, userID int, query st
 	return nil
 }
 
-func (s *AnalyticsService) TrackBrowse(ctx context.Context, userID int, step string) error {
-	step = strings.TrimSpace(step)
-	if step != "year" && step != "list" {
-		return errs.ErrAnalyticsInvalidBrowseStep
+func (s *AnalyticsService) ListActors(ctx context.Context, kind, idStr, rangeStr string) (models.AnalyticsActorsResult, error) {
+	kind = strings.TrimSpace(kind)
+	id, err := strconv.Atoi(strings.TrimSpace(idStr))
+	if err != nil || id <= 0 {
+		return models.AnalyticsActorsResult{}, errs.ErrAnalyticsInvalidActorID
 	}
-	if err := s.repo.InsertBrowse(ctx, userID, step); err != nil {
-		return fmt.Errorf("track browse: %w", err)
+
+	since, err := parseActorsSince(kind, rangeStr)
+	if err != nil {
+		return models.AnalyticsActorsResult{}, err
 	}
-	return nil
+
+	result, err := s.repo.ListActors(ctx, kind, id, since)
+	if err != nil {
+		return models.AnalyticsActorsResult{}, fmt.Errorf("list actors: %w", err)
+	}
+	return result, nil
+}
+
+func parseActorsSince(kind, rangeStr string) (time.Time, error) {
+	if kind == "favorite" {
+		return time.Time{}, nil
+	}
+	switch strings.TrimSpace(rangeStr) {
+	case "", "today":
+		now := time.Now()
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()), nil
+	case "7", "30", "90":
+		days, _ := strconv.Atoi(strings.TrimSpace(rangeStr))
+		return time.Now().AddDate(0, 0, -days), nil
+	default:
+		return time.Time{}, errs.ErrAnalyticsInvalidRange
+	}
 }
 
 func parseAnalyticsRange(rangeStr string) (int, error) {

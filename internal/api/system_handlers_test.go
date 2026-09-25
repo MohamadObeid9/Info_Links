@@ -123,7 +123,6 @@ func TestHandleApiRoot(t *testing.T) {
 			map[string]any{"path": "/api/page_views", "method": "POST", "description": "Record a page view (analytics)."},
 			map[string]any{"path": "/api/link_clicks", "method": "POST", "description": "Record a link click (analytics)."},
 			map[string]any{"path": "/api/search_events", "method": "POST", "description": "Record a search query (analytics)."},
-			map[string]any{"path": "/api/browse_events", "method": "POST", "description": "Record browse depth (analytics)."},
 			map[string]any{"path": "/api/contributions", "method": "POST", "description": "Submit a user contribution."},
 		},
 		"admin_endpoints": []any{
@@ -135,6 +134,8 @@ func TestHandleApiRoot(t *testing.T) {
 			map[string]any{"path": "/api/admin/extra_sections", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra sections."},
 			map[string]any{"path": "/api/admin/extra_links", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra links."},
 			map[string]any{"path": "/api/admin/analytics/summary", "method": "GET", "description": "Aggregated unique-user analytics."},
+			map[string]any{"path": "/api/admin/analytics/actors", "method": "GET", "description": "Who clicked or favorited a link, course, or service."},
+			map[string]any{"path": "/api/admin/users", "method": "GET/DELETE", "description": "List or delete registered students (cascades analytics)."},
 			map[string]any{"path": "/api/admin/page_views", "method": "GET", "description": "View analytics (page views)."},
 			map[string]any{"path": "/api/admin/link_clicks", "method": "GET", "description": "View analytics (link clicks)."},
 		},

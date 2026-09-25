@@ -21,9 +21,19 @@ type UserRepository interface {
 	GetByCredentials(ctx context.Context, u models.User) (models.User, error)
 	AddFavorite(ctx context.Context, userID int, courseID int) error
 	RemoveFavorite(ctx context.Context, userID int, courseID int) error
-	ListStudents(ctx context.Context, limit int, offset int, q string) ([]models.UserListItem, error)
+	ListStudents(ctx context.Context, params StudentListParams) ([]models.UserListItem, error)
+	DeleteStudents(ctx context.Context, ids []int) (int64, error)
 	ListActivity(ctx context.Context, userID int, limit int, offset int) ([]models.UserActivityEvent, error)
 	GetLastDeviceType(ctx context.Context, userID int) (string, error)
+}
+
+// StudentListParams is the admin students list filter, sort, and page.
+type StudentListParams struct {
+	Limit  int
+	Offset int
+	Q      string
+	Sort   string // name, first_seen, last_seen, visits, clicks, favorites
+	Order  string // asc or desc
 }
 
 type AnalyticsSummaryParams struct {
@@ -35,8 +45,8 @@ type AnalyticsSummaryParams struct {
 
 type AnalyticsRepository interface {
 	GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error)
+	ListActors(ctx context.Context, kind string, id int, since time.Time) (models.AnalyticsActorsResult, error)
 	InsertSearch(ctx context.Context, userID int, query string) error
-	InsertBrowse(ctx context.Context, userID int, step string) error
 }
 
 type SEORepository interface {

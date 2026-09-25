@@ -97,13 +97,17 @@ func (s *CourseService) Update(ctx context.Context, patch models.CoursePatch, id
 		}
 	}
 	if patch.IsOptional != nil {
+		if merged.PlacementID <= 0 {
+			return errs.ErrCourseInvalidPlacementID
+		}
 		merged.IsOptional = *patch.IsOptional
+		merged.TouchOptional = true
 	}
 
 	if merged.Name == "" || merged.Code == "" {
 		return errs.ErrCourseCodeAndNameRequired
 	}
-	if merged.PlacementID > 0 && merged.SemesterID <= 0 {
+	if merged.PlacementID > 0 && merged.SemesterID <= 0 && !merged.TouchOptional {
 		return errs.ErrCourseInvalidSemestreID
 	}
 

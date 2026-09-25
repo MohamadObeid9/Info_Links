@@ -95,10 +95,10 @@ func TestCourseRepository_Create(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectQuery(findCourseIDByCodeQuery).WithArgs(course.Code).WillReturnError(sql.ErrNoRows)
 		mock.ExpectQuery(insertCanonicalCourseQuery).
-			WithArgs(course.Name, course.Code, course.IsOptional).
+			WithArgs(course.Name, course.Code).
 			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(12))
 		mock.ExpectExec(insertCoursePlacementQuery).
-			WithArgs(12, course.SemesterID, course.DisplayOrder).
+			WithArgs(12, course.SemesterID, course.DisplayOrder, course.IsOptional).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
 
@@ -112,7 +112,7 @@ func TestCourseRepository_Create(t *testing.T) {
 		mock.ExpectQuery(findCourseIDByCodeQuery).WithArgs(course.Code).
 			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(12))
 		mock.ExpectExec(insertCoursePlacementQuery).
-			WithArgs(12, course.SemesterID, course.DisplayOrder).
+			WithArgs(12, course.SemesterID, course.DisplayOrder, course.IsOptional).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 		mock.ExpectCommit()
 
@@ -125,7 +125,7 @@ func TestCourseRepository_Create(t *testing.T) {
 		mock.ExpectBegin()
 		mock.ExpectQuery(findCourseIDByCodeQuery).WithArgs(course.Code).WillReturnError(sql.ErrNoRows)
 		mock.ExpectQuery(insertCanonicalCourseQuery).
-			WithArgs(course.Name, course.Code, course.IsOptional).
+			WithArgs(course.Name, course.Code).
 			WillReturnError(errs.ErrDatabaseDown)
 		mock.ExpectRollback()
 
@@ -216,6 +216,7 @@ func TestCourseRepository_Update(t *testing.T) {
 		resultErr    error
 		rowsAffected int64
 		err          error
+		wantOptional bool
 	}{
 		{
 			name:         "course not found",
@@ -239,17 +240,30 @@ func TestCourseRepository_Update(t *testing.T) {
 			err:       errs.ErrDatabaseDown,
 		},
 		{
-			name:         "accept valid course",
+			name:         "accept valid course name/code only",
 			id:           10,
 			course:       models.Course{Name: "Reseaux", Code: "NFA009", IsOptional: true, SemesterID: 3},
 			rowsAffected: 1,
+		},
+		{
+			name: "updates placement optional flag",
+			id:   10,
+			course: models.Course{
+				Name:          "Reseaux",
+				Code:          "NFA009",
+				IsOptional:    true,
+				PlacementID:   9,
+				TouchOptional: true,
+			},
+			rowsAffected: 1,
+			wantOptional: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo, mock := newTestCourseRepo(t)
 			exp := mock.ExpectExec(updateCourseQuery).
-				WithArgs(tt.course.Name, tt.course.Code, tt.course.IsOptional, tt.id)
+				WithArgs(tt.course.Name, tt.course.Code, tt.id)
 			switch {
 			case tt.execErr != nil:
 				exp.WillReturnError(tt.execErr)
@@ -257,6 +271,11 @@ func TestCourseRepository_Update(t *testing.T) {
 				exp.WillReturnResult(sqlmock.NewErrorResult(tt.resultErr))
 			default:
 				exp.WillReturnResult(sqlmock.NewResult(0, tt.rowsAffected))
+			}
+			if tt.wantOptional {
+				mock.ExpectExec(updateCoursePlacementOptionalQuery).
+					WithArgs(tt.course.IsOptional, tt.course.PlacementID, tt.id).
+					WillReturnResult(sqlmock.NewResult(0, 1))
 			}
 
 			err := repo.Update(context.Background(), tt.course, tt.id)
