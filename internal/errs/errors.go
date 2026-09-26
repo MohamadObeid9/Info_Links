@@ -16,10 +16,10 @@ var (
 
 // Analytics errors
 var (
-	ErrAnalyticsInvalidRange        = errors.New("range must be 7, 30 or 90")
+	ErrAnalyticsInvalidRange        = errors.New("range must be 7, 30, 90, or all")
 	ErrAnalyticsInvalidVisitorsSort = errors.New("visitors_sort must be clicks or name")
 	ErrAnalyticsInvalidSearchQuery  = errors.New("search query is required")
-	ErrAnalyticsInvalidActorKind    = errors.New("kind must be link, extra_link, course, extra_section, service, or favorite")
+	ErrAnalyticsInvalidActorKind    = errors.New("kind must be link, extra_link, course, extra_section, service, favorite, search, or device")
 	ErrAnalyticsInvalidActorID      = errors.New("invalid actor target id")
 )
 

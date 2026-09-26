@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"infolinks-backend/internal/errs"
@@ -23,7 +24,8 @@ func NewPostgresAnalyticsRepository(db *sql.DB) AnalyticsRepository {
 func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error) {
 	var summary models.AnalyticsSummary
 
-	if err := r.db.QueryRowContext(ctx, analyticsCountsQuery, params.Days).Scan(
+	countsQuery, countsArgs := analyticsDaysQuery(analyticsCountsQuery, analyticsCountsAllTimeQuery, params.Days)
+	if err := r.db.QueryRowContext(ctx, countsQuery, countsArgs...).Scan(
 		&summary.TotalStudents,
 		&summary.StudentsGained7d,
 		&summary.StudentsGained30d,
@@ -46,6 +48,11 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 		&summary.Inbox.Contributions,
 		&summary.Inbox.Feedback,
 		&summary.ActiveRegisteredInRange,
+		&summary.AllTimeVisitors,
+		&summary.CourseLinks,
+		&summary.ExtraLinks,
+		&summary.CoursesWithLinks,
+		&summary.TotalCourses,
 	); err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics counts: %w", err)
 	}
@@ -65,13 +72,15 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	}
 	summary.DailyRoster = dailyRoster
 
-	topLinks, err := r.topLinks(ctx, analyticsTopLinksQuery, params.Days)
+	topLinksQuery, topLinksArgs := analyticsDaysQuery(analyticsTopLinksQuery, analyticsTopLinksAllTimeQuery, params.Days)
+	topLinks, err := r.topLinks(ctx, topLinksQuery, topLinksArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, err
 	}
 	summary.TopLinks = topLinks
 
-	topUsers, err := r.userClicks(ctx, analyticsTopUsersQuery, params.Days)
+	topUsersQuery, topUsersArgs := analyticsDaysQuery(analyticsTopUsersQuery, analyticsTopUsersAllTimeQuery, params.Days)
+	topUsers, err := r.userClicks(ctx, topUsersQuery, topUsersArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics top users: %w", err)
 	}
@@ -95,25 +104,29 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	}
 	summary.NewStudentsToday = newStudentsToday
 
-	topCourses, err := r.courseDemand(ctx, analyticsTopCoursesQuery, params.Days)
+	topCoursesQuery, topCoursesArgs := analyticsDaysQuery(analyticsTopCoursesQuery, analyticsTopCoursesAllTimeQuery, params.Days)
+	topCourses, err := r.courseDemand(ctx, topCoursesQuery, topCoursesArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics top courses: %w", err)
 	}
 	summary.TopCourses = topCourses
 
-	topServices, err := r.serviceDemand(ctx, analyticsTopServicesQuery, params.Days)
+	topServicesQuery, topServicesArgs := analyticsDaysQuery(analyticsTopServicesQuery, analyticsTopServicesAllTimeQuery, params.Days)
+	topServices, err := r.serviceDemand(ctx, topServicesQuery, topServicesArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics top services: %w", err)
 	}
 	summary.TopServices = topServices
 
-	zeroCourses, err := r.courseDemand(ctx, analyticsZeroClickCoursesQuery, params.Days)
+	zeroCoursesQuery, zeroCoursesArgs := analyticsDaysQuery(analyticsZeroClickCoursesQuery, analyticsZeroClickCoursesAllTimeQuery, params.Days)
+	zeroCourses, err := r.courseDemand(ctx, zeroCoursesQuery, zeroCoursesArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics zero-click courses: %w", err)
 	}
 	summary.ZeroClickCourses = zeroCourses
 
-	zeroServices, err := r.serviceDemand(ctx, analyticsZeroClickServicesQuery, params.Days)
+	zeroServicesQuery, zeroServicesArgs := analyticsDaysQuery(analyticsZeroClickServicesQuery, analyticsZeroClickServicesAllTimeQuery, params.Days)
+	zeroServices, err := r.serviceDemand(ctx, zeroServicesQuery, zeroServicesArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics zero-click services: %w", err)
 	}
@@ -131,13 +144,15 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	}
 	summary.TopFavorites = topFavorites
 
-	visitHeatmap, err := r.heatmap(ctx, analyticsVisitHeatmapQuery, params.Days)
+	visitHeatmapQuery, visitHeatmapArgs := analyticsDaysQuery(analyticsVisitHeatmapQuery, analyticsVisitHeatmapAllTimeQuery, params.Days)
+	visitHeatmap, err := r.heatmap(ctx, visitHeatmapQuery, visitHeatmapArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics visit heatmap: %w", err)
 	}
 	summary.VisitHeatmap = visitHeatmap
 
-	clickHeatmap, err := r.heatmap(ctx, analyticsClickHeatmapQuery, params.Days)
+	clickHeatmapQuery, clickHeatmapArgs := analyticsDaysQuery(analyticsClickHeatmapQuery, analyticsClickHeatmapAllTimeQuery, params.Days)
+	clickHeatmap, err := r.heatmap(ctx, clickHeatmapQuery, clickHeatmapArgs...)
 	if err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics click heatmap: %w", err)
 	}
@@ -152,6 +167,15 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 	return summary, nil
 }
 
+// analyticsDaysQuery picks the ranged query (with $1 = days) or the all-time
+// variant when Days==0. All-time queries omit day filters entirely.
+func analyticsDaysQuery(ranged, allTime string, days int) (string, []any) {
+	if days == 0 {
+		return allTime, nil
+	}
+	return ranged, []any{days}
+}
+
 func (r *postgresAnalyticsRepository) InsertSearch(ctx context.Context, userID int, query string) error {
 	if _, err := r.db.ExecContext(ctx, insertSearchEventQuery, userID, query); err != nil {
 		return fmt.Errorf("insert search event: %w", err)
@@ -159,8 +183,8 @@ func (r *postgresAnalyticsRepository) InsertSearch(ctx context.Context, userID i
 	return nil
 }
 
-func (r *postgresAnalyticsRepository) ListActors(ctx context.Context, kind string, id int, since time.Time) (models.AnalyticsActorsResult, error) {
-	query, args, err := analyticsActorsQuery(kind, id, since)
+func (r *postgresAnalyticsRepository) ListActors(ctx context.Context, kind, key string, since time.Time) (models.AnalyticsActorsResult, error) {
+	query, args, err := analyticsActorsQuery(kind, key, since)
 	if err != nil {
 		return models.AnalyticsActorsResult{}, err
 	}
@@ -179,30 +203,55 @@ func (r *postgresAnalyticsRepository) ListActors(ctx context.Context, kind strin
 	for _, p := range people {
 		total += p.Clicks
 	}
-	return models.AnalyticsActorsResult{Kind: kind, ID: id, Total: total, People: people}, nil
+	result := models.AnalyticsActorsResult{Kind: kind, Key: key, Total: total, People: people}
+	if id, err := strconv.Atoi(key); err == nil && id > 0 && kind != "search" && kind != "device" {
+		result.ID = id
+	}
+	return result, nil
 }
 
-func analyticsActorsQuery(kind string, id int, since time.Time) (string, []any, error) {
+func analyticsActorsQuery(kind, key string, since time.Time) (string, []any, error) {
 	switch kind {
-	case "link":
-		return analyticsActorsLinkQuery, []any{id, since}, nil
-	case "extra_link":
-		return analyticsActorsExtraLinkQuery, []any{id, since}, nil
-	case "course":
-		return analyticsActorsCourseQuery, []any{id, since}, nil
-	case "extra_section":
-		return analyticsActorsExtraSectionQuery, []any{id, since}, nil
-	case "service":
-		return analyticsActorsServiceQuery, []any{id, since}, nil
-	case "favorite":
-		return analyticsActorsFavoriteQuery, []any{id}, nil
-	default:
-		return "", nil, errs.ErrAnalyticsInvalidActorKind
+	case "link", "extra_link", "course", "extra_section", "service", "favorite":
+		id, err := strconv.Atoi(key)
+		if err != nil || id <= 0 {
+			return "", nil, errs.ErrAnalyticsInvalidActorID
+		}
+		switch kind {
+		case "link":
+			return analyticsActorsLinkQuery, []any{id, since}, nil
+		case "extra_link":
+			return analyticsActorsExtraLinkQuery, []any{id, since}, nil
+		case "course":
+			return analyticsActorsCourseQuery, []any{id, since}, nil
+		case "extra_section":
+			return analyticsActorsExtraSectionQuery, []any{id, since}, nil
+		case "service":
+			return analyticsActorsServiceQuery, []any{id, since}, nil
+		case "favorite":
+			return analyticsActorsFavoriteQuery, []any{id}, nil
+		}
+	case "search":
+		if key == "" {
+			return "", nil, errs.ErrAnalyticsInvalidActorID
+		}
+		return analyticsActorsSearchQuery, []any{key, since}, nil
+	case "device":
+		switch key {
+		case "phone", "laptop":
+			return analyticsActorsDeviceQuery, []any{key, since}, nil
+		case "both":
+			return analyticsActorsDeviceBothQuery, []any{since}, nil
+		default:
+			return "", nil, errs.ErrAnalyticsInvalidActorID
+		}
 	}
+	return "", nil, errs.ErrAnalyticsInvalidActorKind
 }
 
 func (r *postgresAnalyticsRepository) dailyUniqueVisits(ctx context.Context, days int) ([]models.DailyUniqueDay, error) {
-	rows, err := r.db.QueryContext(ctx, analyticsDailyUniqueVisitsQuery, days)
+	query, args := analyticsDaysQuery(analyticsDailyUniqueVisitsQuery, analyticsWeeklyUniqueVisitsQuery, days)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("analytics daily unique visits query: %w", err)
 	}
@@ -223,7 +272,8 @@ func (r *postgresAnalyticsRepository) dailyUniqueVisits(ctx context.Context, day
 }
 
 func (r *postgresAnalyticsRepository) dailyRoster(ctx context.Context, days int) ([]models.DailyRosterDay, error) {
-	rows, err := r.db.QueryContext(ctx, analyticsDailyRosterQuery, days)
+	query, args := analyticsDaysQuery(analyticsDailyRosterQuery, analyticsWeeklyRosterQuery, days)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("analytics daily roster query: %w", err)
 	}
@@ -394,7 +444,8 @@ func (r *postgresAnalyticsRepository) serviceDemand(ctx context.Context, query s
 }
 
 func (r *postgresAnalyticsRepository) deadLinks(ctx context.Context, days int) ([]models.DeadLink, error) {
-	rows, err := r.db.QueryContext(ctx, analyticsZeroClickLinksQuery, days)
+	query, args := analyticsDaysQuery(analyticsZeroClickLinksQuery, analyticsZeroClickLinksAllTimeQuery, days)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -414,8 +465,8 @@ func (r *postgresAnalyticsRepository) deadLinks(ctx context.Context, days int) (
 	return out, nil
 }
 
-func (r *postgresAnalyticsRepository) heatmap(ctx context.Context, query string, days int) ([]models.HeatmapCell, error) {
-	rows, err := r.db.QueryContext(ctx, query, days)
+func (r *postgresAnalyticsRepository) heatmap(ctx context.Context, query string, args ...any) ([]models.HeatmapCell, error) {
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -436,7 +487,8 @@ func (r *postgresAnalyticsRepository) heatmap(ctx context.Context, query string,
 }
 
 func (r *postgresAnalyticsRepository) searchTerms(ctx context.Context, days int) ([]models.SearchTermCount, error) {
-	rows, err := r.db.QueryContext(ctx, analyticsSearchTermsQuery, days)
+	query, args := analyticsDaysQuery(analyticsSearchTermsQuery, analyticsSearchTermsAllTimeQuery, days)
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}

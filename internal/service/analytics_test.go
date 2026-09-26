@@ -24,7 +24,7 @@ type fakeAnalyticsRepo struct {
 
 	actorsCalls int
 	actorsKind  string
-	actorsID    int
+	actorsID    string
 	actorsSince time.Time
 	actors      models.AnalyticsActorsResult
 	actorsErr   error
@@ -45,10 +45,10 @@ func (f *fakeAnalyticsRepo) InsertSearch(ctx context.Context, userID int, query 
 	return f.searchErr
 }
 
-func (f *fakeAnalyticsRepo) ListActors(ctx context.Context, kind string, id int, since time.Time) (models.AnalyticsActorsResult, error) {
+func (f *fakeAnalyticsRepo) ListActors(ctx context.Context, kind, key string, since time.Time) (models.AnalyticsActorsResult, error) {
 	f.actorsCalls++
 	f.actorsKind = kind
-	f.actorsID = id
+	f.actorsID = key
 	f.actorsSince = since
 	if f.actorsErr != nil {
 		return models.AnalyticsActorsResult{}, f.actorsErr
@@ -93,6 +93,15 @@ func TestAnalyticsService_GetSummary(t *testing.T) {
 			rangeStr:  " 90 ",
 			wantCalls: 1,
 			wantDays:  90,
+			want:      summary,
+			wantLimit: defaultVisitorsLimit,
+			wantSort:  "clicks",
+		},
+		{
+			name:      "accepts all time (Days=0)",
+			rangeStr:  "all",
+			wantCalls: 1,
+			wantDays:  0,
 			want:      summary,
 			wantLimit: defaultVisitorsLimit,
 			wantSort:  "clicks",
@@ -222,17 +231,22 @@ func TestAnalyticsService_ListActors(t *testing.T) {
 		repoErr   error
 		wantCalls int
 		wantKind  string
-		wantID    int
+		wantID    string
 		wantZero  bool // favorites ignore since
 		wantErr   error
 	}{
-		{name: "link in range", kind: "link", id: "9", rangeStr: "7", wantCalls: 1, wantKind: "link", wantID: 9},
-		{name: "today start of day", kind: "course", id: "3", rangeStr: "today", wantCalls: 1, wantKind: "course", wantID: 3},
-		{name: "favorite ignores range", kind: "favorite", id: "4", rangeStr: "90", wantCalls: 1, wantKind: "favorite", wantID: 4, wantZero: true},
+		{name: "link in range", kind: "link", id: "9", rangeStr: "7", wantCalls: 1, wantKind: "link", wantID: "9"},
+		{name: "today start of day", kind: "course", id: "3", rangeStr: "today", wantCalls: 1, wantKind: "course", wantID: "3"},
+		{name: "favorite ignores range", kind: "favorite", id: "4", rangeStr: "90", wantCalls: 1, wantKind: "favorite", wantID: "4", wantZero: true},
+		{name: "all time zero since", kind: "link", id: "9", rangeStr: "all", wantCalls: 1, wantKind: "link", wantID: "9", wantZero: true},
+		{name: "search by query", kind: "search", id: "NFA035", rangeStr: "7", wantCalls: 1, wantKind: "search", wantID: "nfa035"},
+		{name: "device phone", kind: "device", id: "phone", rangeStr: "30", wantCalls: 1, wantKind: "device", wantID: "phone"},
 		{name: "rejects bad id", kind: "link", id: "0", wantErr: errs.ErrAnalyticsInvalidActorID},
-		{name: "rejects bad kind", kind: "widget", id: "1", rangeStr: "7", repoErr: errs.ErrAnalyticsInvalidActorKind, wantCalls: 1, wantKind: "widget", wantID: 1, wantErr: errs.ErrAnalyticsInvalidActorKind},
+		{name: "rejects bad search", kind: "search", id: "  ", rangeStr: "7", wantErr: errs.ErrAnalyticsInvalidActorID},
+		{name: "rejects bad device", kind: "device", id: "tablet", rangeStr: "7", wantErr: errs.ErrAnalyticsInvalidActorID},
+		{name: "rejects bad kind", kind: "widget", id: "1", rangeStr: "7", repoErr: errs.ErrAnalyticsInvalidActorKind, wantCalls: 1, wantKind: "widget", wantID: "1", wantErr: errs.ErrAnalyticsInvalidActorKind},
 		{name: "rejects bad range", kind: "link", id: "1", rangeStr: "5", wantErr: errs.ErrAnalyticsInvalidRange},
-		{name: "wraps repo error", kind: "service", id: "2", rangeStr: "30", repoErr: errs.ErrDatabaseDown, wantCalls: 1, wantKind: "service", wantID: 2, wantErr: errs.ErrDatabaseDown},
+		{name: "wraps repo error", kind: "service", id: "2", rangeStr: "30", repoErr: errs.ErrDatabaseDown, wantCalls: 1, wantKind: "service", wantID: "2", wantErr: errs.ErrDatabaseDown},
 	}
 
 	for _, tt := range tests {
@@ -253,7 +267,7 @@ func TestAnalyticsService_ListActors(t *testing.T) {
 				t.Fatalf("ListActors: %v", err)
 			}
 			if repo.actorsKind != tt.wantKind || repo.actorsID != tt.wantID {
-				t.Fatalf("repo kind/id = %s/%d, want %s/%d", repo.actorsKind, repo.actorsID, tt.wantKind, tt.wantID)
+				t.Fatalf("repo kind/id = %s/%s, want %s/%s", repo.actorsKind, repo.actorsID, tt.wantKind, tt.wantID)
 			}
 			if tt.wantZero {
 				if !repo.actorsSince.IsZero() {

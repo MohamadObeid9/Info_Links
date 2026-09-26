@@ -462,9 +462,15 @@ function _showAllList(rows, expandKey, emptyMsg, renderItem) {
 }
 
 function _analyticsActorButton(kind, id, label, range, innerHtml) {
-  const idNum = Number(id);
-  if (!kind || !Number.isFinite(idNum) || idNum <= 0) return innerHtml;
+  if (!kind) return innerHtml;
   const rangeArg = range == null || range === "" ? _analyticsRangeKey() : String(range);
+  if (kind === "search" || kind === "device") {
+    const key = String(id || "").trim();
+    if (!key) return innerHtml;
+    return `<button type="button" class="analytics-actor-btn" title="See who interacted" onclick='openAnalyticsActors(${JSON.stringify(String(kind))},${JSON.stringify(key)},${JSON.stringify(String(label || ""))},${JSON.stringify(rangeArg)})'>${innerHtml}</button>`;
+  }
+  const idNum = Number(id);
+  if (!Number.isFinite(idNum) || idNum <= 0) return innerHtml;
   return `<button type="button" class="analytics-actor-btn" title="See who interacted" onclick='openAnalyticsActors(${JSON.stringify(String(kind))},${idNum},${JSON.stringify(String(label || ""))},${JSON.stringify(rangeArg)})'>${innerHtml}</button>`;
 }
 
@@ -499,9 +505,11 @@ function _deadLinksList(rows, expandKey = null) {
 }
 
 function _searchTermsList(rows, expandKey = null) {
-  return _showAllList(rows, expandKey, "No searches tracked in this range yet.", (row) =>
-    `<li style="margin-bottom:8px;"><strong>${_num(row.count)}</strong> × <code>${esc(row.query)}</code></li>`,
-  );
+  const range = _analyticsRangeKey();
+  return _showAllList(rows, expandKey, "No searches tracked in this range yet.", (row) => {
+    const body = `<strong>${_num(row.count)}</strong> × <code>${esc(row.query)}</code>`;
+    return `<li class="analytics-actor-item" style="margin-bottom:8px;">${_analyticsActorButton("search", row.query, row.query, range, body)}</li>`;
+  });
 }
 
 function _heatmapCellStyle(n, max) {
@@ -592,6 +600,16 @@ function _formatGain(value) {
   return `+${_num(n)}`;
 }
 
+function _newStudentsTodayBadge(count) {
+  const n = Number(count) || 0;
+  if (n <= 0) return `<span class="stat-delta">0</span>`;
+  return `<span class="stat-delta">${_formatGain(n)}${n >= 50 ? "+" : ""}</span>`;
+}
+
+function _analyticsRangeLabel(range) {
+  return range === "all" ? "all time" : `${range} days`;
+}
+
 function _statsInRangeSection(summary, range) {
   const total = Number(summary.total_students) || 0;
   const gainedByRange = {
@@ -599,14 +617,15 @@ function _statsInRangeSection(summary, range) {
     30: summary.students_gained_30d,
     90: summary.students_gained_90d,
   };
-  const newStudents = Number(gainedByRange[range]) || 0;
+  const newStudents = range === "all" ? total : Number(gainedByRange[range]) || 0;
   const rosterAtStart = Math.max(0, total - newStudents);
   const active = Number(summary.active_registered_in_range) || 0;
   const newPct = _pctGrowth(newStudents, rosterAtStart);
   const activePct = _pctOfTotal(active, total);
+  const rangeLabel = _analyticsRangeLabel(range);
 
   return `<div class="chart-wrap analytics-card analytics-stats-range">
-    <div class="chart-title">📊 Stats in range (${esc(range)} days)</div>
+    <div class="chart-title">📊 Stats in range (${esc(rangeLabel)})</div>
     <div class="analytics-stats-grid">
       <div class="analytics-stat-tile">
         <div class="analytics-stat-val">${_num(newStudents)} <span class="analytics-stat-pct">(${esc(newPct)})</span></div>
@@ -625,7 +644,7 @@ function _newStudentsTodaySection(summary) {
   const expandKey = "analyticsNewStudentsExpanded";
   const expanded = Boolean(AppState[expandKey]);
   const visible = expanded ? list : list.slice(0, 12);
-  const title = `🆕 New students today${list.length ? ` <span style="color:var(--muted);font-weight:500;font-size:0.85rem;">${_num(list.length)}${list.length >= 50 ? "+" : ""}</span>` : ""}`;
+  const title = `🆕 New students today ${_newStudentsTodayBadge(list.length)}`;
 
   if (!list.length) {
     return `<div class="chart-wrap analytics-card">
@@ -691,9 +710,46 @@ function _dailyRosterSeries(daily, rangeDays) {
   return days;
 }
 
+/** Map server weekly unique-visitor buckets (all-time) without daily padding. */
+function _weeklyUniqueSeries(weekly) {
+  return (weekly || [])
+    .map((d) => {
+      const date = String(d?.day || "").slice(0, 10);
+      return date ? { date, count: Number(d.users) || 0 } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Map server weekly cumulative roster totals (all-time). */
+function _weeklyRosterSeries(weekly) {
+  const points = (weekly || [])
+    .map((d) => {
+      const date = String(d?.day || "").slice(0, 10);
+      return date ? { date, count: Number(d.total) || 0 } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  let lastKnown = 0;
+  return points.map((p) => {
+    if (p.count > 0) lastKnown = p.count;
+    return { date: p.date, count: lastKnown };
+  });
+}
+
+/** ISO date (UTC) for the Monday that starts the current week — matches Postgres date_trunc('week'). */
+function _weekStartISO(date = new Date()) {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
 function _buildBarChart(days, range, todayStr) {
   const maxCount = Math.max(...days.map((d) => d.count), 1);
-  const labelStep = range === "7" ? 1 : range === "30" ? 5 : 15;
+  const labelStep =
+    range === "7" ? 1 : range === "30" ? 5 : range === "90" ? 15 : Math.max(1, Math.ceil(days.length / 8));
 
   function fmtDay(dateStr) {
     const d = new Date(dateStr + "T00:00:00");
@@ -715,7 +771,7 @@ let _analyticsFetchGen = 0;
 const _analyticsRangeInflight = Object.create(null);
 
 function _analyticsRangeKey() {
-  return ["7", "30", "90"].includes(String(AppState.analyticsRange))
+  return ["7", "30", "90", "all"].includes(String(AppState.analyticsRange))
     ? String(AppState.analyticsRange)
     : "30";
 }
@@ -776,7 +832,7 @@ async function _fetchAnalyticsSummary(range, gen) {
 }
 
 function analyticsSelectRange(range) {
-  if (["7", "30", "90"].includes(String(range))) AppState.analyticsRange = String(range);
+  if (["7", "30", "90", "all"].includes(String(range))) AppState.analyticsRange = String(range);
   const key = _analyticsRangeKey();
   if (_analyticsRangeCache[key]) {
     analyticsPaintLocal();
@@ -797,7 +853,15 @@ function analyticsToggleExpand(key) {
 async function openAnalyticsActors(kind, id, label, range) {
   const title = label || "Who interacted";
   const countNoun =
-    kind === "favorite" ? "students" : kind === "service" ? "opens" : "clicks";
+    kind === "favorite"
+      ? "students"
+      : kind === "service"
+        ? "opens"
+        : kind === "search"
+          ? "searches"
+          : kind === "device"
+            ? "students"
+            : "clicks";
   window.openModal(
     `<h2>${esc(title)}</h2><p style="color:var(--muted);margin:8px 0 0;">Loading…</p>`,
   );
@@ -822,15 +886,32 @@ async function openAnalyticsActors(kind, id, label, range) {
           const name = Number.isFinite(uid)
             ? `<button type="button" class="action-btn" onclick="closeModal();openAdminStudent(${uid})">${esc(handle)}</button>`
             : esc(handle);
-          const count =
-            kind === "favorite"
-              ? `<span style="color:var(--muted);font-size:0.85rem;">★ favorited</span>`
-              : `<strong>${_num(clicks)}</strong> ${esc(countNoun === "opens" ? (clicks === 1 ? "open" : "opens") : clicks === 1 ? "click" : "clicks")}`;
-          return `<li class="analytics-actors-row"><span>${name}</span><span>${count}</span></li>`;
+          let count;
+          if (kind === "favorite" || kind === "device") {
+            count =
+              kind === "favorite"
+                ? `<span style="color:var(--muted);font-size:0.85rem;">★ favorited</span>`
+                : `<span style="color:var(--muted);font-size:0.85rem;">used</span>`;
+          } else {
+            const noun =
+              countNoun === "opens"
+                ? clicks === 1
+                  ? "open"
+                  : "opens"
+                : countNoun === "searches"
+                  ? clicks === 1
+                    ? "search"
+                    : "searches"
+                  : clicks === 1
+                    ? "click"
+                    : "clicks";
+            count = `<strong>${_num(clicks)}</strong> ${esc(noun)}`;
+          }
+          return `<li class="analytics-actors-row"><span class="analytics-actors-name">${name}</span><span class="analytics-actors-count">${count}</span></li>`;
         })
         .join("");
       const summary =
-        kind === "favorite"
+        kind === "favorite" || kind === "device"
           ? `${_num(people.length)} student${people.length === 1 ? "" : "s"}`
           : `${_num(total)} ${countNoun} · ${_num(people.length)} student${people.length === 1 ? "" : "s"}`;
       body = `<p style="color:var(--muted);margin:10px 0 14px;font-size:0.9rem;">${summary}</p>
@@ -839,6 +920,77 @@ async function openAnalyticsActors(kind, id, label, range) {
     window.openModal(`
       <h2>${esc(title)}</h2>
       ${body}
+      <div style="margin-top:18px;display:flex;justify-content:flex-end;">
+        <button type="button" class="action-btn" onclick="closeModal()">Close</button>
+      </div>
+    `);
+  } catch (e) {
+    window.openModal(`
+      <h2>${esc(title)}</h2>
+      <p class="empty" style="margin-top:12px;">⚠️ ${esc(e.message || "Could not load")}</p>
+      <div style="margin-top:18px;display:flex;justify-content:flex-end;">
+        <button type="button" class="action-btn" onclick="closeModal()">Close</button>
+      </div>
+    `);
+  }
+}
+
+function _deviceActorsSection(title, people) {
+  const list = Array.isArray(people) ? people : [];
+  if (!list.length) {
+    return `<div class="analytics-device-section">
+      <h3 class="analytics-device-heading">${esc(title)}</h3>
+      <p style="color:var(--muted);font-size:0.9rem;margin:0;">Nobody yet.</p>
+    </div>`;
+  }
+  const rows = list
+    .map((p) => {
+      const uid = Number(p.user_id);
+      const handle = p.handle || (Number.isFinite(uid) ? `#${uid}` : "unknown");
+      const name = Number.isFinite(uid)
+        ? `<button type="button" class="action-btn" onclick="closeModal();openAdminStudent(${uid})">${esc(handle)}</button>`
+        : esc(handle);
+      return `<li class="analytics-actors-row"><span class="analytics-actors-name">${name}</span></li>`;
+    })
+    .join("");
+  return `<div class="analytics-device-section">
+    <h3 class="analytics-device-heading">${esc(title)} <span style="color:var(--muted);font-weight:500;">(${_num(list.length)})</span></h3>
+    <ul class="analytics-actors-list analytics-actors-list--compact">${rows}</ul>
+  </div>`;
+}
+
+async function openDevicesInRange(range) {
+  const rangeKey = String(range || _analyticsRangeKey());
+  const title = "Devices in range";
+  window.openModal(
+    `<h2>${esc(title)}</h2><p style="color:var(--muted);margin:8px 0 0;">Loading…</p>`,
+  );
+  try {
+    const buckets = [
+      { id: "phone", label: "📱 Phone" },
+      { id: "laptop", label: "💻 Laptop" },
+      { id: "both", label: "📱💻 Both" },
+    ];
+    const results = await Promise.all(
+      buckets.map(async (b) => {
+        const query = new URLSearchParams({
+          kind: "device",
+          id: b.id,
+          range: rangeKey,
+        });
+        const result = (await apiRequest(`/api/admin/analytics/actors?${query}`)) || {};
+        return { ...b, people: Array.isArray(result.people) ? result.people : [] };
+      }),
+    );
+    const body = results.map((r) => _deviceActorsSection(r.label, r.people)).join("");
+    const rangeBlurb =
+      rangeKey === "all"
+        ? "Students who visited on each device across all time."
+        : `Students who visited on each device in the last ${esc(rangeKey)} days.`;
+    window.openModal(`
+      <h2>${esc(title)}</h2>
+      <p style="color:var(--muted);margin:10px 0 14px;font-size:0.9rem;">${rangeBlurb}</p>
+      <div class="analytics-device-breakdown">${body}</div>
       <div style="margin-top:18px;display:flex;justify-content:flex-end;">
         <button type="button" class="action-btn" onclick="closeModal()">Close</button>
       </div>
@@ -870,20 +1022,25 @@ function analyticsPaintLocal() {
 }
 
 function paintAdminAnalytics(summary) {
-  const range = ["7", "30", "90"].includes(String(AppState.analyticsRange))
-    ? String(AppState.analyticsRange)
-    : "30";
+  const range = _analyticsRangeKey();
+  const isAllTime = range === "all";
   const chartSeries = AppState.analyticsChartSeries === "roster" ? "roster" : "visitors";
-  const rangeDays = parseInt(range, 10);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const chartDays =
-      chartSeries === "roster"
+  const rangeDays = isAllTime ? 0 : parseInt(range, 10);
+    const todayStr = isAllTime ? _weekStartISO() : new Date().toISOString().slice(0, 10);
+    const chartDays = isAllTime
+      ? chartSeries === "roster"
+        ? _weeklyRosterSeries(summary.daily_roster)
+        : _weeklyUniqueSeries(summary.daily_unique_visits)
+      : chartSeries === "roster"
         ? _dailyRosterSeries(summary.daily_roster, rangeDays)
         : _dailyUniqueSeries(summary.daily_unique_visits, rangeDays);
     const barsHtml = _buildBarChart(chartDays, range, todayStr);
 
-    const rangeButtons = ["7", "30", "90"]
-      .map((r) => `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="analyticsSelectRange('${r}')">${r} days</button>`)
+    const rangeButtons = ["7", "30", "90", "all"]
+      .map((r) => {
+        const label = r === "all" ? "All time" : `${r} days`;
+        return `<button type="button" class="filter-btn ${range === r ? "active" : ""}" onclick="analyticsSelectRange('${r}')">${label}</button>`;
+      })
       .join("");
 
     const seriesButtons = ["visitors", "roster"]
@@ -896,7 +1053,9 @@ function paintAdminAnalytics(summary) {
     const chartTitle =
       chartSeries === "roster"
         ? `Registered students over time — <span style="color:var(--accent2);">■</span> today`
-        : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
+        : isAllTime
+          ? `Unique students per week — <span style="color:var(--accent2);">■</span> this week`
+          : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
 
     const gained7 = Number(summary.students_gained_7d) || 0;
     const deviceRange = _deviceTodayParts(summary.devices_in_range);
@@ -905,7 +1064,21 @@ function paintAdminAnalytics(summary) {
     const clicksRange = Number(summary.clicks_in_range) || 0;
     const clickers = Number(summary.clickers_in_range) || 0;
     const clicksPerActive = Number(summary.clicks_per_active) || 0;
-    const activeDelta = _pctDelta(activeRange, summary.prev_active_in_range);
+    const activeDelta = isAllTime ? "—" : _pctDelta(activeRange, summary.prev_active_in_range);
+    const rangeLabel = _analyticsRangeLabel(range);
+    const newTodayCount = Array.isArray(summary.new_students_today) ? summary.new_students_today.length : 0;
+    const newTodayVal = `${_num(newTodayCount)}${newTodayCount >= 50 ? "+" : ""}`;
+    const gainedInRange =
+      range === "all"
+        ? Number(summary.total_students) || 0
+        : Number({ 7: summary.students_gained_7d, 30: summary.students_gained_30d, 90: summary.students_gained_90d }[range]) || 0;
+    const newTodayMid = `<span class="stat-delta">${_formatGain(gainedInRange)} in ${esc(rangeLabel)}</span>`;
+    const allTimeVisitors = Number(summary.all_time_visitors) || 0;
+    const courseLinks = Number(summary.course_links) || 0;
+    const extraLinks = Number(summary.extra_links) || 0;
+    const totalLinks = courseLinks + extraLinks;
+    const coursesWithLinks = Number(summary.courses_with_links) || 0;
+    const totalCourses = Number(summary.total_courses) || 0;
 
     document.getElementById("adminContent").innerHTML = `
       <div class="analytics-stack">
@@ -917,7 +1090,7 @@ function paintAdminAnalytics(summary) {
           </div>
           <div class="stat-card">
             <div class="stat-val">${_num(activeToday)} / ${_num(activeRange)}</div>
-            <div class="stat-mid"><span class="stat-delta">today / ${esc(range)} days · ${esc(activeDelta)}</span></div>
+            <div class="stat-mid"><span class="stat-delta">today / ${esc(rangeLabel)} · ${esc(activeDelta)}</span></div>
             <div class="stat-label">Active in range</div>
           </div>
           <div class="stat-card">
@@ -925,10 +1098,30 @@ function paintAdminAnalytics(summary) {
             <div class="stat-mid"><span class="stat-delta">${_num(clickers)} people · ${clicksPerActive.toFixed(1)} / active</span></div>
             <div class="stat-label">Clicks in range</div>
           </div>
-          <div class="stat-card">
+          <button type="button" class="stat-card stat-card-btn" onclick='openDevicesInRange(${JSON.stringify(range)})' title="See who used phone, laptop, or both">
             <div class="stat-val">${deviceRange.val}</div>
             <div class="stat-mid">${deviceRange.sub ? `<span class="stat-delta">${esc(deviceRange.sub)}</span>` : `<span class="stat-delta">—</span>`}</div>
             <div class="stat-label">Device in range</div>
+          </button>
+          <div class="stat-card">
+            <div class="stat-val">${newTodayVal}</div>
+            <div class="stat-mid">${newTodayMid}</div>
+            <div class="stat-label">New students today</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(allTimeVisitors)}</div>
+            <div class="stat-mid"><span class="stat-delta">unique visitors</span></div>
+            <div class="stat-label">All-time visits</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(totalLinks)}</div>
+            <div class="stat-mid"><span class="stat-delta">${_num(courseLinks)} course · ${_num(extraLinks)} extra</span></div>
+            <div class="stat-label">Total links</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${_num(coursesWithLinks)} / ${_num(totalCourses)}</div>
+            <div class="stat-mid"><span class="stat-delta">with links / total</span></div>
+            <div class="stat-label">Courses</div>
           </div>
       </div>
       <div class="chart-wrap analytics-card">
@@ -2117,6 +2310,7 @@ Object.assign(window, {
   renderAdminAnalytics,
   analyticsToggleExpand,
   openAnalyticsActors,
+  openDevicesInRange,
   analyticsPaintLocal,
   analyticsSelectRange,
   renderAdminCourses,

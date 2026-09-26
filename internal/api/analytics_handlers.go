@@ -75,7 +75,7 @@ func parseAnalyticsVisitorsParams(r *http.Request) service.AnalyticsVisitorsPara
 func mapAnalyticsSummaryErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrAnalyticsInvalidRange):
-		writeJSONError(w, r, http.StatusBadRequest, "Range must be 7, 30 or 90")
+		writeJSONError(w, r, http.StatusBadRequest, "Range must be 7, 30, 90, or all")
 	case errors.Is(err, errs.ErrAnalyticsInvalidVisitorsSort):
 		writeJSONError(w, r, http.StatusBadRequest, "visitors_sort must be clicks or name")
 	default:
@@ -87,11 +87,11 @@ func mapAnalyticsSummaryErr(h *Handler, w http.ResponseWriter, r *http.Request, 
 func mapAnalyticsActorsErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, errs.ErrAnalyticsInvalidActorKind):
-		writeJSONError(w, r, http.StatusBadRequest, "kind must be link, extra_link, course, extra_section, service, or favorite")
+		writeJSONError(w, r, http.StatusBadRequest, "kind must be link, extra_link, course, extra_section, service, favorite, search, or device")
 	case errors.Is(err, errs.ErrAnalyticsInvalidActorID):
 		writeJSONError(w, r, http.StatusBadRequest, "Invalid id")
 	case errors.Is(err, errs.ErrAnalyticsInvalidRange):
-		writeJSONError(w, r, http.StatusBadRequest, "Range must be today, 7, 30 or 90")
+		writeJSONError(w, r, http.StatusBadRequest, "Range must be today, 7, 30, 90, or all")
 	default:
 		h.LoggerWithID(r).Error("get analytics actors failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")

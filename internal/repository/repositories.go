@@ -45,7 +45,7 @@ type AnalyticsSummaryParams struct {
 
 type AnalyticsRepository interface {
 	GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error)
-	ListActors(ctx context.Context, kind string, id int, since time.Time) (models.AnalyticsActorsResult, error)
+	ListActors(ctx context.Context, kind, key string, since time.Time) (models.AnalyticsActorsResult, error)
 	InsertSearch(ctx context.Context, userID int, query string) error
 }
 

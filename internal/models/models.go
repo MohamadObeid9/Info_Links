@@ -62,6 +62,11 @@ type UserDetail struct {
 // AnalyticsSummary holds the server-side aggregated usage metrics for admins.
 type AnalyticsSummary struct {
 	TotalStudents           int               `json:"total_students"`
+	AllTimeVisitors         int               `json:"all_time_visitors"`
+	CourseLinks             int               `json:"course_links"`
+	ExtraLinks              int               `json:"extra_links"`
+	CoursesWithLinks        int               `json:"courses_with_links"`
+	TotalCourses            int               `json:"total_courses"`
 	StudentsGained7d        int               `json:"students_gained_7d"`
 	StudentsGained30d       int               `json:"students_gained_30d"`
 	StudentsGained90d       int               `json:"students_gained_90d"`
@@ -181,10 +186,11 @@ type UserClickCount struct {
 	Clicks int    `json:"clicks"`
 }
 
-// AnalyticsActorsResult lists who interacted with a link, course, service, or favorite.
+// AnalyticsActorsResult lists who interacted with a link, course, service, favorite, search, or device bucket.
 type AnalyticsActorsResult struct {
 	Kind   string           `json:"kind"`
-	ID     int              `json:"id"`
+	ID     int              `json:"id,omitempty"`
+	Key    string           `json:"key,omitempty"` // search query or device bucket (phone|laptop|both)
 	Total  int              `json:"total"`
 	People []UserClickCount `json:"people"`
 }
