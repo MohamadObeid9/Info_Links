@@ -466,6 +466,7 @@
 
 .stat-grid.analytics-kpis {
     margin-bottom: 0;
+    grid-template-columns: repeat(4, 1fr);
 }
 
 .stat-card {
@@ -474,6 +475,20 @@
     border-radius: 12px;
     padding: 20px;
     text-align: center;
+}
+
+.stat-card-btn {
+    appearance: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    width: 100%;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card-btn:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .stat-card .stat-val {
@@ -782,6 +797,12 @@
     margin: 0;
     max-height: min(50vh, 360px);
     overflow: auto;
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+}
+
+.analytics-actors-list--compact {
+    max-height: min(28vh, 200px);
 }
 
 .analytics-actors-row {
@@ -789,12 +810,34 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 8px 0;
+    padding: 8px 10px 8px 0;
     border-bottom: 1px solid var(--border);
+}
+
+.analytics-actors-name {
+    min-width: 0;
+}
+
+.analytics-actors-count {
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 4px;
 }
 
 .analytics-actors-row:last-child {
     border-bottom: none;
+}
+
+.analytics-device-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.analytics-device-heading {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
 }
 
 .analytics-range {

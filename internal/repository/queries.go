@@ -167,6 +167,9 @@ const (
 				UNION
 				SELECT user_id AS uid FROM link_clicks
 				WHERE user_id IS NOT NULL AND clicked_at >= date_trunc('day', now())
+				UNION
+				SELECT user_id AS uid FROM search_events
+				WHERE user_id IS NOT NULL AND created_at >= date_trunc('day', now())
 			) active_today),
 			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= date_trunc('day', now())),
 			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'phone'),
@@ -203,12 +206,85 @@ const (
 						SELECT 1 FROM link_clicks lc
 						WHERE lc.user_id = u.id AND lc.clicked_at >= now() - make_interval(days => $1)
 					)
-				))`
+				)),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL),
+			(SELECT COUNT(*) FROM links),
+			(SELECT COUNT(*) FROM extra_links),
+			(SELECT COUNT(*) FROM courses c WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id))
+				+ (SELECT COUNT(*) FROM extra_sections es WHERE EXISTS (SELECT 1 FROM extra_links el WHERE el.section_id = es.id)),
+			(SELECT COUNT(*) FROM courses) + (SELECT COUNT(*) FROM extra_sections)`
+
+	// Days==0 all-time: no day cutoffs; prev_* are literal 0 (UI shows —).
+	analyticsCountsAllTimeQuery = `
+		SELECT
+			(SELECT COUNT(*) FROM users WHERE is_guest = false),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '7 days'),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '30 days'),
+			(SELECT COUNT(*) FROM users WHERE is_guest = false AND created_at >= now() - interval '90 days'),
+			(SELECT COUNT(DISTINCT uid) FROM (
+				SELECT user_id AS uid FROM page_views
+				WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())
+				UNION
+				SELECT user_id AS uid FROM link_clicks
+				WHERE user_id IS NOT NULL AND clicked_at >= date_trunc('day', now())
+				UNION
+				SELECT user_id AS uid FROM search_events
+				WHERE user_id IS NOT NULL AND created_at >= date_trunc('day', now())
+			) active_today),
+			(SELECT COUNT(*) FROM link_clicks WHERE clicked_at >= date_trunc('day', now())),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'phone'),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type = 'laptop'),
+			(SELECT COUNT(*) FROM (
+				SELECT user_id FROM page_views
+				WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now()) AND device_type IS NOT NULL
+				GROUP BY user_id HAVING COUNT(DISTINCT device_type) > 1
+			) both_today),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL),
+			(SELECT COUNT(*) FROM link_clicks),
+			(SELECT COUNT(DISTINCT user_id) FROM link_clicks WHERE user_id IS NOT NULL),
+			0,
+			0,
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND device_type = 'phone'),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND device_type = 'laptop'),
+			(SELECT COUNT(*) FROM (
+				SELECT user_id FROM page_views
+				WHERE user_id IS NOT NULL AND device_type IS NOT NULL
+				GROUP BY user_id HAVING COUNT(DISTINCT device_type) > 1
+			) both_range),
+			0,
+			(SELECT COUNT(*) FROM reports WHERE status = 'open'),
+			(SELECT COUNT(*) FROM contributions WHERE status = 'pending'),
+			(SELECT COUNT(*) FROM feedback WHERE status = 'new'),
+			(SELECT COUNT(DISTINCT u.id) FROM users u
+				WHERE u.is_guest = false
+				AND (
+					EXISTS (
+						SELECT 1 FROM page_views pv WHERE pv.user_id = u.id
+					)
+					OR EXISTS (
+						SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id
+					)
+				)),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL),
+			(SELECT COUNT(*) FROM links),
+			(SELECT COUNT(*) FROM extra_links),
+			(SELECT COUNT(*) FROM courses c WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id))
+				+ (SELECT COUNT(*) FROM extra_sections es WHERE EXISTS (SELECT 1 FROM extra_links el WHERE el.section_id = es.id)),
+			(SELECT COUNT(*) FROM courses) + (SELECT COUNT(*) FROM extra_sections)`
 
 	analyticsDailyUniqueVisitsQuery = `
 		SELECT to_char(visited_at, 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)
 		FROM page_views
 		WHERE user_id IS NOT NULL AND visited_at >= now() - make_interval(days => $1)
+		GROUP BY day
+		ORDER BY day ASC`
+
+	// Cap ~104 weeks so the growth chart stays readable.
+	analyticsWeeklyUniqueVisitsQuery = `
+		SELECT to_char(date_trunc('week', visited_at), 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)
+		FROM page_views
+		WHERE user_id IS NOT NULL
+		  AND visited_at >= date_trunc('week', now()) - interval '103 weeks'
 		GROUP BY day
 		ORDER BY day ASC`
 
@@ -220,11 +296,26 @@ const (
 		ORDER BY clicks DESC
 		LIMIT 50`
 
+	analyticsTopLinksAllTimeQuery = `
+		SELECT link_id, extra_link_id, COUNT(*) AS clicks
+		FROM link_clicks
+		GROUP BY link_id, extra_link_id
+		ORDER BY clicks DESC
+		LIMIT 50`
+
 	analyticsTopUsersQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(lc.id) AS clicks
 		FROM link_clicks lc
 		JOIN users u ON u.id = lc.user_id
 		WHERE lc.clicked_at >= now() - make_interval(days => $1)
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY clicks DESC, u.first_name ASC
+		LIMIT 50`
+
+	analyticsTopUsersAllTimeQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(lc.id) AS clicks
+		FROM link_clicks lc
+		JOIN users u ON u.id = lc.user_id
 		GROUP BY u.id, u.first_name, u.last_name, u.number
 		ORDER BY clicks DESC, u.first_name ASC
 		LIMIT 50`
@@ -252,6 +343,21 @@ const (
 		GROUP BY d.day
 		ORDER BY d.day ASC`
 
+	analyticsWeeklyRosterQuery = `
+		WITH weeks AS (
+			SELECT generate_series(
+				date_trunc('week', now()) - interval '103 weeks',
+				date_trunc('week', now()),
+				interval '1 week'
+			) AS day
+		)
+		SELECT to_char(w.day, 'YYYY-MM-DD'),
+		       COUNT(u.id)
+		FROM weeks w
+		LEFT JOIN users u ON u.is_guest = false AND u.created_at < w.day + interval '1 week'
+		GROUP BY w.day
+		ORDER BY w.day ASC`
+
 	// Counts today's student activity (timeline events) except home page visits.
 	analyticsUserActivityTodayCountSQL = `(
 		SELECT COUNT(*)::bigint FROM (
@@ -273,6 +379,9 @@ const (
 			SELECT fe.id FROM favorite_events fe
 			WHERE fe.user_id = u.id AND fe.created_at >= date_trunc('day', now())
 			UNION ALL
+			SELECT se.id FROM search_events se
+			WHERE se.user_id = u.id AND se.created_at >= date_trunc('day', now())
+			UNION ALL
 			SELECT pv.id FROM page_views pv
 			WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now())
 			  AND lower(COALESCE(pv.page, 'home')) <> 'home'
@@ -282,6 +391,7 @@ const (
 	// A visitor is anyone with a page view or meaningful activity today. Link opens are
 	// gated behind signup, so a click without a page_views row still means the
 	// person was on the site (e.g. visit POST failed or session was re-bootstrapped).
+	// Searches count too — a student who only searches still "visited" today.
 	analyticsVisitorsTodayPresenceSQL = `
 		EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
 		OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
@@ -289,7 +399,8 @@ const (
 		OR EXISTS (SELECT 1 FROM reports r WHERE r.user_id = u.id AND r.created_at >= date_trunc('day', now()))
 		OR EXISTS (SELECT 1 FROM contributions c WHERE c.user_id = u.id AND c.created_at >= date_trunc('day', now()))
 		OR EXISTS (SELECT 1 FROM feedback f WHERE f.user_id = u.id AND f.created_at >= date_trunc('day', now()))
-		OR EXISTS (SELECT 1 FROM favorite_events fe WHERE fe.user_id = u.id AND fe.created_at >= date_trunc('day', now()))`
+		OR EXISTS (SELECT 1 FROM favorite_events fe WHERE fe.user_id = u.id AND fe.created_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM search_events se WHERE se.user_id = u.id AND se.created_at >= date_trunc('day', now()))`
 
 	analyticsVisitorsTodayByClicksQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
@@ -340,11 +451,43 @@ const (
 		ORDER BY clicks DESC, name ASC
 		LIMIT 50`
 
+	analyticsTopCoursesAllTimeQuery = `
+		SELECT id, name, code, clicks, program_name FROM (
+			SELECT c.id, c.name, c.code, COUNT(*)::int AS clicks, COALESCE((
+				SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+				FROM course_placements pl
+				JOIN semesters s ON s.id = pl.semester_id
+				JOIN years y ON y.id = s.year_id
+				JOIN programs pr ON pr.id = y.program_id
+				WHERE pl.course_id = c.id
+			), '') AS program_name
+			FROM link_clicks lc
+			JOIN links l ON l.id = lc.link_id
+			JOIN courses c ON c.id = l.course_id
+			GROUP BY c.id, c.name, c.code
+			UNION ALL
+			SELECT es.id, es.title, 'extra', COUNT(*)::int, 'Extra'
+			FROM link_clicks lc
+			JOIN extra_links el ON el.id = lc.extra_link_id
+			JOIN extra_sections es ON es.id = el.section_id
+			GROUP BY es.id, es.title
+		) ranked
+		ORDER BY clicks DESC, name ASC
+		LIMIT 50`
+
 	analyticsTopServicesQuery = `
 		SELECT s.id, s.title, COALESCE(s.category, ''), COUNT(*)::int
 		FROM service_clicks sc
 		JOIN services s ON s.id = sc.service_id
 		WHERE sc.clicked_at >= now() - make_interval(days => $1)
+		GROUP BY s.id, s.title, s.category
+		ORDER BY COUNT(*) DESC, s.title ASC
+		LIMIT 50`
+
+	analyticsTopServicesAllTimeQuery = `
+		SELECT s.id, s.title, COALESCE(s.category, ''), COUNT(*)::int
+		FROM service_clicks sc
+		JOIN services s ON s.id = sc.service_id
 		GROUP BY s.id, s.title, s.category
 		ORDER BY COUNT(*) DESC, s.title ASC
 		LIMIT 50`
@@ -379,6 +522,36 @@ const (
 		ORDER BY name ASC
 		LIMIT 50`
 
+	analyticsZeroClickCoursesAllTimeQuery = `
+		SELECT id, name, code, 0, program_name FROM (
+			SELECT c.id, c.name, c.code, COALESCE((
+				SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+				FROM course_placements pl
+				JOIN semesters s ON s.id = pl.semester_id
+				JOIN years y ON y.id = s.year_id
+				JOIN programs pr ON pr.id = y.program_id
+				WHERE pl.course_id = c.id
+			), '') AS program_name
+			FROM courses c
+			WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id)
+			  AND NOT EXISTS (
+				SELECT 1 FROM links l
+				JOIN link_clicks lc ON lc.link_id = l.id
+				WHERE l.course_id = c.id
+			  )
+			UNION ALL
+			SELECT es.id, es.title, 'extra', 'Extra'
+			FROM extra_sections es
+			WHERE EXISTS (SELECT 1 FROM extra_links el WHERE el.section_id = es.id)
+			  AND NOT EXISTS (
+				SELECT 1 FROM extra_links el
+				JOIN link_clicks lc ON lc.extra_link_id = el.id
+				WHERE el.section_id = es.id
+			  )
+		) gaps
+		ORDER BY name ASC
+		LIMIT 50`
+
 	analyticsZeroClickServicesQuery = `
 		SELECT s.id, s.title, COALESCE(s.category, ''), 0
 		FROM services s
@@ -386,6 +559,16 @@ const (
 		  AND NOT EXISTS (
 			SELECT 1 FROM service_clicks sc
 			WHERE sc.service_id = s.id AND sc.clicked_at >= now() - make_interval(days => $1)
+		  )
+		ORDER BY s.title ASC
+		LIMIT 50`
+
+	analyticsZeroClickServicesAllTimeQuery = `
+		SELECT s.id, s.title, COALESCE(s.category, ''), 0
+		FROM services s
+		WHERE s.status <> 'frozen'
+		  AND NOT EXISTS (
+			SELECT 1 FROM service_clicks sc WHERE sc.service_id = s.id
 		  )
 		ORDER BY s.title ASC
 		LIMIT 50`
@@ -419,6 +602,33 @@ const (
 		ORDER BY course_name ASC, label ASC
 		LIMIT 50`
 
+	analyticsZeroClickLinksAllTimeQuery = `
+		SELECT kind, id, label, course_name, program_name FROM (
+			SELECT 'link'::text AS kind, l.id, COALESCE(l.label, 'Link') AS label, c.name AS course_name,
+			       COALESCE((
+				SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
+				FROM course_placements pl
+				JOIN semesters s ON s.id = pl.semester_id
+				JOIN years y ON y.id = s.year_id
+				JOIN programs pr ON pr.id = y.program_id
+				WHERE pl.course_id = c.id
+			       ), '') AS program_name
+			FROM links l
+			JOIN courses c ON c.id = l.course_id
+			WHERE NOT EXISTS (
+				SELECT 1 FROM link_clicks lc WHERE lc.link_id = l.id
+			)
+			UNION ALL
+			SELECT 'extra_link', el.id, COALESCE(el.label, 'Link'), es.title, ''
+			FROM extra_links el
+			JOIN extra_sections es ON es.id = el.section_id
+			WHERE NOT EXISTS (
+				SELECT 1 FROM link_clicks lc WHERE lc.extra_link_id = el.id
+			)
+		) gaps
+		ORDER BY course_name ASC, label ASC
+		LIMIT 50`
+
 	analyticsTopFavoritesQuery = `
 		SELECT c.id, c.name, c.code, COUNT(*)::int, COALESCE((
 			SELECT string_agg(DISTINCT pr.name, ' · ' ORDER BY pr.name)
@@ -442,16 +652,33 @@ const (
 		WHERE visited_at >= now() - make_interval(days => $1)
 		GROUP BY 1, 2`
 
+	analyticsVisitHeatmapAllTimeQuery = `
+		SELECT EXTRACT(DOW FROM visited_at)::int, EXTRACT(HOUR FROM visited_at)::int, COUNT(*)::int
+		FROM page_views
+		GROUP BY 1, 2`
+
 	analyticsClickHeatmapQuery = `
 		SELECT EXTRACT(DOW FROM clicked_at)::int, EXTRACT(HOUR FROM clicked_at)::int, COUNT(*)::int
 		FROM link_clicks
 		WHERE clicked_at >= now() - make_interval(days => $1)
 		GROUP BY 1, 2`
 
+	analyticsClickHeatmapAllTimeQuery = `
+		SELECT EXTRACT(DOW FROM clicked_at)::int, EXTRACT(HOUR FROM clicked_at)::int, COUNT(*)::int
+		FROM link_clicks
+		GROUP BY 1, 2`
+
 	analyticsSearchTermsQuery = `
 		SELECT query, COUNT(*)::int
 		FROM search_events
 		WHERE created_at >= now() - make_interval(days => $1)
+		GROUP BY query
+		ORDER BY COUNT(*) DESC, query ASC
+		LIMIT 50`
+
+	analyticsSearchTermsAllTimeQuery = `
+		SELECT query, COUNT(*)::int
+		FROM search_events
 		GROUP BY query
 		ORDER BY COUNT(*) DESC, query ASC
 		LIMIT 50`
@@ -508,6 +735,40 @@ const (
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), 1
 		FROM users u
 		WHERE u.is_guest = false AND u.favorite_course_ids @> ARRAY[$1::integer]
+		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsSearchQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), COUNT(*)::int
+		FROM search_events se
+		JOIN users u ON u.id = se.user_id
+		WHERE se.query = $1 AND se.created_at >= $2
+		GROUP BY u.id, u.first_name, u.last_name, u.number
+		ORDER BY COUNT(*) DESC, u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsDeviceQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), 1
+		FROM users u
+		WHERE EXISTS (
+			SELECT 1 FROM page_views pv
+			WHERE pv.user_id = u.id
+			  AND pv.visited_at >= $2
+			  AND pv.device_type = $1
+		)
+		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
+		LIMIT 100`
+
+	analyticsActorsDeviceBothQuery = `
+		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0), 1
+		FROM users u
+		WHERE (
+			SELECT COUNT(DISTINCT pv.device_type)
+			FROM page_views pv
+			WHERE pv.user_id = u.id
+			  AND pv.visited_at >= $1
+			  AND pv.device_type IS NOT NULL
+		) > 1
 		ORDER BY u.first_name ASC, u.last_name ASC, u.id ASC
 		LIMIT 100`
 

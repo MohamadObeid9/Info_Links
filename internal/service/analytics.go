@@ -87,9 +87,27 @@ func (s *AnalyticsService) TrackSearch(ctx context.Context, userID int, query st
 
 func (s *AnalyticsService) ListActors(ctx context.Context, kind, idStr, rangeStr string) (models.AnalyticsActorsResult, error) {
 	kind = strings.TrimSpace(kind)
-	id, err := strconv.Atoi(strings.TrimSpace(idStr))
-	if err != nil || id <= 0 {
-		return models.AnalyticsActorsResult{}, errs.ErrAnalyticsInvalidActorID
+	key := strings.TrimSpace(idStr)
+
+	switch kind {
+	case "search":
+		key = strings.ToLower(key)
+		if key == "" {
+			return models.AnalyticsActorsResult{}, errs.ErrAnalyticsInvalidActorID
+		}
+		if utf8.RuneCountInString(key) > maxSearchQueryLen {
+			key = string([]rune(key)[:maxSearchQueryLen])
+		}
+	case "device":
+		if key != "phone" && key != "laptop" && key != "both" {
+			return models.AnalyticsActorsResult{}, errs.ErrAnalyticsInvalidActorID
+		}
+	default:
+		id, err := strconv.Atoi(key)
+		if err != nil || id <= 0 {
+			return models.AnalyticsActorsResult{}, errs.ErrAnalyticsInvalidActorID
+		}
+		key = strconv.Itoa(id)
 	}
 
 	since, err := parseActorsSince(kind, rangeStr)
@@ -97,7 +115,7 @@ func (s *AnalyticsService) ListActors(ctx context.Context, kind, idStr, rangeStr
 		return models.AnalyticsActorsResult{}, err
 	}
 
-	result, err := s.repo.ListActors(ctx, kind, id, since)
+	result, err := s.repo.ListActors(ctx, kind, key, since)
 	if err != nil {
 		return models.AnalyticsActorsResult{}, fmt.Errorf("list actors: %w", err)
 	}
@@ -115,6 +133,8 @@ func parseActorsSince(kind, rangeStr string) (time.Time, error) {
 	case "7", "30", "90":
 		days, _ := strconv.Atoi(strings.TrimSpace(rangeStr))
 		return time.Now().AddDate(0, 0, -days), nil
+	case "all":
+		return time.Time{}, nil // zero time = no lower bound in actor queries
 	default:
 		return time.Time{}, errs.ErrAnalyticsInvalidRange
 	}
@@ -130,6 +150,8 @@ func parseAnalyticsRange(rangeStr string) (int, error) {
 		return 30, nil
 	case "90":
 		return 90, nil
+	case "all":
+		return 0, nil // Days==0 sentinel: all-time (no day cutoff in SQL)
 	default:
 		return 0, errs.ErrAnalyticsInvalidRange
 	}
