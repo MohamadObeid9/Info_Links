@@ -169,31 +169,63 @@ async function sbLogout() {
   localStorage.removeItem("infolinks_token");
 }
 
+function _visitDay() {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function _visitGuardKey(uid) {
+  return `${uid == null ? "anon" : uid}:${_visitDay()}`;
+}
+
+let _visitInflight = null;
+
 async function trackVisit() {
   if (AppState.adminLoggedIn) return;
   if (!AppState.studentToken) return;
   const uid = AppState.studentUser?.id;
-  const tracked = sessionStorage.getItem("pv_tracked");
-  // Guard is per user id so a re-bootstrapped guest still gets a page view.
-  if (uid != null && tracked === String(uid)) return;
-  if (tracked === "1" && uid == null) return;
-  if (tracked === "1" && uid != null) {
-    sessionStorage.setItem("pv_tracked", String(uid));
-    return;
-  }
+  const key = _visitGuardKey(uid);
+  let tracked = "";
   try {
-    await apiRequest(`/api/page_views`, {
-      method: "POST",
-      body: { page: "home" },
-    });
-    sessionStorage.setItem("pv_tracked", uid != null ? String(uid) : "1");
-  } catch (e) {
-    if (e?.status === 401) window.onStudentTokenRejected?.();
-  }
+    tracked = sessionStorage.getItem("pv_tracked") || "";
+  } catch (e) { /* private mode */ }
+  // Once per user per local calendar day. A tab left open overnight, or restored
+  // by the browser, still records the next day. Extra rows the same day collapse
+  // in analytics (one person per day).
+  if (tracked === key) return;
+  if (_visitInflight) return _visitInflight;
+  _visitInflight = (async () => {
+    try {
+      await apiRequest(`/api/page_views`, {
+        method: "POST",
+        body: { page: "home" },
+      });
+      try {
+        sessionStorage.setItem("pv_tracked", key);
+      } catch (e) { /* private mode */ }
+    } catch (e) {
+      if (e?.status === 401) window.onStudentTokenRejected?.();
+    } finally {
+      _visitInflight = null;
+    }
+  })();
+  return _visitInflight;
+}
+
+function markVisitRecordedToday() {
+  const uid = AppState.studentUser?.id;
+  if (uid == null) return;
+  try {
+    sessionStorage.setItem("pv_tracked", _visitGuardKey(uid));
+  } catch (e) { /* private mode */ }
 }
 
 function trackLinkClick(linkId, linkKind = "link", programId = null) {
   if (!linkId || AppState.adminLoggedIn) return;
+  // A click means they are here today, even if this tab already counted an older visit.
+  trackVisit();
   const payload =
     linkKind === "extra_link"
       ? { extra_link_id: linkId }
@@ -215,6 +247,7 @@ function trackSearch(query) {
   if (AppState.adminLoggedIn || !AppState.studentToken) return;
   const q = String(query || "").trim().toLowerCase();
   if (q.length < 2 || q === _lastSearchTracked) return;
+  trackVisit();
   clearTimeout(_searchTrackTimer);
   _searchTrackTimer = setTimeout(() => {
     flushSearch(q);
@@ -242,12 +275,20 @@ window.sb = sb;
 window.sbAuth = sbAuth;
 window.sbLogout = sbLogout;
 window.trackVisit = trackVisit;
+window.markVisitRecordedToday = markVisitRecordedToday;
 window.trackLinkClick = trackLinkClick;
 window.trackSearch = trackSearch;
 window.flushSearch = flushSearch;
 window.apiRequest = apiRequest;
 window.formatApiError = formatApiError;
 window.logApiError = logApiError;
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") trackVisit();
+});
+window.addEventListener("pageshow", () => {
+  trackVisit();
+});
 
 export {
   sb,

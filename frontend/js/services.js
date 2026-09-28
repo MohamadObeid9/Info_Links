@@ -303,6 +303,7 @@ function intersperse(cards, services, context = "list") {
 
 function trackServiceClick(serviceId, context, target, url) {
   if (!serviceId || AppState.adminLoggedIn) return;
+  window.trackVisit?.();
   const s = AppState.dbServices.find((x) => x.id === serviceId);
   const resolvedUrl = _resolveServiceClickUrl(s, target, url);
   const linkTarget = _resolveServiceClickTarget(target, resolvedUrl, s);
