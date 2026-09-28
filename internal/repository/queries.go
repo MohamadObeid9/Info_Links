@@ -296,8 +296,7 @@ const (
 		SELECT to_char(date_trunc('week', visited_at), 'YYYY-MM-DD') AS day,
 		       COUNT(DISTINCT (user_id, date_trunc('day', visited_at)))
 		FROM page_views
-		WHERE user_id IS NOT NULL
-		  AND visited_at >= date_trunc('week', now()) - interval '103 weeks'
+		WHERE visited_at >= date_trunc('week', now()) - interval '103 weeks'
 		GROUP BY day
 		ORDER BY day ASC`
 
