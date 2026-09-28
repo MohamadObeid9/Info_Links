@@ -62,7 +62,10 @@ type UserDetail struct {
 // AnalyticsSummary holds the server-side aggregated usage metrics for admins.
 type AnalyticsSummary struct {
 	TotalStudents           int               `json:"total_students"`
-	AllTimeVisitors         int               `json:"all_time_visitors"`
+	AllTimeVisitors         int               `json:"all_time_visitors"` // total page views, not distinct people
+	VisitsToday             int               `json:"visits_today"`
+	VisitsInRange           int               `json:"visits_in_range"`
+	PrevVisitsInRange       int               `json:"prev_visits_in_range"`
 	CourseLinks             int               `json:"course_links"`
 	ExtraLinks              int               `json:"extra_links"`
 	CoursesWithLinks        int               `json:"courses_with_links"`

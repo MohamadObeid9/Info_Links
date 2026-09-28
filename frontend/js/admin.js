@@ -1045,7 +1045,7 @@ function paintAdminAnalytics(summary) {
 
     const seriesButtons = ["visitors", "roster"]
       .map((s) => {
-        const label = s === "visitors" ? "Unique visitors" : "Registered students";
+        const label = s === "visitors" ? "Visits" : "Registered students";
         return `<button type="button" class="filter-btn ${chartSeries === s ? "active" : ""}" onclick="AppState.analyticsChartSeries='${s}';analyticsPaintLocal()">${label}</button>`;
       })
       .join("");
@@ -1054,17 +1054,17 @@ function paintAdminAnalytics(summary) {
       chartSeries === "roster"
         ? `Registered students over time — <span style="color:var(--accent2);">■</span> today`
         : isAllTime
-          ? `Unique students per week — <span style="color:var(--accent2);">■</span> this week`
-          : `Unique students per day — <span style="color:var(--accent2);">■</span> today`;
+          ? `Visits per week — <span style="color:var(--accent2);">■</span> this week`
+          : `Visits per day — <span style="color:var(--accent2);">■</span> today`;
 
     const gained7 = Number(summary.students_gained_7d) || 0;
     const deviceRange = _deviceTodayParts(summary.devices_in_range);
-    const activeToday = Number(summary.active_today) || 0;
-    const activeRange = Number(summary.active_in_range) || 0;
+    const activeToday = Number(summary.visits_today) || 0;
+    const activeRange = Number(summary.visits_in_range) || 0;
     const clicksRange = Number(summary.clicks_in_range) || 0;
     const clickers = Number(summary.clickers_in_range) || 0;
     const clicksPerActive = Number(summary.clicks_per_active) || 0;
-    const activeDelta = isAllTime ? "—" : _pctDelta(activeRange, summary.prev_active_in_range);
+    const activeDelta = isAllTime ? "—" : _pctDelta(activeRange, summary.prev_visits_in_range);
     const rangeLabel = _analyticsRangeLabel(range);
     const newTodayCount = Array.isArray(summary.new_students_today) ? summary.new_students_today.length : 0;
     const newTodayVal = `${_num(newTodayCount)}${newTodayCount >= 50 ? "+" : ""}`;
@@ -1091,7 +1091,7 @@ function paintAdminAnalytics(summary) {
           <div class="stat-card">
             <div class="stat-val">${_num(activeToday)} / ${_num(activeRange)}</div>
             <div class="stat-mid"><span class="stat-delta">today / ${esc(rangeLabel)} · ${esc(activeDelta)}</span></div>
-            <div class="stat-label">Active in range</div>
+            <div class="stat-label">Visits in range</div>
           </div>
           <div class="stat-card">
             <div class="stat-val">${_num(clicksRange)}</div>
@@ -1110,7 +1110,7 @@ function paintAdminAnalytics(summary) {
           </div>
           <div class="stat-card">
             <div class="stat-val">${_num(allTimeVisitors)}</div>
-            <div class="stat-mid"><span class="stat-delta">unique visitors</span></div>
+            <div class="stat-mid"><span class="stat-delta">page visits</span></div>
             <div class="stat-label">All-time visits</div>
           </div>
           <div class="stat-card">
