@@ -207,15 +207,20 @@ const (
 						WHERE lc.user_id = u.id AND lc.clicked_at >= now() - make_interval(days => $1)
 					)
 				)),
-			(SELECT COUNT(*) FROM page_views),
+			(SELECT COUNT(DISTINCT (user_id, date_trunc('day', visited_at))) FROM page_views WHERE user_id IS NOT NULL),
 			(SELECT COUNT(*) FROM links),
 			(SELECT COUNT(*) FROM extra_links),
 			(SELECT COUNT(*) FROM courses c WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id))
 				+ (SELECT COUNT(*) FROM extra_sections es WHERE EXISTS (SELECT 1 FROM extra_links el WHERE el.section_id = es.id)),
 			(SELECT COUNT(*) FROM courses) + (SELECT COUNT(*) FROM extra_sections),
-			(SELECT COUNT(*) FROM page_views WHERE visited_at >= date_trunc('day', now())),
-			(SELECT COUNT(*) FROM page_views WHERE visited_at >= now() - make_interval(days => $1)),
-			(SELECT COUNT(*) FROM page_views WHERE visited_at >= now() - make_interval(days => $1 * 2) AND visited_at < now() - make_interval(days => $1))`
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())),
+			(SELECT COUNT(DISTINCT (user_id, date_trunc('day', visited_at))) FROM page_views
+				WHERE user_id IS NOT NULL
+				  AND visited_at >= date_trunc('day', now()) - make_interval(days => $1 - 1)),
+			(SELECT COUNT(DISTINCT (user_id, date_trunc('day', visited_at))) FROM page_views
+				WHERE user_id IS NOT NULL
+				  AND visited_at >= date_trunc('day', now()) - make_interval(days => $1 * 2 - 1)
+				  AND visited_at < date_trunc('day', now()) - make_interval(days => $1 - 1))`
 
 	// Days==0 all-time: no day cutoffs; prev_* are literal 0 (UI shows —).
 	analyticsCountsAllTimeQuery = `
@@ -268,28 +273,31 @@ const (
 						SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id
 					)
 				)),
-			(SELECT COUNT(*) FROM page_views),
+			(SELECT COUNT(DISTINCT (user_id, date_trunc('day', visited_at))) FROM page_views WHERE user_id IS NOT NULL),
 			(SELECT COUNT(*) FROM links),
 			(SELECT COUNT(*) FROM extra_links),
 			(SELECT COUNT(*) FROM courses c WHERE EXISTS (SELECT 1 FROM links l WHERE l.course_id = c.id))
 				+ (SELECT COUNT(*) FROM extra_sections es WHERE EXISTS (SELECT 1 FROM extra_links el WHERE el.section_id = es.id)),
 			(SELECT COUNT(*) FROM courses) + (SELECT COUNT(*) FROM extra_sections),
-			(SELECT COUNT(*) FROM page_views WHERE visited_at >= date_trunc('day', now())),
-			(SELECT COUNT(*) FROM page_views),
+			(SELECT COUNT(DISTINCT user_id) FROM page_views WHERE user_id IS NOT NULL AND visited_at >= date_trunc('day', now())),
+			(SELECT COUNT(DISTINCT (user_id, date_trunc('day', visited_at))) FROM page_views WHERE user_id IS NOT NULL),
 			0`
 
 	analyticsDailyUniqueVisitsQuery = `
-		SELECT to_char(visited_at, 'YYYY-MM-DD') AS day, COUNT(*)
+		SELECT to_char(date_trunc('day', visited_at), 'YYYY-MM-DD') AS day, COUNT(DISTINCT user_id)
 		FROM page_views
-		WHERE visited_at >= now() - make_interval(days => $1)
+		WHERE user_id IS NOT NULL
+		  AND visited_at >= date_trunc('day', now()) - make_interval(days => $1 - 1)
 		GROUP BY day
 		ORDER BY day ASC`
 
-	// Cap ~104 weeks so the growth chart stays readable.
+	// Each week is the sum of once-per-user-per-day counts, capped at ~104 weeks.
 	analyticsWeeklyUniqueVisitsQuery = `
-		SELECT to_char(date_trunc('week', visited_at), 'YYYY-MM-DD') AS day, COUNT(*)
+		SELECT to_char(date_trunc('week', visited_at), 'YYYY-MM-DD') AS day,
+		       COUNT(DISTINCT (user_id, date_trunc('day', visited_at)))
 		FROM page_views
-		WHERE visited_at >= date_trunc('week', now()) - interval '103 weeks'
+		WHERE user_id IS NOT NULL
+		  AND visited_at >= date_trunc('week', now()) - interval '103 weeks'
 		GROUP BY day
 		ORDER BY day ASC`
 
