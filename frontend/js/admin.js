@@ -1110,7 +1110,7 @@ function paintAdminAnalytics(summary) {
           </div>
           <div class="stat-card">
             <div class="stat-val">${_num(allTimeVisitors)}</div>
-            <div class="stat-mid"><span class="stat-delta">page visits</span></div>
+            <div class="stat-mid"><span class="stat-delta">once per day</span></div>
             <div class="stat-label">All-time visits</div>
           </div>
           <div class="stat-card">
