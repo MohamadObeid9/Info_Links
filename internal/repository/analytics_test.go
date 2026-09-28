@@ -124,6 +124,9 @@ func TestAnalyticsRepository_GetSummary(t *testing.T) {
 			want: models.AnalyticsSummary{
 				TotalStudents:           4,
 				AllTimeVisitors:         20,
+				VisitsToday:             15,
+				VisitsInRange:           80,
+				PrevVisitsInRange:       40,
 				CourseLinks:             12,
 				ExtraLinks:              4,
 				CoursesWithLinks:        8,
@@ -184,6 +187,9 @@ func TestAnalyticsRepository_GetSummary(t *testing.T) {
 			want: models.AnalyticsSummary{
 				TotalStudents:           4,
 				AllTimeVisitors:         20,
+				VisitsToday:             15,
+				VisitsInRange:           80,
+				PrevVisitsInRange:       40,
 				CourseLinks:             12,
 				ExtraLinks:              4,
 				CoursesWithLinks:        8,
@@ -416,6 +422,7 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			"active_registered_in_range",
 			"all_time_visitors",
 			"course_links", "extra_links", "courses_with_links", "total_courses",
+			"visits_today", "visits_in_range", "prev_visits_in_range",
 		}).AddRow(
 			4, 1, 2, 3,
 			1, 10, 2, 1, 0,
@@ -427,6 +434,7 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			3,
 			20,
 			12, 4, 8, 10,
+			15, 80, 40,
 		)
 	case analyticsCountsAllTimeQuery:
 		return sqlmock.NewRows([]string{
@@ -440,6 +448,7 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			"active_registered_in_range",
 			"all_time_visitors",
 			"course_links", "extra_links", "courses_with_links", "total_courses",
+			"visits_today", "visits_in_range", "prev_visits_in_range",
 		}).AddRow(
 			4, 1, 2, 3,
 			1, 10, 2, 1, 0,
@@ -451,6 +460,7 @@ func analyticsRowsFor(query string, params AnalyticsSummaryParams) *sqlmock.Rows
 			18,
 			20,
 			12, 4, 8, 10,
+			15, 80, 40,
 		)
 	case analyticsDailyUniqueVisitsQuery:
 		return sqlmock.NewRows([]string{"day", "users"}).AddRow("2026-08-18", 12)

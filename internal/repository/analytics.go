@@ -53,6 +53,9 @@ func (r *postgresAnalyticsRepository) GetSummary(ctx context.Context, params Ana
 		&summary.ExtraLinks,
 		&summary.CoursesWithLinks,
 		&summary.TotalCourses,
+		&summary.VisitsToday,
+		&summary.VisitsInRange,
+		&summary.PrevVisitsInRange,
 	); err != nil {
 		return models.AnalyticsSummary{}, fmt.Errorf("analytics counts: %w", err)
 	}
