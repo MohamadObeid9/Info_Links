@@ -313,14 +313,9 @@ async function submitStudentAuth(mode) {
       // new id with no page_views yet — trackVisit records one when needed.
       await window.trackVisit?.();
     } else {
-      // Login adopts guest page_views onto the student; bind the guard so this
-      // tab does not insert a duplicate visit for the same session.
-      const id = AppState.studentUser?.id;
-      if (id != null) {
-        try {
-          sessionStorage.setItem("pv_tracked", String(id));
-        } catch (e) { }
-      }
+      // Login adopts the guest's visit onto the student. Mark today recorded so
+      // this tab does not insert a second visit for the same day.
+      window.markVisitRecordedToday?.();
     }
 
     const action = _pendingAction;
