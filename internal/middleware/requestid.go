@@ -76,9 +76,10 @@ func RequestIDWithLogging(logger *slog.Logger, appEnv string, next http.Handler)
 		start := time.Now()
 		ww := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 
-		next.ServeHTTP(ww, r.WithContext(ctx))
+		req := r.WithContext(ctx)
+		next.ServeHTTP(ww, req)
 
-		path := NormalizePath(r.URL.Path)
+		path := metricPath(req.Pattern)
 		action := accessLogDecision(r.Method, r.URL.Path, appEnv, ww.status)
 		attrs := []any{
 			"request_id", id,

@@ -5,11 +5,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+const metricsUnmatchedPath = "unmatched"
 
 var (
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -32,61 +33,52 @@ var (
 
 func Metrics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if shouldSkipMetrics(r.URL.Path) {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		start := time.Now()
 		ww := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 
 		next.ServeHTTP(ww, r)
 
-		path := NormalizePath(r.URL.Path)
+		if shouldSkipMetrics(r.Pattern) {
+			return
+		}
+
+		method := metricMethod(r.Method)
+		path := metricPath(r.Pattern)
 		status := strconv.Itoa(ww.status)
 
-		httpRequestsTotal.WithLabelValues(r.Method, path, status).Inc()
-		httpRequestsDuration.WithLabelValues(r.Method, path).Observe(float64(time.Since(start).Seconds()))
+		httpRequestsTotal.WithLabelValues(method, path, status).Inc()
+		httpRequestsDuration.WithLabelValues(method, path).Observe(time.Since(start).Seconds())
 	})
 }
 
-func shouldSkipMetrics(path string) bool {
-	switch path {
+func shouldSkipMetrics(pattern string) bool {
+	switch metricPath(pattern) {
 	case "/metrics", "/healthz", "/readyz":
 		return true
+	default:
+		return false
 	}
-	if strings.HasPrefix(path, "/assets/") {
-		return true
-	}
-	if dot := strings.LastIndex(path, "."); dot != -1 {
-		ext := path[dot:]
-		switch ext {
-		case ".js", ".css", ".ico", ".png", ".webp", ".svg", ".woff2", ".map":
-			return true
-		}
-	}
-	return false
 }
 
-func NormalizePath(path string) string {
-	// Prometheus label values must be valid UTF-8; scanners often send raw binary paths.
-	if !utf8.ValidString(path) {
-		return "invalid_utf8_path"
+// metricPath is the ServeMux pattern with the method prefix removed.
+// An empty match and the SPA catch-all "/" share one label so raw URLs never become series.
+func metricPath(pattern string) string {
+	path := pattern
+	if i := strings.IndexByte(pattern, ' '); i >= 0 {
+		path = pattern[i+1:]
 	}
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) == 0 || parts[0] == "" {
-		return path
-	}
-	switch {
-	case parts[0] == "api" && len(parts) >= 4 && parts[1] == "admin":
-		if parts[3] != "" {
-			parts[3] = "{id}"
-			return "/" + strings.Join(parts, "/")
-		}
-	case parts[0] == "course" && len(parts) >= 2:
-		return "/course/{code}"
-	case parts[0] == "program" && len(parts) >= 2:
-		return "/program/{slug}"
+	if path == "" || path == "/" {
+		return metricsUnmatchedPath
 	}
 	return path
+}
+
+func metricMethod(method string) string {
+	switch method {
+	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch,
+		http.MethodDelete, http.MethodOptions, http.MethodHead:
+		return method
+	default:
+		return "other"
+	}
 }

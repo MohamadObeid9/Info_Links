@@ -103,9 +103,8 @@ function _applyContent(payload) {
 }
 
 async function _fetchAndCacheContent() {
-  const url = AppState.adminLoggedIn ? "/api/admin/content" : "/api/content";
   const payload = _contentPayload(
-    await apiRequest(url, AppState.adminLoggedIn ? { cache: "no-store" } : {}),
+    await apiRequest("/api/content", AppState.adminLoggedIn ? { cache: "no-store" } : {}),
   );
   if (!AppState.adminLoggedIn) _saveCache(payload);
   return payload;

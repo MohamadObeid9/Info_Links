@@ -125,6 +125,11 @@ func Test_accessLogDecision(t *testing.T) {
 			want:   accessLogWarn,
 		},
 		{
+			name:   "skip 500 because the handler already logged it",
+			status: http.StatusInternalServerError,
+			want:   accessLogSkip,
+		},
+		{
 			name:   "info default if appEnv = development",
 			appEnv: "development",
 			want:   accessLogInfo,

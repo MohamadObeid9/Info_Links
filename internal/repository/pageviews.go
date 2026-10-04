@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
 
@@ -36,6 +38,10 @@ func (r *postgresPageViewRepository) List(ctx context.Context) ([]models.PageVie
 
 func (r *postgresPageViewRepository) Create(ctx context.Context, pv models.PageView) error {
 	if _, err := r.db.ExecContext(ctx, insertPageViewQuery, pv.Page, pv.UserID, pv.DeviceType); err != nil {
+		err = asMissingUser(err)
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return err
+		}
 		return fmt.Errorf("insert page view: %w", err)
 	}
 	return nil

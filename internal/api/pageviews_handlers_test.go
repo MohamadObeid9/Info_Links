@@ -84,6 +84,14 @@ func TestHandlePostPageView(t *testing.T) {
 			wantCalls:    0,
 		},
 		{
+			name:         "401 when the token user no longer exists",
+			body:         `{"page":"home"}`,
+			createErr:    errs.ErrUserNotFound,
+			statusWanted: http.StatusUnauthorized,
+			errMsg:       "Unauthorized: Invalid token",
+			wantCalls:    1,
+		},
+		{
 			name:         "500 when service fails",
 			body:         `{"page":"home"}`,
 			createErr:    errs.ErrDatabaseDown,

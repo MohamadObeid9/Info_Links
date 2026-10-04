@@ -30,6 +30,9 @@ func (h *Handler) handlePostPageView(w http.ResponseWriter, r *http.Request) {
 		DeviceType: device.ClassifyUserAgent(r.UserAgent()),
 	}
 	if err := h.pageViewService.Create(r.Context(), pv); err != nil {
+		if writeIfMissingUser(w, r, err) {
+			return
+		}
 		h.LoggerWithID(r).Error("post page view failed", "error", err)
 		writeJSONError(w, r, http.StatusInternalServerError, "Internal server error")
 		return

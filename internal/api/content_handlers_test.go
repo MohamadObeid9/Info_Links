@@ -8,28 +8,21 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"infolinks-backend/internal/errs"
 )
 
 type fakeContentService struct {
-	getCalls         int
-	getUncachedCalls int
-	invalidateCalls  int
-	getResult        []byte
-	getErr           error
+	getCalls        int
+	invalidateCalls int
+	getResult       []byte
+	getErr          error
 }
 
 func (f *fakeContentService) Get(ctx context.Context) ([]byte, error) {
 	f.getCalls++
-	if f.getErr != nil {
-		return nil, f.getErr
-	}
-	return f.getResult, nil
-}
-
-func (f *fakeContentService) GetUncached(ctx context.Context) ([]byte, error) {
-	f.getUncachedCalls++
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
@@ -108,28 +101,48 @@ func TestHandleGetContent(t *testing.T) {
 	}
 }
 
-func TestHandleGetAdminContent(t *testing.T) {
+func TestHandleGetContent_adminCacheHeader(t *testing.T) {
 	sampleJSON := []byte(`{"programs":[]}`)
 	fakeContent := &fakeContentService{getResult: sampleJSON}
 	h := testHandler(t, withContent(fakeContent))
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/content", nil)
-	rr := httptest.NewRecorder()
 
-	h.handleGetAdminContent(rr, req)
+	adminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": true,
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
+	nonAdminToken := signTestToken(t, h.jwtSecret, jwt.MapClaims{
+		"admin": false,
+		"exp":   time.Now().Add(time.Hour).Unix(),
+	})
 
-	if fakeContent.getUncachedCalls != 1 {
-		t.Fatalf("GetUncached calls = %d, want 1", fakeContent.getUncachedCalls)
+	tests := []struct {
+		name      string
+		auth      string
+		wantCache string
+	}{
+		{name: "admin token is not stored", auth: "Bearer " + adminToken, wantCache: contentCacheAdmin},
+		{name: "non-admin token stays public", auth: "Bearer " + nonAdminToken, wantCache: contentCachePublic},
 	}
-	if fakeContent.getCalls != 0 {
-		t.Fatalf("Get calls = %d, want 0 (admin must bypass the student cache)", fakeContent.getCalls)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/content", nil)
+			req.Header.Set("Authorization", tt.auth)
+			rr := httptest.NewRecorder()
+
+			h.handleGetContent(rr, req)
+
+			if rr.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+			}
+			if cc := rr.Header().Get("Cache-Control"); cc != tt.wantCache {
+				t.Fatalf("Cache-Control = %q, want %q", cc, tt.wantCache)
+			}
+			if !reflect.DeepEqual(rr.Body.Bytes(), sampleJSON) {
+				t.Fatalf("body = %q, want %q", rr.Body.Bytes(), sampleJSON)
+			}
+		})
 	}
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
-	}
-	if cc := rr.Header().Get("Cache-Control"); cc != contentCacheAdmin {
-		t.Fatalf("Cache-Control = %q, want %q", cc, contentCacheAdmin)
-	}
-	if !reflect.DeepEqual(rr.Body.Bytes(), sampleJSON) {
-		t.Fatalf("body = %q, want %q", rr.Body.Bytes(), sampleJSON)
+	if fakeContent.getCalls != len(tests) {
+		t.Fatalf("Get calls = %d, want %d", fakeContent.getCalls, len(tests))
 	}
 }

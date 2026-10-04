@@ -347,3 +347,18 @@ func isForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode
 }
+
+// asMissingUser turns a foreign-key failure on users.id into ErrUserNotFound.
+// Guest cleanup and student deletes leave a still-valid JWT for a row that is gone.
+// Constraint names differ by table (page_views_user_id_fkey and the older page_views_users_id_fkey).
+func asMissingUser(err error) error {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != foreignKeyViolationCode {
+		return err
+	}
+	name := pgErr.ConstraintName
+	if strings.HasSuffix(name, "_user_id_fkey") || strings.HasSuffix(name, "_users_id_fkey") {
+		return errs.ErrUserNotFound
+	}
+	return err
+}

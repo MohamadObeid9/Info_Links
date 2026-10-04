@@ -176,6 +176,10 @@ func (r *postgresServiceRepository) SetStatus(ctx context.Context, id int, statu
 
 func (r *postgresServiceRepository) InsertClick(ctx context.Context, click models.ServiceClick) error {
 	if _, err := r.db.ExecContext(ctx, insertServiceClickQuery, click.ServiceID, click.UserID, click.PageContext, click.LinkTarget, click.URL, click.DeviceType); err != nil {
+		err = asMissingUser(err)
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return err
+		}
 		return fmt.Errorf("insert service click: %w", err)
 	}
 	return nil

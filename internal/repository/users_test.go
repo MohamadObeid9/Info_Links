@@ -731,3 +731,45 @@ func TestUserRepository_DeleteStudents(t *testing.T) {
 		assertRepoErr(t, mock, err, errs.ErrDatabaseDown)
 	})
 }
+
+func TestAsMissingUser(t *testing.T) {
+	other := &pgconn.PgError{Code: foreignKeyViolationCode, ConstraintName: "link_clicks_link_id_fkey"}
+	tests := []struct {
+		name string
+		err  error
+		want error
+	}{
+		{
+			name: "older page view constraint",
+			err:  &pgconn.PgError{Code: foreignKeyViolationCode, ConstraintName: "page_views_users_id_fkey"},
+			want: errs.ErrUserNotFound,
+		},
+		{
+			name: "search events constraint",
+			err:  &pgconn.PgError{Code: foreignKeyViolationCode, ConstraintName: "search_events_user_id_fkey"},
+			want: errs.ErrUserNotFound,
+		},
+		{
+			name: "foreign key on a different column",
+			err:  other,
+		},
+		{
+			name: "unique violation",
+			err:  &pgconn.PgError{Code: uniqueViolationCode, ConstraintName: "page_views_user_id_fkey"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := asMissingUser(tt.err)
+			if tt.want == nil {
+				if got != tt.err {
+					t.Fatalf("got %v, want the original error", got)
+				}
+				return
+			}
+			if got != tt.want {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

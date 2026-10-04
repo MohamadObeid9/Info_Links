@@ -189,7 +189,7 @@ Render uses `/readyz` to decide whether to send traffic. `/healthz` answers "is 
 
 ### Caching (`GET /api/content` and static files)
 
-Origin keeps a **process-local copy** of `GET /api/content` (60s TTL, `singleflight` on miss) so a flood that bypasses Cloudflare does not run the CTE once per request. Admin `GET /api/admin/content` always hits Postgres (`GetUncached`). Successful course/link/extra/service mutations call `Invalidate()`.
+Origin keeps a **process-local copy** of `GET /api/content` (60s TTL, `singleflight` on miss) so a flood that bypasses Cloudflare does not run the CTE once per request. A valid admin token on that same route sets `Cache-Control: private, no-store`. Successful course/link/extra/service mutations call `Invalidate()`.
 
 Cloudflare still sits in front of Render:
 

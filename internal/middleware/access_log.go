@@ -18,6 +18,10 @@ func accessLogDecision(method, path, appEnv string, status int) accessLogAction 
 	switch {
 	case isNoisyPath(path, method), status == http.StatusNoContent, status == http.StatusNotFound:
 		return accessLogSkip
+	case status >= http.StatusInternalServerError:
+		// Handlers and Recover already log the failure. A second warn line
+		// for the same request only duplicates that error in production logs.
+		return accessLogSkip
 	case status >= 400:
 		return accessLogWarn
 	case method == http.MethodPost, method == http.MethodPatch, method == http.MethodDelete:

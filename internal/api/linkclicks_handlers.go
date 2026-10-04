@@ -20,6 +20,9 @@ func (h *Handler) handlePostLinkClick(w http.ResponseWriter, r *http.Request) {
 	}
 	lc.UserID = userID
 	if err := h.linkClickService.Create(r.Context(), lc); err != nil {
+		if writeIfMissingUser(w, r, err) {
+			return
+		}
 		mapPostLinkClickErr(h, w, r, err)
 		return
 	}

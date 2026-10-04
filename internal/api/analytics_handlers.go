@@ -46,6 +46,9 @@ func (h *Handler) handlePostSearchEvent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.analyticsService.TrackSearch(r.Context(), userID, body.Query); err != nil {
+		if writeIfMissingUser(w, r, err) {
+			return
+		}
 		mapAnalyticsTrackErr(h, w, r, err)
 		return
 	}

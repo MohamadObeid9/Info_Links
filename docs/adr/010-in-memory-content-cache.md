@@ -16,8 +16,7 @@ Keep a **process-local** copy of the public content payload:
 
 - 60s TTL
 - `singleflight` so concurrent misses share one query
-- public `GET /api/content` reads the cache (`Get`)
-- admin `GET /api/admin/content` bypasses it (`GetUncached`) and still freezes expired services
+- `GET /api/content` reads the cache (`Get`); a valid admin token only changes `Cache-Control` to `private, no-store`
 - successful mutations of courses, links, extra sections/links, and services call `Invalidate()`
 
 Cloudflare + the 10-minute warm-up cron stay in place. This cache is for the origin, not a replacement for the CDN.
@@ -27,4 +26,4 @@ Cloudflare + the 10-minute warm-up cron stay in place. This cache is for the ori
 - Origin k6 (2026-09-01 afternoon): normal load **100% 200**, p95 **1.53 ms**; burst **~17,009 req/s**, 99.93% 429, p95 of allowed 200s **8.91 ms**. Full tables in [`docs/load-test.md`](../load-test.md).
 - A cold miss or TTL expiry still pays for the CTE once (max ~329 ms in that run).
 - Multi-instance deploys can serve stale JSON for up to 60s unless every instance is invalidated; one Render web service is enough at current scale.
-- Admin UI is not served from this cache.
+- Admin reads use the same cache. A valid admin token only sets `Cache-Control: private, no-store` on the response.

@@ -125,20 +125,6 @@ func TestHandleApiRoot(t *testing.T) {
 			map[string]any{"path": "/api/search_events", "method": "POST", "description": "Record a search query (analytics)."},
 			map[string]any{"path": "/api/contributions", "method": "POST", "description": "Submit a user contribution."},
 		},
-		"admin_endpoints": []any{
-			map[string]any{"path": "/api/admin/courses", "method": "POST/PATCH/DELETE", "description": "Manage courses."},
-			map[string]any{"path": "/api/admin/links", "method": "POST/PATCH/DELETE", "description": "Manage links."},
-			map[string]any{"path": "/api/admin/reports", "method": "GET/PATCH/DELETE", "description": "Manage user reports."},
-			map[string]any{"path": "/api/admin/feedback", "method": "GET/PATCH/DELETE", "description": "Manage feedback."},
-			map[string]any{"path": "/api/admin/contributions", "method": "GET/PATCH/DELETE", "description": "Manage user contributions."},
-			map[string]any{"path": "/api/admin/extra_sections", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra sections."},
-			map[string]any{"path": "/api/admin/extra_links", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra links."},
-			map[string]any{"path": "/api/admin/analytics/summary", "method": "GET", "description": "Aggregated unique-user analytics (range=7|30|90|all)."},
-			map[string]any{"path": "/api/admin/analytics/actors", "method": "GET", "description": "Who clicked, searched, favorited, or used a device for a link, course, service, search term, or device bucket."},
-			map[string]any{"path": "/api/admin/users", "method": "GET/DELETE", "description": "List or delete registered students (cascades analytics)."},
-			map[string]any{"path": "/api/admin/page_views", "method": "GET", "description": "View analytics (page views)."},
-			map[string]any{"path": "/api/admin/link_clicks", "method": "GET", "description": "View analytics (link clicks)."},
-		},
 	}
 
 	lessFunc := func(a, b map[string]any) bool {

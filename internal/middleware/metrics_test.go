@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,138 +13,145 @@ import (
 
 func TestShouldSkipMetrics(t *testing.T) {
 	tests := []struct {
-		path string
-		want bool
+		pattern string
+		want    bool
 	}{
-		{"/metrics", true},
-		{"/healthz", true},
-		{"/readyz", true},
-		{"/api/content", false},
-		{"/api/admin/reports", false},
-		{"/main.js", true},
-		{"/styles/components.css", true},
+		{"GET /metrics", true},
+		{"GET /healthz", true},
+		{"GET /readyz", true},
+		{"GET /api/content", false},
+		{"GET /api/admin/reports", false},
+		{"/", false},
+		{"", false},
 	}
 	for _, tt := range tests {
-		if got := shouldSkipMetrics(tt.path); got != tt.want {
-			t.Errorf("shouldSkipMetrics(%q) = %v, want %v", tt.path, got, tt.want)
+		if got := shouldSkipMetrics(tt.pattern); got != tt.want {
+			t.Errorf("shouldSkipMetrics(%q) = %v, want %v", tt.pattern, got, tt.want)
 		}
 	}
 }
 
-func TestNormalizePath(t *testing.T) {
-	tests := []struct {
-		path string
-		want string
-	}{
-		{"/api/content", "/api/content"},
-		{"/api/admin/links/42", "/api/admin/links/{id}"},
-		{"/api/admin/reports", "/api/admin/reports"},
-		{"/course/nfa008", "/course/{code}"},
-		{"/program/licence", "/program/{slug}"},
-		{"/\x04\xd7\x7f", "invalid_utf8_path"},
-	}
-	for _, tt := range tests {
-		if got := NormalizePath(tt.path); got != tt.want {
-			t.Errorf("NormalizePath(%q) = %q, want %q", tt.path, got, tt.want)
-		}
-	}
-}
-
-func TestMetrics_invalidUTF8Path(t *testing.T) {
-	handler := Metrics(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-
-	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.URL.Path = "/\x04\xd7\x7f"
-	handler.ServeHTTP(rr, req)
-
-	value, ok := counterValue(t, "http_requests_total", map[string]string{
-		"method": "GET",
-		"path":   "invalid_utf8_path",
-		"status": "404",
-	})
-	if !ok {
-		t.Fatal("http_requests_total{GET,invalid_utf8_path,404} not found")
-	}
-	if value < 1 {
-		t.Fatalf("expected counter >= 1, got %v", value)
-	}
-}
-
-func TestMetrics_recordsRequest(t *testing.T) {
-	handler := Metrics(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestMetrics_recordsMatchedPattern(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/content", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-	}))
+	})
+	mux.HandleFunc("POST /api/users/me/favorites/{course_id}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	})
+	handler := Metrics(mux)
 
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/content", nil)
-	handler.ServeHTTP(rr, req)
-
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/content", nil))
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status: got %d", rr.Code)
 	}
-
-	value, ok := counterValue(t, "http_requests_total", map[string]string{
+	if _, ok := counterValue(t, "http_requests_total", map[string]string{
 		"method": "GET",
 		"path":   "/api/content",
 		"status": "200",
-	})
-	if !ok {
+	}); !ok {
 		t.Fatal("http_requests_total{GET,/api/content,200} not found")
 	}
-	if value < 1 {
-		t.Fatalf("expected counter >= 1, got %v", value)
+
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/api/users/me/favorites/22", nil))
+	if _, ok := counterValue(t, "http_requests_total", map[string]string{
+		"method": "POST",
+		"path":   "/api/users/me/favorites/{course_id}",
+		"status": "201",
+	}); !ok {
+		t.Fatal("favorite route was not labeled with its pattern")
 	}
 }
 
-func TestMetrics_recordsNonOKStatus(t *testing.T) {
-	handler := Metrics(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestMetrics_otherMethod(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
+	handler := Metrics(mux)
 
+	before := pathCounts(t, "http_requests_total")
 	rr := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/missing", nil)
-	handler.ServeHTTP(rr, req)
+	handler.ServeHTTP(rr, httptest.NewRequest("TRACE", "/api/.env", nil))
 
-	if rr.Code != http.StatusNotFound {
-		t.Fatalf("status: got %d", rr.Code)
+	after := pathCounts(t, "http_requests_total")
+	if after["unmatched"]-before["unmatched"] != 1 {
+		t.Fatalf("unmatched delta = %v, want 1", after["unmatched"]-before["unmatched"])
 	}
-
-	value, ok := counterValue(t, "http_requests_total", map[string]string{
-		"method": "GET",
-		"path":   "/api/missing",
+	if _, ok := counterValue(t, "http_requests_total", map[string]string{
+		"method": "other",
+		"path":   metricsUnmatchedPath,
 		"status": "404",
-	})
-	if !ok {
-		t.Fatal("http_requests_total{GET,/api/missing,404} not found")
-	}
-	if value < 1 {
-		t.Fatalf("expected counter >= 1, got %v", value)
+	}); !ok {
+		t.Fatal("TRACE was not labeled method=other path=unmatched")
 	}
 }
 
-func TestMetrics_skipsProbePaths(t *testing.T) {
-	handler := Metrics(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
+func TestMetrics_randomPathsCollapseToUnmatched(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
 	}))
+	handler := Metrics(mux)
 
-	for _, path := range []string{"/healthz", "/readyz", "/metrics"} {
-		rr := httptest.NewRecorder()
+	before := pathCounts(t, "http_requests_total")
+	rng := rand.New(rand.NewSource(1))
+	for i := 0; i < 50; i++ {
+		path := fmt.Sprintf("/scan/%d/%d", i, rng.Int())
 		req := httptest.NewRequest(http.MethodGet, path, nil)
-		handler.ServeHTTP(rr, req)
+		handler.ServeHTTP(httptest.NewRecorder(), req)
 	}
 
-	if hasCounter(t, "http_requests_total", map[string]string{"path": "/healthz"}) {
-		t.Fatal("healthz should not be recorded in http_requests_total")
+	changed := map[string]float64{}
+	after := pathCounts(t, "http_requests_total")
+	for path, n := range after {
+		if d := n - before[path]; d > 0 {
+			changed[path] = d
+		}
 	}
-	if hasCounter(t, "http_requests_total", map[string]string{"path": "/readyz"}) {
-		t.Fatal("readyz should not be recorded in http_requests_total")
+	if len(changed) != 1 || changed[metricsUnmatchedPath] != 50 {
+		t.Fatalf("distinct path labels = %v, want exactly {unmatched: 50}", changed)
 	}
-	if hasCounter(t, "http_requests_total", map[string]string{"path": "/metrics"}) {
-		t.Fatal("/metrics should not be recorded in http_requests_total")
+}
+
+func TestMetrics_skipsProbePatterns(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {})
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {})
+	handler := Metrics(mux)
+
+	before := pathCounts(t, "http_requests_total")
+	for _, path := range []string{"/healthz", "/readyz", "/metrics"} {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
 	}
+	after := pathCounts(t, "http_requests_total")
+	for path, n := range after {
+		if n > before[path] {
+			t.Fatalf("probe request recorded path %q", path)
+		}
+	}
+}
+
+func pathCounts(t *testing.T, name string) map[string]float64 {
+	t.Helper()
+	out := map[string]float64{}
+	fams, err := prometheus.DefaultGatherer.Gather()
+	if err != nil {
+		t.Fatalf("gather: %v", err)
+	}
+	for _, fam := range fams {
+		if fam.GetName() != name {
+			continue
+		}
+		for _, m := range fam.GetMetric() {
+			labels := labelMap(m)
+			out[labels["path"]] += m.GetCounter().GetValue()
+		}
+	}
+	return out
 }
 
 func counterValue(t *testing.T, name string, labels map[string]string) (float64, bool) {
