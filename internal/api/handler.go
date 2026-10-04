@@ -10,17 +10,14 @@ import (
 	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/models"
 	"infolinks-backend/internal/service"
-	"infolinks-backend/internal/webbotauth"
 )
 
 type Handler struct {
 	logger              *slog.Logger
 	jwtSecret           []byte
-	siteBaseURL         string
 	supabaseURL         string
 	supbaseAnonKey      string
 	httpClient          *http.Client
-	webBotAuth          *webbotauth.Directory
 	db                  dbPinger
 	linkService         linkService
 	userService         userService
@@ -40,10 +37,8 @@ type Handler struct {
 type Dependencies struct {
 	Logger              *slog.Logger
 	JWTSecret           []byte
-	SiteBaseURL         string
 	SupabaseURL         string
 	SupabaseAnonKey     string
-	WebBotAuth          *webbotauth.Directory
 	DB                  dbPinger
 	LinkService         linkService
 	UserService         userService
@@ -232,8 +227,6 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		db:                  deps.DB,
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
-		siteBaseURL:         strings.TrimSuffix(strings.TrimSpace(deps.SiteBaseURL), "/"),
-		webBotAuth:          deps.WebBotAuth,
 		linkService:         deps.LinkService,
 		supabaseURL:         deps.SupabaseURL,
 		userService:         deps.UserService,

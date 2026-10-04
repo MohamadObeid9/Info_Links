@@ -19,7 +19,6 @@ import (
 	"infolinks-backend/internal/repository"
 	"infolinks-backend/internal/seo"
 	"infolinks-backend/internal/service"
-	"infolinks-backend/internal/webbotauth"
 )
 
 const shutdownTimeout = 10 * time.Second
@@ -42,19 +41,11 @@ func main() {
 
 	services, _ := app.Wire(dbClient.DB)
 
-	webBotDir, err := webbotauth.NewDirectory(cfg.JWTSecret, cfg.SiteBaseURL)
-	if err != nil {
-		logger.Error("web bot auth directory failed", "error", err)
-		os.Exit(1)
-	}
-
 	apiHandler, err := api.NewHandler(api.Dependencies{
 		DB:                  dbClient,
 		JWTSecret:           []byte(cfg.JWTSecret),
-		SiteBaseURL:         cfg.SiteBaseURL,
 		SupabaseURL:         cfg.SupabaseURL,
 		SupabaseAnonKey:     cfg.SupabaseAnonKey,
-		WebBotAuth:          webBotDir,
 		UserService:         services.UserService,
 		AnalyticsService:    services.AnalyticsService,
 		LinkService:         services.LinkService,
@@ -140,7 +131,6 @@ func serveHTTP(ctx context.Context, server *http.Server, ln net.Listener) error 
 		return nil
 	}
 }
-
 
 func newLogger(appEnv, logLevel string) *slog.Logger {
 	var logHandler slog.Handler

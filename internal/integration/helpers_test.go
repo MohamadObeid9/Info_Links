@@ -19,14 +19,13 @@ import (
 	"infolinks-backend/internal/repository"
 	"infolinks-backend/internal/seo"
 	"infolinks-backend/internal/service"
-	"infolinks-backend/internal/webbotauth"
 )
 
 const (
-	testJWTSecret      = "integration-test-jwt-secret"
-	testSupabaseURL    = "https://example.supabase.co"
-	testSupabaseAnon   = "integration-test-anon-key"
-	testSiteBaseURL    = "http://localhost:8080"
+	testJWTSecret    = "integration-test-jwt-secret"
+	testSupabaseURL  = "https://example.supabase.co"
+	testSupabaseAnon = "integration-test-anon-key"
+	testSiteBaseURL  = "http://localhost:8080"
 )
 
 const truncateTablesQuery = `
@@ -84,14 +83,14 @@ func resetDB(t *testing.T, db *sql.DB) {
 
 func testConfig() config.Config {
 	return config.Config{
-		Port:              "8080",
-		AppEnv:            "development",
-		LogLevel:          "debug",
-		JWTSecret:         testJWTSecret,
-		DatabaseURL:       "unused-in-router",
-		SiteBaseURL:       testSiteBaseURL,
-		SupabaseURL:       testSupabaseURL,
-		SupabaseAnonKey:   testSupabaseAnon,
+		Port:               "8080",
+		AppEnv:             "development",
+		LogLevel:           "debug",
+		JWTSecret:          testJWTSecret,
+		DatabaseURL:        "unused-in-router",
+		SiteBaseURL:        testSiteBaseURL,
+		SupabaseURL:        testSupabaseURL,
+		SupabaseAnonKey:    testSupabaseAnon,
 		CorsAllowedOrigins: "http://localhost:8080",
 	}
 }
@@ -99,19 +98,13 @@ func testConfig() config.Config {
 func newTestHandler(t *testing.T, dbClient *database.Client) *api.Handler {
 	t.Helper()
 	deps, _ := app.Wire(dbClient.DB)
-	webBot, err := webbotauth.NewDirectory(testJWTSecret, testSiteBaseURL)
-	if err != nil {
-		t.Fatalf("webbotauth.NewDirectory: %v", err)
-	}
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	h, err := api.NewHandler(api.Dependencies{
 		DB:                  dbClient,
 		JWTSecret:           []byte(testJWTSecret),
-		SiteBaseURL:         testSiteBaseURL,
 		SupabaseURL:         testSupabaseURL,
 		SupabaseAnonKey:     testSupabaseAnon,
-		WebBotAuth:          webBot,
 		UserService:         deps.UserService,
 		AnalyticsService:    deps.AnalyticsService,
 		LinkService:         deps.LinkService,

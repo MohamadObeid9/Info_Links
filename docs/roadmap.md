@@ -17,7 +17,7 @@ Project history and planned work.
 | **Phase 7** | Favorites, content types, analytics, and PWA support |
 | **Phase 8** | Go backend with layered architecture, observability, CI, and SEO |
 | **Phase 9** | Student identity without passwords, synced favorites, and unique-user analytics |
-| **Phase 10** | Community services, agent/API discovery, graceful shutdown, integration tests, Cloudflare cache |
+| **Phase 10** | Community services, graceful shutdown, integration tests, Cloudflare cache |
 | **Phase 11** | Origin in-memory `/api/content` cache (`singleflight`); k6 origin p95 1.53 ms (was 4.91 s) |
 
 ---

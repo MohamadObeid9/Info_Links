@@ -165,20 +165,6 @@ SEO handlers set explicit context timeouts (10–20s) because page rendering may
 
 ---
 
-### Markdown for Agents
-
-SEO and SPA summary pages support **content negotiation**:
-
-- Default / browsers → `text/html`
-- `Accept: text/markdown` → clean markdown with YAML frontmatter, body content, and JSON-LD in a fenced `json` block (course pages)
-- Response headers: `Content-Type: text/markdown; charset=utf-8`, `Vary: Accept`, `x-markdown-tokens`
-
-Covered paths: `/`, `/about`, `/courses`, `/course/{code}`, `/program/{slug}`.
-
-This matches [Markdown for Agents](https://developers.cloudflare.com/fundamentals/reference/markdown-for-agents/) so origin works even without Cloudflare edge conversion. If Cloudflare Markdown for Agents is also enabled, either layer is fine; origin negotiation keeps local/dev and non-CF traffic agent-friendly.
-
----
-
 ### Common mistakes to avoid
 
 - Serving SEO content only client-side — crawlers won't execute JS reliably
