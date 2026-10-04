@@ -176,12 +176,6 @@ func counterValue(t *testing.T, name string, labels map[string]string) (float64,
 	return 0, false
 }
 
-func hasCounter(t *testing.T, name string, labels map[string]string) bool {
-	t.Helper()
-	_, ok := counterValue(t, name, labels)
-	return ok
-}
-
 func labelsMatch(m *dto.Metric, want map[string]string) bool {
 	got := labelMap(m)
 	for k, v := range want {
