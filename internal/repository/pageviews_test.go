@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func newTestPageViewRepo(t *testing.T) (PageViewRepository, sqlmock.Sqlmock) {
@@ -37,6 +38,12 @@ func TestPageViewRepository_Create(t *testing.T) {
 			pv:      models.PageView{Page: "home", UserID: 7, DeviceType: "phone"},
 			execErr: errs.ErrDatabaseDown,
 			err:     errs.ErrDatabaseDown,
+		},
+		{
+			name:    "missing user is not a server error",
+			pv:      models.PageView{Page: "home", UserID: 7, DeviceType: "phone"},
+			execErr: &pgconn.PgError{Code: "23503", ConstraintName: "page_views_users_id_fkey"},
+			err:     errs.ErrUserNotFound,
 		},
 	}
 	for _, tt := range tests {

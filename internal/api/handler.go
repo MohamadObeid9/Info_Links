@@ -10,17 +10,14 @@ import (
 	"infolinks-backend/internal/middleware"
 	"infolinks-backend/internal/models"
 	"infolinks-backend/internal/service"
-	"infolinks-backend/internal/webbotauth"
 )
 
 type Handler struct {
 	logger              *slog.Logger
 	jwtSecret           []byte
-	siteBaseURL         string
 	supabaseURL         string
 	supbaseAnonKey      string
 	httpClient          *http.Client
-	webBotAuth          *webbotauth.Directory
 	db                  dbPinger
 	linkService         linkService
 	userService         userService
@@ -40,10 +37,8 @@ type Handler struct {
 type Dependencies struct {
 	Logger              *slog.Logger
 	JWTSecret           []byte
-	SiteBaseURL         string
 	SupabaseURL         string
 	SupabaseAnonKey     string
-	WebBotAuth          *webbotauth.Directory
 	DB                  dbPinger
 	LinkService         linkService
 	UserService         userService
@@ -66,13 +61,12 @@ type dbPinger interface {
 
 type contentService interface {
 	Get(ctx context.Context) ([]byte, error)
-	GetUncached(ctx context.Context) ([]byte, error)
 	Invalidate()
 }
 
 type userService interface {
 	CreateGuest(ctx context.Context) (int, error)
-	RegisterUser(ctx context.Context, guestID int, u models.User) (models.User, error)
+	RegisterUser(ctx context.Context, guestID int, u models.User, confirmDifferent bool) (models.User, error)
 	LoginUser(ctx context.Context, guestID int, u models.User) (models.User, error)
 	GetUser(ctx context.Context, userID int) (models.User, error)
 	AddFavorite(ctx context.Context, userID int, courseIDStr string) error
@@ -232,8 +226,6 @@ func NewHandler(deps Dependencies) (*Handler, error) {
 		db:                  deps.DB,
 		logger:              deps.Logger,
 		jwtSecret:           deps.JWTSecret,
-		siteBaseURL:         strings.TrimSuffix(strings.TrimSpace(deps.SiteBaseURL), "/"),
-		webBotAuth:          deps.WebBotAuth,
 		linkService:         deps.LinkService,
 		supabaseURL:         deps.SupabaseURL,
 		userService:         deps.UserService,

@@ -131,6 +131,14 @@ func (r *postgresUserRepository) GetByID(ctx context.Context, id int) (models.Us
 	return user, nil
 }
 
+func (r *postgresUserRepository) NameExists(ctx context.Context, firstName string, lastName string) (bool, error) {
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, nameExistsQuery, firstName, lastName).Scan(&exists); err != nil {
+		return false, fmt.Errorf("name exists: %w", err)
+	}
+	return exists, nil
+}
+
 func (r *postgresUserRepository) GetByCredentials(ctx context.Context, u models.User) (models.User, error) {
 	user, err := scanUser(r.db.QueryRowContext(ctx, getUserByCredentialsQuery, u.FirstName, u.LastName, u.Number))
 	if err != nil {
@@ -346,4 +354,19 @@ func isUniqueViolation(err error) bool {
 func isForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode
+}
+
+// asMissingUser turns a foreign-key failure on users.id into ErrUserNotFound.
+// Guest cleanup and student deletes leave a still-valid JWT for a row that is gone.
+// Constraint names differ by table (page_views_user_id_fkey and the older page_views_users_id_fkey).
+func asMissingUser(err error) error {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) || pgErr.Code != foreignKeyViolationCode {
+		return err
+	}
+	name := pgErr.ConstraintName
+	if strings.HasSuffix(name, "_user_id_fkey") || strings.HasSuffix(name, "_users_id_fkey") {
+		return errs.ErrUserNotFound
+	}
+	return err
 }

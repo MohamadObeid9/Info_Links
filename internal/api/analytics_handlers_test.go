@@ -181,6 +181,17 @@ func TestHandlePostSearchEvent(t *testing.T) {
 	}
 }
 
+func TestHandlePostSearchEvent_missingUser(t *testing.T) {
+	fake := &fakeAnalyticsService{searchErr: errs.ErrUserNotFound}
+	h := testHandler(t, withAnalytics(fake))
+	req := studentRequest(http.MethodPost, "/api/search_events", `{"query":"nfa035"}`)
+	rr := httptest.NewRecorder()
+	h.handlePostSearchEvent(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestHandleAdminGetAnalyticsActors(t *testing.T) {
 	actors := models.AnalyticsActorsResult{
 		Kind:  "link",

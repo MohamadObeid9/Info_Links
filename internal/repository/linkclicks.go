@@ -3,8 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
+	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/models"
 )
 
@@ -48,6 +50,10 @@ func (r *postgresLinkClickRepository) List(ctx context.Context) ([]models.LinkCl
 
 func (r *postgresLinkClickRepository) Create(ctx context.Context, lc models.LinkClick) error {
 	if _, err := r.db.ExecContext(ctx, insertLinkClickQuery, lc.LinkID, lc.ExtraLinkID, lc.UserID, lc.ProgramID); err != nil {
+		err = asMissingUser(err)
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return err
+		}
 		return fmt.Errorf("insert link click: %w", err)
 	}
 	return nil

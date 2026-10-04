@@ -138,7 +138,7 @@ Same validation → sentinel → repository pattern as courses and links.
 
 ### Thin services vs rich services
 
-`ContentService` is no longer a pure pass-through: `Get` serves a 60s in-memory copy of the public tree (`singleflight` on miss); `GetUncached` always hits Postgres (admin); mutations elsewhere call `Invalidate()`. `PageViewService.Create` is still thin — the repo does the insert.
+`ContentService` is no longer a pure pass-through: `Get` serves a 60s in-memory copy of the public tree (`singleflight` on miss); mutations elsewhere call `Invalidate()`. `PageViewService.Create` is still thin — the repo does the insert.
 
 Others are rich (`CourseService.Update`, `ReportService.List`) — validation and orchestration live here.
 

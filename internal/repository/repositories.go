@@ -19,6 +19,7 @@ type UserRepository interface {
 	DeleteStaleGuests(ctx context.Context, olderThan time.Time) (int64, error)
 	GetByID(ctx context.Context, id int) (models.User, error)
 	GetByCredentials(ctx context.Context, u models.User) (models.User, error)
+	NameExists(ctx context.Context, firstName string, lastName string) (bool, error)
 	AddFavorite(ctx context.Context, userID int, courseID int) error
 	RemoveFavorite(ctx context.Context, userID int, courseID int) error
 	ListStudents(ctx context.Context, params StudentListParams) ([]models.UserListItem, error)

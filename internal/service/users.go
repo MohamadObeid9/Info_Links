@@ -47,10 +47,22 @@ func (s *UserService) DeleteStaleGuests(ctx context.Context, ttl time.Duration) 
 // RegisterUser claims the guest row identified by guestID so pre-signup activity
 // keeps the same user id. A guest id that no longer exists (stale token, already
 // claimed) falls through to a brand new student.
-func (s *UserService) RegisterUser(ctx context.Context, guestID int, u models.User) (models.User, error) {
+func (s *UserService) RegisterUser(ctx context.Context, guestID int, u models.User, confirmDifferent bool) (models.User, error) {
 	u, err := normalizeCredentials(u)
 	if err != nil {
 		return models.User{}, err
+	}
+
+	// Same name on a second device is usually the same person signing up again.
+	// confirmDifferent is the explicit "I'm someone else" choice from the dialog.
+	if !confirmDifferent {
+		taken, err := s.repo.NameExists(ctx, u.FirstName, u.LastName)
+		if err != nil {
+			return models.User{}, fmt.Errorf("check name: %w", err)
+		}
+		if taken {
+			return models.User{}, errs.ErrUserNameExists
+		}
 	}
 
 	if guestID > 0 {

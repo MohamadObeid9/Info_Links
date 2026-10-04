@@ -69,15 +69,6 @@ func (c *ContentService) Get(ctx context.Context) ([]byte, error) {
 	return v.([]byte), nil
 }
 
-// GetUncached always hits Postgres and does not read or write the student cache.
-func (c *ContentService) GetUncached(ctx context.Context) ([]byte, error) {
-	result, err := c.repo.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("get content: %w", err)
-	}
-	return result, nil
-}
-
 // Invalidate drops the student cache so the next Get refills from Postgres.
 func (c *ContentService) Invalidate() {
 	c.mu.Lock()

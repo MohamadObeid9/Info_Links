@@ -126,7 +126,7 @@ Authenticated admins use the default bucket so the dashboard can load many endpo
 - Default: `r.RemoteAddr`
 - If remote is a trusted proxy (loopback, private ranges), parse `X-Forwarded-For` right-to-left for first non-trusted IP
 
-**Exempt paths:** `/healthz`, `/readyz`, `/metrics`, `/robots.txt`, discovery docs (`/auth.md`, `/openapi.json`, `/.well-known/...`), static assets (paths with file extensions).
+**Exempt paths:** `/healthz`, `/readyz`, `/metrics`, `/robots.txt`, static assets (paths with file extensions).
 
 Over limit / in cooldown → `429` with `{"error":"rate limit exceeded"}` and `Retry-After`.
 

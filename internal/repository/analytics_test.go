@@ -11,6 +11,7 @@ import (
 	"infolinks-backend/internal/models"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func newTestAnalyticsRepo(t *testing.T) (AnalyticsRepository, sqlmock.Sqlmock) {
@@ -335,6 +336,15 @@ func TestAnalyticsRepository_InsertSearch(t *testing.T) {
 		t.Fatalf("InsertSearch: %v", err)
 	}
 	assertRepoErr(t, mock, nil, nil)
+}
+
+func TestAnalyticsRepository_InsertSearch_missingUser(t *testing.T) {
+	repo, mock := newTestAnalyticsRepo(t)
+	mock.ExpectExec(insertSearchEventQuery).WithArgs(7, "nfa035").
+		WillReturnError(&pgconn.PgError{Code: "23503", ConstraintName: "search_events_user_id_fkey"})
+
+	err := repo.InsertSearch(context.Background(), 7, "nfa035")
+	assertRepoErr(t, mock, err, errs.ErrUserNotFound)
 }
 
 func TestAnalyticsRepository_ListActors(t *testing.T) {

@@ -46,6 +46,9 @@ func (h *Handler) handlePostServiceClick(w http.ResponseWriter, r *http.Request)
 	}
 	service.NormalizeServiceClick(&click)
 	if err := h.serviceService.TrackClick(r.Context(), click); err != nil {
+		if writeIfMissingUser(w, r, err) {
+			return
+		}
 		mapPostServiceClickErr(h, w, r, err)
 		return
 	}

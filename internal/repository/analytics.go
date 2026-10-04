@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -181,6 +182,10 @@ func analyticsDaysQuery(ranged, allTime string, days int) (string, []any) {
 
 func (r *postgresAnalyticsRepository) InsertSearch(ctx context.Context, userID int, query string) error {
 	if _, err := r.db.ExecContext(ctx, insertSearchEventQuery, userID, query); err != nil {
+		err = asMissingUser(err)
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return err
+		}
 		return fmt.Errorf("insert search event: %w", err)
 	}
 	return nil

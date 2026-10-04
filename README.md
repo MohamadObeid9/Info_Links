@@ -88,7 +88,6 @@ info_links/
 │   ├── database/         # DB client (pgx)
 │   ├── models/           # Shared domain types
 │   ├── device/           # User-Agent → phone/laptop classification
-│   ├── webbotauth/       # Web Bot Auth JWKS + HTTP Message Signatures
 │   └── errs/             # Sentinel errors
 ├── frontend/             # Vanilla JS SPA (Vite for dev/build)
 ├── db/

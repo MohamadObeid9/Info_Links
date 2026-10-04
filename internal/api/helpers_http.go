@@ -2,10 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"infolinks-backend/internal/middleware"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"infolinks-backend/internal/errs"
+	"infolinks-backend/internal/middleware"
 )
 
 const maxBodyBytes = 1 << 20
@@ -14,6 +17,16 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+// writeIfMissingUser answers 401 when the token's user row is gone, so the
+// client can mint a new guest instead of retrying a 500.
+func writeIfMissingUser(w http.ResponseWriter, r *http.Request, err error) bool {
+	if !errors.Is(err, errs.ErrUserNotFound) {
+		return false
+	}
+	writeJSONError(w, r, http.StatusUnauthorized, "Unauthorized: Invalid token")
+	return true
 }
 
 func writeJSONError(w http.ResponseWriter, r *http.Request, status int, message string) {

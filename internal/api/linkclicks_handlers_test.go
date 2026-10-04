@@ -100,6 +100,14 @@ func TestHandlePostLinkClick(t *testing.T) {
 			wantCalls:    1,
 		},
 		{
+			name:         "401 when the token user no longer exists",
+			body:         `{"link_id":42}`,
+			createErr:    errs.ErrUserNotFound,
+			statusWanted: http.StatusUnauthorized,
+			errMsg:       "Unauthorized: Invalid token",
+			wantCalls:    1,
+		},
+		{
 			name:         "500 when service fails",
 			body:         `{"link_id":42}`,
 			createErr:    errs.ErrDatabaseDown,

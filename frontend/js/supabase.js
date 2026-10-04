@@ -29,6 +29,9 @@ function _buildApiError(status, fallbackMessage, payloadText) {
       if (typeof parsed.request_id === "string" && parsed.request_id.trim()) {
         err.requestId = parsed.request_id.trim();
       }
+      if (typeof parsed.code === "string" && parsed.code.trim()) {
+        err.code = parsed.code.trim();
+      }
       return err;
     }
   } catch (e) {}

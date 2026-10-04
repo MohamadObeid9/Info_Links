@@ -117,11 +117,15 @@ function closeModal() {
   }
 }
 
+function _modalFocusables(modalBox) {
+  return [...modalBox.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+  )].filter((el) => !el.closest("[hidden]") && !el.disabled);
+}
+
 function _focusFirstModalElement() {
   const modalBox = document.getElementById("modalBox");
-  const firstFocusable = modalBox.querySelector(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-  );
+  const firstFocusable = _modalFocusables(modalBox)[0];
   if (firstFocusable && typeof firstFocusable.focus === "function") {
     firstFocusable.focus();
   }
@@ -137,9 +141,7 @@ function _trapModalFocus(e) {
   }
   if (e.key !== "Tab") return;
   const modalBox = document.getElementById("modalBox");
-  const focusables = modalBox.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-  );
+  const focusables = _modalFocusables(modalBox);
   if (!focusables.length) return;
   const first = focusables[0];
   const last = focusables[focusables.length - 1];

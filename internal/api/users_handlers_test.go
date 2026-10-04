@@ -20,6 +20,7 @@ type fakeUserService struct {
 	registerCalls   int
 	registerGuestID int
 	registerUser    models.User
+	registerConfirm bool
 	registerResult  models.User
 	registerErr     error
 
@@ -60,10 +61,11 @@ func (f *fakeUserService) CreateGuest(ctx context.Context) (int, error) {
 	return f.getResult, nil
 }
 
-func (f *fakeUserService) RegisterUser(ctx context.Context, guestID int, u models.User) (models.User, error) {
+func (f *fakeUserService) RegisterUser(ctx context.Context, guestID int, u models.User, confirmDifferent bool) (models.User, error) {
 	f.registerCalls++
 	f.registerGuestID = guestID
 	f.registerUser = u
+	f.registerConfirm = confirmDifferent
 	if f.registerErr != nil {
 		return models.User{}, f.registerErr
 	}
@@ -199,11 +201,27 @@ func TestHandleRegisterUser(t *testing.T) {
 		registerErr  error
 		statusWanted int
 		errMsg       string
+		errCode      string
+		wantConfirm  bool
 	}{
 		{
 			name:         "201 with token and user",
 			body:         `{"first_name":"mohamad","last_name":"hassan","number":55}`,
 			statusWanted: http.StatusCreated,
+		},
+		{
+			name:         "409 name_exists when the name is already registered",
+			body:         `{"first_name":"mohamad","last_name":"hassan","number":12}`,
+			registerErr:  errs.ErrUserNameExists,
+			statusWanted: http.StatusConflict,
+			errMsg:       "An account with this name already exists",
+			errCode:      "name_exists",
+		},
+		{
+			name:         "201 forwards confirm_different",
+			body:         `{"first_name":"mohamad","last_name":"hassan","number":12,"confirm_different":true}`,
+			statusWanted: http.StatusCreated,
+			wantConfirm:  true,
 		},
 		{
 			name:         "409 when the name and number are taken",
@@ -246,7 +264,13 @@ func TestHandleRegisterUser(t *testing.T) {
 				if body["error"] != tt.errMsg {
 					t.Fatalf("error = %q, want %q", body["error"], tt.errMsg)
 				}
+				if body["code"] != tt.errCode {
+					t.Fatalf("code = %q, want %q", body["code"], tt.errCode)
+				}
 				return
+			}
+			if fakeUser.registerConfirm != tt.wantConfirm {
+				t.Fatalf("confirm_different = %v, want %v", fakeUser.registerConfirm, tt.wantConfirm)
 			}
 			var body struct {
 				Token string      `json:"token"`

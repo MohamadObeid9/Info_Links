@@ -13,9 +13,10 @@ import (
 // credentialsBody is the signup and login payload. Identity flags never come from
 // the client: is_guest and the user id are decided by the server.
 type credentialsBody struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Number    int    `json:"number"`
+	FirstName        string `json:"first_name"`
+	LastName         string `json:"last_name"`
+	Number           int    `json:"number"`
+	ConfirmDifferent bool   `json:"confirm_different"`
 }
 
 func (h *Handler) handlePostGuest(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +45,7 @@ func (h *Handler) handleRegisterUser(w http.ResponseWriter, r *http.Request) {
 	// pre-signup history stays attached to the same student.
 	guestID := middleware.GuestIDFromHeader(string(h.jwtSecret), r.Header.Get("Authorization"))
 
-	user, err := h.userService.RegisterUser(r.Context(), guestID, bodyToUser(body))
+	user, err := h.userService.RegisterUser(r.Context(), guestID, bodyToUser(body), body.ConfirmDifferent)
 	if err != nil {
 		mapRegisterUserErr(h, w, r, err)
 		return
@@ -176,6 +177,11 @@ func bodyToUser(body credentialsBody) models.User {
 
 func mapRegisterUserErr(h *Handler, w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, errs.ErrUserNameExists):
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "An account with this name already exists",
+			"code":  "name_exists",
+		})
 	case errors.Is(err, errs.ErrUsernameTaken):
 		writeJSONError(w, r, http.StatusConflict, "This name and number are already taken, try another number")
 	case errors.Is(err, errs.ErrUserNameRequired):

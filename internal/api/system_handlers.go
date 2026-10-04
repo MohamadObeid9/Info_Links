@@ -43,21 +43,11 @@ func (h *Handler) handleApiRoot(w http.ResponseWriter, r *http.Request) {
 			{"path": "/api/search_events", "method": "POST", "description": "Record a search query (analytics)."},
 			{"path": "/api/contributions", "method": "POST", "description": "Submit a user contribution."},
 		},
-		"admin_endpoints": []map[string]string{
-			{"path": "/api/admin/courses", "method": "POST/PATCH/DELETE", "description": "Manage courses."},
-			{"path": "/api/admin/links", "method": "POST/PATCH/DELETE", "description": "Manage links."},
-			{"path": "/api/admin/reports", "method": "GET/PATCH/DELETE", "description": "Manage user reports."},
-			{"path": "/api/admin/feedback", "method": "GET/PATCH/DELETE", "description": "Manage feedback."},
-			{"path": "/api/admin/contributions", "method": "GET/PATCH/DELETE", "description": "Manage user contributions."},
-			{"path": "/api/admin/extra_sections", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra sections."},
-			{"path": "/api/admin/extra_links", "method": "GET/POST/PATCH/DELETE", "description": "Manage extra links."},
-			{"path": "/api/admin/analytics/summary", "method": "GET", "description": "Aggregated unique-user analytics (range=7|30|90|all)."},
-			{"path": "/api/admin/analytics/actors", "method": "GET", "description": "Who clicked, searched, favorited, or used a device for a link, course, service, search term, or device bucket."},
-			{"path": "/api/admin/users", "method": "GET/DELETE", "description": "List or delete registered students (cascades analytics)."},
-			{"path": "/api/admin/page_views", "method": "GET", "description": "View analytics (page views)."},
-			{"path": "/api/admin/link_clicks", "method": "GET", "description": "View analytics (link clicks)."},
-		},
 	}
 
 	writeJSON(w, http.StatusOK, response)
+}
+
+func handleAPINotFound(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 }

@@ -188,13 +188,7 @@ func routeClassFor(r *http.Request, jwtSecret string) routeClass {
 func isExempt(r *http.Request) bool {
 	p := r.URL.Path
 	switch p {
-	case "/healthz", "/readyz", "/metrics", "/robots.txt", "sitemap.xml", "/.well-known/api-catalog", "/.well-known/oauth-protected-resource", "/.well-known/oauth-authorization-server", "/.well-known/openid-configuration", "/.well-known/jwks.json", "/.well-known/agent-card.json", "/.well-known/agents-index.json", "/.well-known/agent-skills/index.json", "/.well-known/mcp/server-card.json", "/.well-known/http-message-signatures-directory", "/openapi.json", "/auth.md", "/mcp":
-		return true
-	}
-	if strings.HasPrefix(p, "/.well-known/agent-skills/") {
-		return true
-	}
-	if strings.HasPrefix(p, "/.well-known/mcp/") {
+	case "/healthz", "/readyz", "/metrics", "/robots.txt", "sitemap.xml":
 		return true
 	}
 	if strings.HasPrefix(p, "/assets/") {

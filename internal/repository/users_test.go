@@ -364,6 +364,41 @@ func TestUserRepository_GetByCredentials(t *testing.T) {
 	}
 }
 
+func TestUserRepository_NameExists(t *testing.T) {
+	tests := []struct {
+		name     string
+		exists   bool
+		queryErr error
+		err      error
+	}{
+		{name: "name is already registered", exists: true},
+		{name: "name is free", exists: false},
+		{name: "query failure", queryErr: sql.ErrConnDone, err: sql.ErrConnDone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, mock := newTestUserRepo(t)
+			exp := mock.ExpectQuery(nameExistsQuery).WithArgs("mohamad", "hassan")
+			if tt.queryErr != nil {
+				exp.WillReturnError(tt.queryErr)
+			} else {
+				exp.WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(tt.exists))
+			}
+
+			got, err := repo.NameExists(context.Background(), "mohamad", "hassan")
+			if tt.err != nil {
+				assertRepoErr(t, mock, err, tt.err)
+				return
+			}
+			assertRepoErr(t, mock, err, nil)
+			if got != tt.exists {
+				t.Fatalf("exists = %v, want %v", got, tt.exists)
+			}
+		})
+	}
+}
+
 func TestUserRepository_Favorites(t *testing.T) {
 	const (
 		userID   = 7
@@ -519,9 +554,9 @@ func TestUserRepository_ListStudents(t *testing.T) {
 			want:      []models.UserListItem{},
 		},
 		{
-			name:     "rejects unknown sort",
-			params:   StudentListParams{Limit: 25, Sort: "email", Order: "asc"},
-			err:      errs.ErrUserInvalidSort,
+			name:   "rejects unknown sort",
+			params: StudentListParams{Limit: 25, Sort: "email", Order: "asc"},
+			err:    errs.ErrUserInvalidSort,
 		},
 		{
 			name:      "query error",
@@ -730,4 +765,46 @@ func TestUserRepository_DeleteStudents(t *testing.T) {
 		_, err := repo.DeleteStudents(context.Background(), []int{1, 2})
 		assertRepoErr(t, mock, err, errs.ErrDatabaseDown)
 	})
+}
+
+func TestAsMissingUser(t *testing.T) {
+	other := &pgconn.PgError{Code: foreignKeyViolationCode, ConstraintName: "link_clicks_link_id_fkey"}
+	tests := []struct {
+		name string
+		err  error
+		want error
+	}{
+		{
+			name: "older page view constraint",
+			err:  &pgconn.PgError{Code: foreignKeyViolationCode, ConstraintName: "page_views_users_id_fkey"},
+			want: errs.ErrUserNotFound,
+		},
+		{
+			name: "search events constraint",
+			err:  &pgconn.PgError{Code: foreignKeyViolationCode, ConstraintName: "search_events_user_id_fkey"},
+			want: errs.ErrUserNotFound,
+		},
+		{
+			name: "foreign key on a different column",
+			err:  other,
+		},
+		{
+			name: "unique violation",
+			err:  &pgconn.PgError{Code: uniqueViolationCode, ConstraintName: "page_views_user_id_fkey"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := asMissingUser(tt.err)
+			if tt.want == nil {
+				if got != tt.err {
+					t.Fatalf("got %v, want the original error", got)
+				}
+				return
+			}
+			if got != tt.want {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

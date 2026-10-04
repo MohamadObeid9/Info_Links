@@ -2259,6 +2259,19 @@ function bindAdminMobile() {
   const root = document.getElementById("view-admin");
   if (root && !root.dataset.mobileBound) {
     root.addEventListener("click", (e) => {
+      // The course/extra header is a <button>, so it has to be handled before
+      // the guard that ignores clicks on buttons.
+      const toggle = e.target.closest(".admin-entity-toggle");
+      if (toggle && isMobileView()) {
+        e.preventDefault();
+        const card = toggle.closest(".admin-entity-card");
+        if (!card) return;
+        const open = card.classList.contains("open");
+        document.querySelectorAll("#view-admin .admin-entity-card.open").forEach((el) => el.classList.remove("open"));
+        if (!open) card.classList.add("open");
+        return;
+      }
+
       if (e.target.closest(".action-btn, .admin-sort-btn, a, select, input, .btn, button")) return;
 
       const longText = e.target.closest(".admin-long-text:not(.is-empty)");
@@ -2268,16 +2281,6 @@ function bindAdminMobile() {
       }
 
       if (!isMobileView()) return;
-
-      const toggle = e.target.closest(".admin-entity-toggle");
-      if (toggle) {
-        e.preventDefault();
-        const card = toggle.closest(".admin-entity-card");
-        const open = card.classList.contains("open");
-        document.querySelectorAll(".admin-entity-card.open").forEach((el) => el.classList.remove("open"));
-        if (!open) card.classList.add("open");
-        return;
-      }
 
       const studentRow = e.target.closest("tr[data-student-id]");
       if (studentRow) {

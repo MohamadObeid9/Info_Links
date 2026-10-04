@@ -33,6 +33,12 @@ type fakeUserRepo struct {
 	credentialsResult models.User
 	credentialsErr    error
 
+	nameExistsCalls int
+	nameExistsFirst string
+	nameExistsLast  string
+	nameExists      bool
+	nameExistsErr   error
+
 	adoptCalls   int
 	adoptGuestID int
 	adoptUserID  int
@@ -104,6 +110,16 @@ func (f *fakeUserRepo) GetByID(ctx context.Context, id int) (models.User, error)
 		return models.User{}, f.byIDErr
 	}
 	return f.byIDResult, nil
+}
+
+func (f *fakeUserRepo) NameExists(ctx context.Context, firstName string, lastName string) (bool, error) {
+	f.nameExistsCalls++
+	f.nameExistsFirst = firstName
+	f.nameExistsLast = lastName
+	if f.nameExistsErr != nil {
+		return false, f.nameExistsErr
+	}
+	return f.nameExists, nil
 }
 
 func (f *fakeUserRepo) GetByCredentials(ctx context.Context, u models.User) (models.User, error) {
@@ -231,18 +247,22 @@ func TestUserService_RegisterUser(t *testing.T) {
 	student := models.User{ID: 19, FirstName: "mohamad", LastName: "hassan", Number: 55}
 
 	tests := []struct {
-		name           string
-		guestID        int
-		input          models.User
-		claimResult    models.User
-		claimErr       error
-		createResult   models.User
-		createErr      error
-		wantClaimCalls int
-		wantCreateCall int
-		wantRepoUser   models.User
-		want           models.User
-		wantErr        error
+		name             string
+		guestID          int
+		input            models.User
+		claimResult      models.User
+		claimErr         error
+		createResult     models.User
+		createErr        error
+		confirmDifferent bool
+		nameExists       bool
+		nameExistsErr    error
+		wantClaimCalls   int
+		wantCreateCall   int
+		wantNameCalls    int
+		wantRepoUser     models.User
+		want             models.User
+		wantErr          error
 	}{
 		{
 			name:           "claims the guest and keeps its id",
@@ -250,6 +270,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			input:          models.User{FirstName: "Mohamad", LastName: "Hassan", Number: 55},
 			claimResult:    student,
 			wantClaimCalls: 1,
+			wantNameCalls:  1,
 			wantRepoUser:   models.User{FirstName: "mohamad", LastName: "hassan", Number: 55},
 			want:           student,
 		},
@@ -258,6 +279,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			input:          models.User{FirstName: "  Mohamad ", LastName: " HASSAN", Number: 55},
 			createResult:   student,
 			wantCreateCall: 1,
+			wantNameCalls:  1,
 			wantRepoUser:   models.User{FirstName: "mohamad", LastName: "hassan", Number: 55},
 			want:           student,
 		},
@@ -269,8 +291,26 @@ func TestUserService_RegisterUser(t *testing.T) {
 			createResult:   student,
 			wantClaimCalls: 1,
 			wantCreateCall: 1,
+			wantNameCalls:  1,
 			wantRepoUser:   models.User{FirstName: "mohamad", LastName: "hassan", Number: 55},
 			want:           student,
+		},
+		{
+			name:          "stops when the name already belongs to a student",
+			input:         models.User{FirstName: "Mohamad", LastName: "Hassan", Number: 12},
+			nameExists:    true,
+			wantNameCalls: 1,
+			wantErr:       errs.ErrUserNameExists,
+		},
+		{
+			name:             "creates a different person who confirmed the shared name",
+			input:            models.User{FirstName: "Mohamad", LastName: "Hassan", Number: 12},
+			confirmDifferent: true,
+			nameExists:       true,
+			createResult:     models.User{ID: 20, FirstName: "mohamad", LastName: "hassan", Number: 12},
+			wantCreateCall:   1,
+			wantRepoUser:     models.User{FirstName: "mohamad", LastName: "hassan", Number: 12},
+			want:             models.User{ID: 20, FirstName: "mohamad", LastName: "hassan", Number: 12},
 		},
 		{
 			name:           "propagates a taken name from the claim",
@@ -278,6 +318,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			input:          models.User{FirstName: "mohamad", LastName: "hassan", Number: 55},
 			claimErr:       errs.ErrUsernameTaken,
 			wantClaimCalls: 1,
+			wantNameCalls:  1,
 			wantErr:        errs.ErrUsernameTaken,
 		},
 		{
@@ -285,6 +326,7 @@ func TestUserService_RegisterUser(t *testing.T) {
 			input:          models.User{FirstName: "mohamad", LastName: "hassan", Number: 55},
 			createErr:      errs.ErrUsernameTaken,
 			wantCreateCall: 1,
+			wantNameCalls:  1,
 			wantErr:        errs.ErrUsernameTaken,
 		},
 		{
@@ -312,20 +354,25 @@ func TestUserService_RegisterUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &fakeUserRepo{
-				claimResult:  tt.claimResult,
-				claimErr:     tt.claimErr,
-				createResult: tt.createResult,
-				createErr:    tt.createErr,
+				claimResult:   tt.claimResult,
+				claimErr:      tt.claimErr,
+				createResult:  tt.createResult,
+				createErr:     tt.createErr,
+				nameExists:    tt.nameExists,
+				nameExistsErr: tt.nameExistsErr,
 			}
 			svc := NewUserService(repo)
 
-			got, err := svc.RegisterUser(context.Background(), tt.guestID, tt.input)
+			got, err := svc.RegisterUser(context.Background(), tt.guestID, tt.input, tt.confirmDifferent)
 
 			if repo.claimCalls != tt.wantClaimCalls {
 				t.Fatalf("claim calls = %d, want %d", repo.claimCalls, tt.wantClaimCalls)
 			}
 			if repo.createCalls != tt.wantCreateCall {
 				t.Fatalf("create calls = %d, want %d", repo.createCalls, tt.wantCreateCall)
+			}
+			if repo.nameExistsCalls != tt.wantNameCalls {
+				t.Fatalf("name exists calls = %d, want %d", repo.nameExistsCalls, tt.wantNameCalls)
 			}
 			if tt.wantErr != nil {
 				if !errors.Is(err, tt.wantErr) {
@@ -663,12 +710,12 @@ func TestUserService_ListStudents(t *testing.T) {
 			wantErr: errs.ErrUserInvalidOrder,
 		},
 		{
-			name:      "wraps a repo error",
-			limit:     25,
-			repoErr:   errs.ErrDatabaseDown,
-			wantCalls: 1,
+			name:       "wraps a repo error",
+			limit:      25,
+			repoErr:    errs.ErrDatabaseDown,
+			wantCalls:  1,
 			wantParams: repository.StudentListParams{Limit: 25, Offset: 0, Q: "moh", Sort: "name", Order: "asc"},
-			wantErr:   errs.ErrDatabaseDown,
+			wantErr:    errs.ErrDatabaseDown,
 		},
 	}
 
