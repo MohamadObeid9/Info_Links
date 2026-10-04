@@ -364,6 +364,41 @@ func TestUserRepository_GetByCredentials(t *testing.T) {
 	}
 }
 
+func TestUserRepository_NameExists(t *testing.T) {
+	tests := []struct {
+		name     string
+		exists   bool
+		queryErr error
+		err      error
+	}{
+		{name: "name is already registered", exists: true},
+		{name: "name is free", exists: false},
+		{name: "query failure", queryErr: sql.ErrConnDone, err: sql.ErrConnDone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo, mock := newTestUserRepo(t)
+			exp := mock.ExpectQuery(nameExistsQuery).WithArgs("mohamad", "hassan")
+			if tt.queryErr != nil {
+				exp.WillReturnError(tt.queryErr)
+			} else {
+				exp.WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(tt.exists))
+			}
+
+			got, err := repo.NameExists(context.Background(), "mohamad", "hassan")
+			if tt.err != nil {
+				assertRepoErr(t, mock, err, tt.err)
+				return
+			}
+			assertRepoErr(t, mock, err, nil)
+			if got != tt.exists {
+				t.Fatalf("exists = %v, want %v", got, tt.exists)
+			}
+		})
+	}
+}
+
 func TestUserRepository_Favorites(t *testing.T) {
 	const (
 		userID   = 7
@@ -519,9 +554,9 @@ func TestUserRepository_ListStudents(t *testing.T) {
 			want:      []models.UserListItem{},
 		},
 		{
-			name:     "rejects unknown sort",
-			params:   StudentListParams{Limit: 25, Sort: "email", Order: "asc"},
-			err:      errs.ErrUserInvalidSort,
+			name:   "rejects unknown sort",
+			params: StudentListParams{Limit: 25, Sort: "email", Order: "asc"},
+			err:    errs.ErrUserInvalidSort,
 		},
 		{
 			name:      "query error",

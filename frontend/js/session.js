@@ -71,6 +71,7 @@ function applyStudentUser(user) {
 
   AppState.studentUser = user || null;
   if (user && !user.is_guest) {
+    _rememberAccount();
     AppState.studentUserId = user.id;
     try {
       localStorage.setItem(STUDENT_UID_KEY, String(user.id));
@@ -194,9 +195,33 @@ function handleStudentAuthError(err, retry) {
 }
 
 // ── Signup / login modal ────────────────────────────────────────────────────
-function _randomNumber() {
-  return Math.floor(Math.random() * 100) + 1;
+const HAS_ACCOUNT_KEY = "infolinks_has_account";
+
+// Credentials from a signup that hit an existing name, kept for "that's me".
+let _pendingSignup = null;
+// Runs after the auth modal closes following a successful sign-in or the
+// "account created" screen. Opening a link waits until that screen is dismissed.
+let _afterAuthClose = null;
+
+function _authIcon(paths) {
+  return `<svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 }
+
+const AUTH_ICON_USER_CHECK = _authIcon(
+  '<path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0"/><path d="M6 21v-2a4 4 0 0 1 4-4h2"/><path d="m15 19 2 2 4-4"/>',
+);
+const AUTH_ICON_USER_PLUS = _authIcon(
+  '<path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0"/><path d="M6 21v-2a4 4 0 0 1 4-4h4"/><path d="M16 19h6M19 16v6"/>',
+);
+const AUTH_ICON_USER = _authIcon(
+  '<path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>',
+);
+const AUTH_ICON_PHONE = _authIcon(
+  '<rect x="7" y="4" width="10" height="16" rx="2"/><path d="M11 17h2"/>',
+);
+const AUTH_ICON_LAPTOP = _authIcon(
+  '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M2 20h20"/>',
+);
 
 /** Next number to suggest after a collision (55 → 65, wrapping past 100). */
 function _suggestNumber(taken) {
@@ -204,150 +229,426 @@ function _suggestNumber(taken) {
   return next > 100 ? next - 100 : next;
 }
 
-function promptStudentAuth({ retry = null, mode = "signin" } = {}) {
+function _rememberAccount() {
+  try {
+    localStorage.setItem(HAS_ACCOUNT_KEY, "1");
+  } catch (e) { }
+}
+
+function _hasAccountOnDevice() {
+  try {
+    return localStorage.getItem(HAS_ACCOUNT_KEY) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
+function _initialAuthScreen(mode) {
+  if (mode === "signup" || mode === "signin" || mode === "choose") return mode;
+  return _hasAccountOnDevice() ? "signin" : "choose";
+}
+
+function promptStudentAuth({ retry = null, mode } = {}) {
   _pendingAction = typeof retry === "function" ? retry : null;
-  _renderAuthModal({ mode });
+  _pendingSignup = null;
+  _afterAuthClose = null;
+  _renderAuthModal(_initialAuthScreen(mode));
 }
 
-function _renderAuthModal({ mode = "signin", error = "", values = {} } = {}) {
-  const isSignup = mode === "signup";
-  const first = values.first_name || "";
-  const last = values.last_name || "";
-  const number = values.number || "";
+function _renderAuthModal(screen) {
+  openModal(`<div class="auth-shell">
+    <section data-screen="choose">
+      <h2 id="authTitleChoose">Welcome to Info Links</h2>
+      <p class="auth-sub">Have you used Info Links before, on any device?</p>
+      <button class="auth-choice auth-choice-main" data-auth-go="signin" type="button">
+        ${AUTH_ICON_USER_CHECK}
+        <div><b>Yes, I have an account</b><span>Sign in with your name and number</span></div>
+      </button>
+      <button class="auth-choice" data-auth-go="signup" type="button">
+        ${AUTH_ICON_USER_PLUS}
+        <div><b>No, I'm new</b><span>Create a free account</span></div>
+      </button>
+      <div class="auth-same">
+        ${AUTH_ICON_PHONE}
+        <span aria-hidden="true">=</span>
+        ${AUTH_ICON_LAPTOP}
+        <span>One login for all your devices</span>
+      </div>
+      <button type="button" class="auth-close" data-auth-action="cancel" aria-label="Close">×</button>
+    </section>
 
-  openModal(`<h2>${isSignup ? "🎓 Create your student profile" : "👋 Welcome back"}</h2>
-  <div class="auth-mode-toggle" role="tablist" aria-label="Account mode">
-    <button type="button" role="tab" class="auth-mode-btn ${!isSignup ? "active" : ""}" aria-selected="${!isSignup}" onclick="switchStudentAuthMode('signin')">Sign in</button>
-    <button type="button" role="tab" class="auth-mode-btn ${isSignup ? "active" : ""}" aria-selected="${isSignup}" onclick="switchStudentAuthMode('signup')">Sign up</button>
-  </div>
-  <div class="auth-cross-device-notice">
-    ${isSignup
-      ? "📱💻 <strong>Already registered on your phone or laptop?</strong> Switch to <strong>Sign in</strong> — use the same account on phone and laptop so your saved courses stay in sync."
-      : "📱💻 <strong>Same account everywhere:</strong> Enter the name and number from your phone / laptop so your saved courses and history stay in sync."}
-  </div>
-  <p class="auth-hint">${isSignup
-      ? "No password needed. Choose your first name, last name, and pick any number between 1 and 100 as your PIN. Remember this number to log in on your phone or laptop."
-      : "Enter the first name, last name, and 1–100 number you registered with on your phone or laptop."}</p>
-  <label for="stFirst">First name</label>
-  <input type="text" id="stFirst" autocomplete="given-name" placeholder="e.g. ziad" value="${esc(first)}"/>
-  <label for="stLast">Last name</label>
-  <input type="text" id="stLast" autocomplete="family-name" placeholder="e.g. baroudi" value="${esc(last)}"/>
-  <label for="stNumber">${isSignup ? "Pick any number (1–100) — PIN, not phone number" : "Your number (1–100, not phone number)"}</label>
-  <input type="number" id="stNumber" min="1" max="100" step="1" placeholder="${isSignup ? "Pick a number 1–100 (e.g. 33)" : "Enter your number 1–100 (e.g. 33)"}" value="${esc(number)}"/>
-  <span class="auth-field-note">${isSignup ? "💡 Pick any number between 1 and 100 (e.g. 7, 25, 42). This is a PIN to identify you, NOT your mobile phone number." : "💡 Enter the 1–100 number you picked when signing up (this is your PIN, NOT your mobile phone number)."}</span>
-  <div class="err" id="stAuthErr">${error ? esc(error) : ""}</div>
-  <div class="modal-actions">
-    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-    <button class="btn btn-primary" onclick="submitStudentAuth('${isSignup ? "signup" : "signin"}')">${isSignup ? "Create profile" : "Sign in"}</button>
-  </div>
-  <p class="auth-hint" style="margin-top:12px;text-align:center;">
-    ${isSignup
-      ? 'Already created an account on another device? <a href="javascript:void(0)" onclick="switchStudentAuthMode(\'signin\')" style="color:var(--accent);font-weight:600;">Sign in here</a>'
-      : 'First time on Info Links? <a href="javascript:void(0)" onclick="switchStudentAuthMode(\'signup\')" style="color:var(--accent);font-weight:600;">Create a student profile</a>'}
-  </p>`);
+    <section data-screen="signin" hidden>
+      <h2 id="authTitleSignin">Welcome back</h2>
+      <p class="auth-sub">Use the same name and number you chose the first time, even if that was on your other device.</p>
+      <div class="auth-field"><label for="siFirst">First name</label><input id="siFirst" autocomplete="off" placeholder="ziad"></div>
+      <div class="auth-field"><label for="siLast">Last name</label><input id="siLast" autocomplete="off" placeholder="baroudi"></div>
+      <div class="auth-field"><label for="siPin">Your secret number (1–100)</label><input id="siPin" inputmode="numeric" autocomplete="off" placeholder="33"></div>
+      <p class="auth-err" id="siErr" role="alert"></p>
+      <button class="btn btn-primary" id="authSignInBtn" data-auth-action="signin" type="button">Sign in</button>
+      <div class="auth-row">
+        <button class="btn btn-ghost" data-auth-go="choose" type="button">Back</button>
+        <button class="btn btn-ghost" data-auth-action="cancel" type="button">Cancel</button>
+      </div>
+      <p class="auth-foot">First time here? <button class="auth-link" data-auth-go="signup" type="button">Create an account</button></p>
+    </section>
+
+    <section data-screen="signup" hidden>
+      <h2 id="authTitleSignup">Create your account</h2>
+      <div class="auth-note auth-note-warn"><b>Already signed up on your phone or laptop? Don't create a new account.</b> <button class="auth-link" data-auth-go="signin" type="button">Sign in instead</button>. Extra accounts are deleted.</div>
+      <div class="auth-field"><label for="suFirst">First name</label><input id="suFirst" autocomplete="off" placeholder="ziad"></div>
+      <div class="auth-field"><label for="suLast">Last name</label><input id="suLast" autocomplete="off" placeholder="baroudi"></div>
+      <div class="auth-field"><label for="suPin">Pick a secret number (1–100)</label><input id="suPin" inputmode="numeric" autocomplete="off" placeholder="33"></div>
+      <p class="auth-pin-help">This is not your phone number. You'll need it to sign in on your other device.</p>
+      <p class="auth-err" id="suErr" role="alert"></p>
+      <button class="btn btn-primary" id="authSignUpBtn" data-auth-action="signup" type="button">Create account</button>
+      <div class="auth-row">
+        <button class="btn btn-ghost" data-auth-go="choose" type="button">Back</button>
+        <button class="btn btn-ghost" data-auth-action="cancel" type="button">Cancel</button>
+      </div>
+    </section>
+
+    <section data-screen="duplicate" hidden>
+      <h2 id="authTitleDup">This name already exists</h2>
+      <div class="auth-who">
+        ${AUTH_ICON_USER}
+        <div><b id="dupName"></b><span>Account created on another device</span></div>
+      </div>
+      <p class="auth-sub">Is that you? Then sign in instead of making a second account. Two accounts for one person get deleted.</p>
+      <button class="btn btn-primary" id="authDupYes" data-auth-action="dup-yes" type="button">Yes, that's me. Sign me in</button>
+      <button class="btn btn-ghost" id="authDupNo" data-auth-action="dup-no" type="button">No, I'm a different person</button>
+    </section>
+
+    <section data-screen="saved" hidden>
+      <h2 id="authTitleSaved">Account created</h2>
+      <p class="auth-sub">Save your login. You'll need it on your other device.</p>
+      <div class="auth-login"><small>Your login</small><strong id="authLoginText"></strong></div>
+      <div class="auth-row auth-row-gap">
+        <button class="btn btn-ghost" id="authCopyBtn" data-auth-action="copy" type="button">Copy</button>
+        <button class="btn btn-ghost" data-auth-action="save-image" type="button">Save as image</button>
+      </div>
+      <div class="auth-note auth-note-info">On your other device, tap <b>Sign in</b> and enter exactly this. Don't sign up again.</div>
+      <button class="btn btn-primary" data-auth-action="done" type="button">Got it, continue</button>
+    </section>
+  </div>`);
+  _showAuthScreen(screen);
 }
 
-function _readAuthValues() {
+function _showAuthScreen(name) {
+  const shell = document.querySelector(".auth-shell");
+  if (!shell) return;
+  shell.querySelectorAll("[data-screen]").forEach((section) => {
+    section.hidden = section.dataset.screen !== name;
+  });
+  const heading = shell.querySelector("[data-screen]:not([hidden]) h2");
+  if (heading?.id) {
+    document.getElementById("modalBox")?.setAttribute("aria-labelledby", heading.id);
+  }
+  const visible = "[data-screen]:not([hidden])";
+  const first = shell.querySelector(
+    `${visible} input, ${visible} .auth-choice, ${visible} .btn`,
+  );
+  if (first && typeof first.focus === "function") first.focus();
+}
+
+function _readAuth(prefix) {
   return {
-    first_name: document.getElementById("stFirst")?.value.trim() || "",
-    last_name: document.getElementById("stLast")?.value.trim() || "",
-    number: document.getElementById("stNumber")?.value.trim() || "",
+    first_name: document.getElementById(prefix + "First")?.value.trim() || "",
+    last_name: document.getElementById(prefix + "Last")?.value.trim() || "",
+    pinRaw: document.getElementById(prefix + "Pin")?.value.trim() || "",
   };
 }
 
-function _setAuthError(message) {
-  const el = document.getElementById("stAuthErr");
+function _setAuthError(id, message) {
+  const el = document.getElementById(id);
   if (el) el.textContent = message || "";
 }
 
-function switchStudentAuthMode(mode) {
-  _renderAuthModal({ mode, values: _readAuthValues() });
+function _validateAuth(prefix, errId) {
+  const values = _readAuth(prefix);
+  if (!values.first_name || !values.last_name) {
+    _setAuthError(errId, "Enter your first and last name.");
+    return null;
+  }
+  const number = Number(values.pinRaw);
+  if (!/^\d+$/.test(values.pinRaw) || number < 1 || number > 100) {
+    _setAuthError(errId, "Your secret number must be between 1 and 100. It is not your phone number.");
+    return null;
+  }
+  _setAuthError(errId, "");
+  return { first_name: values.first_name, last_name: values.last_name, number };
 }
 
-async function submitStudentAuth(mode) {
-  const isSignup = mode === "signup";
-  const values = _readAuthValues();
+function _authFailMessage(err) {
+  if (err?.status === 429) return "Too many tries. Wait a few minutes and try again.";
+  if (!err?.status) return "Couldn't reach Info Links. Check your connection and try again.";
+  return formatApiError(err, "Something went wrong. Please try again.");
+}
 
-  if (!values.first_name || !values.last_name) {
-    _setAuthError("Please enter both your first and last name.");
-    return;
-  }
-  const number = parseInt(values.number, 10);
-  if (!Number.isInteger(number) || number < 1 || number > 100) {
-    _setAuthError("Please enter a number between 1 and 100 (this is a PIN, not a phone number).");
-    return;
-  }
+function _copySignupIntoSignIn() {
+  const signup = _readAuth("su");
+  const first = document.getElementById("siFirst");
+  const last = document.getElementById("siLast");
+  if (first && !first.value && signup.first_name) first.value = signup.first_name;
+  if (last && !last.value && signup.last_name) last.value = signup.last_name;
+}
 
-  const btn = document.querySelector("#modalBox .btn-primary");
-  setBtnLoading(btn, true, isSignup ? "Creating…" : "Signing in…");
+function _copySignInIntoSignup() {
+  const signin = _readAuth("si");
+  const first = document.getElementById("suFirst");
+  const last = document.getElementById("suLast");
+  if (first && !first.value && signin.first_name) first.value = signin.first_name;
+  if (last && !last.value && signin.last_name) last.value = signin.last_name;
+}
+
+function _armAuthClose() {
+  const action = _pendingAction;
+  _pendingAction = null;
+  _afterAuthClose = typeof action === "function" ? action : null;
+}
+
+async function _applyAuthSession(data) {
+  if (!data?.token) throw new Error("Sign-in response is missing a token");
+  _setStudentToken(data.token);
+  if (data.user) applyStudentUser(data.user);
+  else await refreshStudentProfile();
+  _rememberAccount();
+}
+
+function _showSavedLogin(creds) {
+  const text = `${creds.first_name} · ${creds.last_name} · ${creds.number}`;
+  const label = document.getElementById("authLoginText");
+  if (label) label.textContent = text;
+  const copyBtn = document.getElementById("authCopyBtn");
+  if (copyBtn) copyBtn.textContent = "Copy";
+  _showAuthScreen("saved");
+}
+
+async function _submitSignIn() {
+  const creds = _validateAuth("si", "siErr");
+  if (!creds) return;
+  const btn = document.getElementById("authSignInBtn");
+  setBtnLoading(btn, true, "Signing in…");
   try {
-    // The guest token rides along automatically: register claims that row,
-    // login reassigns its page views onto the existing student.
-    const data = await apiRequest(
-      isSignup ? "/api/users/register" : "/api/users/login",
-      {
-        method: "POST",
-        body: {
-          first_name: values.first_name,
-          last_name: values.last_name,
-          number,
-        },
-      },
-    );
-    if (!data?.token) throw new Error("Sign-in response is missing a token");
-
-    _setStudentToken(data.token);
-    if (data.user) applyStudentUser(data.user);
-    else await refreshStudentProfile();
-
-    closeModal();
+    const data = await apiRequest("/api/users/login", { method: "POST", body: creds });
+    await _applyAuthSession(data);
+    window.markVisitRecordedToday?.();
     const handle = studentHandle();
-    showToast(
-      isSignup
-        ? `Profile created! Remember your number (#${number}) to sign in on your phone or laptop.`
-        : `Signed in as ${handle || "student"}`,
-    );
-
-    if (isSignup) {
-      // Claim keeps the same id (visit already recorded). Fallthrough create is a
-      // new id with no page_views yet — trackVisit records one when needed.
-      await window.trackVisit?.();
-    } else {
-      // Login adopts the guest's visit onto the student. Mark today recorded so
-      // this tab does not insert a second visit for the same day.
-      window.markVisitRecordedToday?.();
-    }
-
-    const action = _pendingAction;
-    _pendingAction = null;
-    if (typeof action === "function") action();
+    showToast(`Signed in as ${handle || "student"}`);
+    _armAuthClose();
+    closeModal();
   } catch (err) {
-    if (isSignup && err?.status === 409) {
-      const suggestion = _suggestNumber(number);
-      _renderAuthModal({
-        mode: "signup",
-        values: { ...values, number: String(suggestion) },
-        error: `${values.first_name} ${values.last_name} #${number} is already taken. If you already created this profile on your phone or laptop, switch to 'Sign in'! Otherwise try another number, e.g. ${suggestion}.`,
-      });
+    if (err?.status === 404) {
+      _setAuthError("siErr", "That name and number don't match. Check the spelling and the number you picked when you signed up.");
       return;
     }
-    if (!isSignup && err?.status === 404) {
-      _renderAuthModal({
-        mode: "signin",
-        values,
-        error: "No student with that name and number was found. Check the number you used on your phone / laptop, or switch to 'Sign up' if you haven't created a profile yet.",
-      });
-      return;
-    }
-    if (err?.status === 400) {
-      _setAuthError(formatApiError(err, "Please check your details and try again."));
-      return;
-    }
-    logApiError(err, isSignup ? "studentRegister" : "studentLogin");
-    _setAuthError(formatApiError(err, "Something went wrong. Please try again."));
+    if (err?.status !== 400 && err?.status !== 429) logApiError(err, "studentLogin");
+    _setAuthError("siErr", err?.status === 400
+      ? formatApiError(err, "Please check your details and try again.")
+      : _authFailMessage(err));
   } finally {
     setBtnLoading(btn, false);
   }
+}
+
+async function _submitSignUp(confirmDifferent) {
+  const creds = confirmDifferent ? _pendingSignup : _validateAuth("su", "suErr");
+  if (!creds) return;
+  _pendingSignup = creds;
+  const btn = document.getElementById(confirmDifferent ? "authDupNo" : "authSignUpBtn");
+  setBtnLoading(btn, true, "Creating…");
+  try {
+    const data = await apiRequest("/api/users/register", {
+      method: "POST",
+      body: { ...creds, confirm_different: !!confirmDifferent },
+    });
+    await _applyAuthSession(data);
+    // Claim keeps the same id (visit already recorded). Fallthrough create is a
+    // new id with no page_views yet — trackVisit records one when needed.
+    try {
+      await window.trackVisit?.();
+    } catch (visitErr) {
+      logApiError(visitErr, "studentRegister");
+    }
+    _armAuthClose();
+    _showSavedLogin(creds);
+  } catch (err) {
+    if (err?.status === 409 && err?.code === "name_exists") {
+      const name = document.getElementById("dupName");
+      if (name) name.textContent = `${creds.first_name} ${creds.last_name}`;
+      _showAuthScreen("duplicate");
+      return;
+    }
+    if (err?.status === 409) {
+      const suggestion = _suggestNumber(creds.number);
+      _showAuthScreen("signup");
+      const pin = document.getElementById("suPin");
+      if (pin) pin.value = String(suggestion);
+      _setAuthError("suErr", `${creds.first_name} ${creds.last_name} #${creds.number} is already taken. Try another number, for example ${suggestion}.`);
+      return;
+    }
+    _showAuthScreen("signup");
+    if (err?.status !== 400 && err?.status !== 429) logApiError(err, "studentRegister");
+    _setAuthError("suErr", err?.status === 400
+      ? formatApiError(err, "Please check your details and try again.")
+      : _authFailMessage(err));
+  } finally {
+    setBtnLoading(btn, false);
+  }
+}
+
+function _signInAsPending() {
+  _showAuthScreen("signin");
+  if (!_pendingSignup) return;
+  const first = document.getElementById("siFirst");
+  const last = document.getElementById("siLast");
+  const pin = document.getElementById("siPin");
+  if (first) first.value = _pendingSignup.first_name;
+  if (last) last.value = _pendingSignup.last_name;
+  if (pin) {
+    pin.value = "";
+    pin.focus();
+  }
+}
+
+function _copyTextFallback(text) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("aria-hidden", "true");
+  area.style.position = "fixed";
+  area.style.top = "0";
+  area.style.left = "0";
+  area.style.width = "2em";
+  area.style.height = "2em";
+  area.style.padding = "0";
+  area.style.border = "none";
+  area.style.outline = "none";
+  area.style.opacity = "0";
+  document.body.appendChild(area);
+  area.focus();
+  area.select();
+  area.setSelectionRange(0, text.length);
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch (e) {
+    ok = false;
+  }
+  area.remove();
+  return ok;
+}
+
+function _selectLoginText() {
+  const el = document.getElementById("authLoginText");
+  if (!el) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
+async function _copySavedLogin() {
+  const text = document.getElementById("authLoginText")?.textContent || "";
+  const btn = document.getElementById("authCopyBtn");
+  // execCommand only succeeds during this click, so try it before any await.
+  let copied = _copyTextFallback(text);
+  if (!copied && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+    } catch (e) {
+      copied = false;
+    }
+  }
+  if (copied) {
+    if (btn) btn.textContent = "Copied";
+    return;
+  }
+  _selectLoginText();
+  if (btn) btn.textContent = "Press Ctrl+C";
+}
+
+function _saveLoginImage() {
+  const text = document.getElementById("authLoginText")?.textContent || "";
+  const canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = 420;
+  const g = canvas.getContext("2d");
+  if (!g) return;
+  g.fillStyle = "#ffffff";
+  g.fillRect(0, 0, 900, 420);
+  g.fillStyle = "#6c63ff";
+  g.fillRect(0, 0, 900, 16);
+  g.fillStyle = "#17172b";
+  g.font = "600 34px Inter, system-ui, sans-serif";
+  g.fillText("Info Links login", 50, 90);
+  let size = 42;
+  g.font = `600 ${size}px Inter, system-ui, sans-serif`;
+  while (size > 18 && g.measureText(text).width > 800) {
+    size -= 2;
+    g.font = `600 ${size}px Inter, system-ui, sans-serif`;
+  }
+  g.fillText(text, 50, 210);
+  g.fillStyle = "#6b6b85";
+  g.font = "26px Inter, system-ui, sans-serif";
+  g.fillText("On your other device: tap Sign in and enter exactly this.", 50, 290);
+  g.fillText("Do not sign up again.", 50, 330);
+  const link = document.createElement("a");
+  link.download = "info-links-login.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+function switchStudentAuthMode(mode) {
+  if (!document.querySelector(".auth-shell")) {
+    promptStudentAuth({ mode });
+    return;
+  }
+  if (mode === "signin") _copySignupIntoSignIn();
+  if (mode === "signup") _copySignInIntoSignup();
+  _showAuthScreen(mode === "signup" ? "signup" : "signin");
+}
+
+document.addEventListener("click", (e) => {
+  const shell = e.target.closest?.(".auth-shell");
+  if (!shell) return;
+  const go = e.target.closest("[data-auth-go]");
+  if (go) {
+    e.preventDefault();
+    if (go.dataset.authGo === "signin") _copySignupIntoSignIn();
+    if (go.dataset.authGo === "signup") _copySignInIntoSignup();
+    _showAuthScreen(go.dataset.authGo);
+    return;
+  }
+  const action = e.target.closest("[data-auth-action]")?.dataset.authAction;
+  if (!action) return;
+  e.preventDefault();
+  if (action === "cancel" || action === "done") closeModal();
+  else if (action === "signin") _submitSignIn();
+  else if (action === "signup") _submitSignUp(false);
+  else if (action === "dup-yes") _signInAsPending();
+  else if (action === "dup-no") _submitSignUp(true);
+  else if (action === "copy") _copySavedLogin();
+  else if (action === "save-image") _saveLoginImage();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.target.tagName !== "INPUT") return;
+  const screen = e.target.closest(".auth-shell [data-screen]")?.dataset.screen;
+  if (screen !== "signin" && screen !== "signup") return;
+  e.preventDefault();
+  if (screen === "signin") _submitSignIn();
+  else _submitSignUp(false);
+});
+
+const _authModalEl = document.getElementById("modal");
+if (_authModalEl) {
+  new MutationObserver(() => {
+    if (_authModalEl.classList.contains("open")) return;
+    const action = _afterAuthClose;
+    _afterAuthClose = null;
+    if (typeof action === "function") action();
+  }).observe(_authModalEl, { attributes: true, attributeFilter: ["class"] });
 }
 
 async function signOutStudent() {
@@ -437,7 +738,6 @@ Object.assign(window, {
   promptStudentAuth,
   handleStudentAuthError,
   onStudentTokenRejected,
-  submitStudentAuth,
   switchStudentAuthMode,
   signOutStudent,
   syncFavorite,

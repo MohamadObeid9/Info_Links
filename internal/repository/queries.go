@@ -11,6 +11,7 @@ const (
 
 	getUserByIDQuery          = `SELECT ` + userColumns + ` FROM users WHERE id = $1`
 	getUserByCredentialsQuery = `SELECT ` + userColumns + ` FROM users WHERE first_name = $1 AND last_name = $2 AND number = $3 AND is_guest = false`
+	nameExistsQuery           = `SELECT EXISTS(SELECT 1 FROM users WHERE first_name = $1 AND last_name = $2 AND is_guest = false)`
 
 	// Exact program from the click row (alias lc), e.g. " - AISL".
 	linkClickProgramSuffixSQL = `COALESCE((

@@ -131,6 +131,14 @@ func (r *postgresUserRepository) GetByID(ctx context.Context, id int) (models.Us
 	return user, nil
 }
 
+func (r *postgresUserRepository) NameExists(ctx context.Context, firstName string, lastName string) (bool, error) {
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, nameExistsQuery, firstName, lastName).Scan(&exists); err != nil {
+		return false, fmt.Errorf("name exists: %w", err)
+	}
+	return exists, nil
+}
+
 func (r *postgresUserRepository) GetByCredentials(ctx context.Context, u models.User) (models.User, error) {
 	user, err := scanUser(r.db.QueryRowContext(ctx, getUserByCredentialsQuery, u.FirstName, u.LastName, u.Number))
 	if err != nil {

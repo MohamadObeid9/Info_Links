@@ -66,7 +66,7 @@ type contentService interface {
 
 type userService interface {
 	CreateGuest(ctx context.Context) (int, error)
-	RegisterUser(ctx context.Context, guestID int, u models.User) (models.User, error)
+	RegisterUser(ctx context.Context, guestID int, u models.User, confirmDifferent bool) (models.User, error)
 	LoginUser(ctx context.Context, guestID int, u models.User) (models.User, error)
 	GetUser(ctx context.Context, userID int) (models.User, error)
 	AddFavorite(ctx context.Context, userID int, courseIDStr string) error

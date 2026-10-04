@@ -8,6 +8,7 @@ var (
 	ErrUserNotFound      = errors.New("user not found")
 	ErrUserInvalidID     = errors.New("invalid user id")
 	ErrUsernameTaken     = errors.New("username already taken")
+	ErrUserNameExists    = errors.New("an account with this name already exists")
 	ErrUserNumberRange   = errors.New("number must be between 1 and 100")
 	ErrUserNameRequired  = errors.New("first and last name are required")
 	ErrUserInvalidSort   = errors.New("sort must be name, first_seen, last_seen, visits, clicks, or favorites")
