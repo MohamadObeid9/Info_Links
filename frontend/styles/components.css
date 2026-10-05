@@ -1295,6 +1295,7 @@ select.inp {
 .about-lead,
 .about-card,
 .about-free,
+.about-contrib,
 .about-cta {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -1314,6 +1315,16 @@ select.inp {
         linear-gradient(
             135deg,
             color-mix(in srgb, var(--success) 8%, var(--bg2)),
+            var(--bg2) 55%
+        );
+}
+
+.about-contrib {
+    border-color: color-mix(in srgb, var(--accent2) 35%, var(--border));
+    background:
+        linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--accent2) 8%, var(--bg2)),
             var(--bg2) 55%
         );
 }
@@ -1488,6 +1499,21 @@ select.inp {
 .footer-links a:hover,
 .footer-external-link:hover,
 .footer-link-btn:hover {
+    text-decoration: underline;
+}
+
+a.about-inline-link.footer-external-link {
+    font: inherit;
+    font-weight: 600;
+    font-size: inherit;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+}
+
+a.about-inline-link.footer-external-link:hover {
+    opacity: 0.85;
     text-decoration: underline;
 }
 
