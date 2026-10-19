@@ -10,6 +10,21 @@
         document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
       })();
     </script>
+    <script data-cfasync="false">
+      // Capture the PWA install prompt as early as possible: Chromium can fire
+      // beforeinstallprompt before the app bundle loads, and it never replays.
+      window.__pwaInstallState = { prompt: null, installed: false };
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        window.__pwaInstallState.prompt = e;
+        window.dispatchEvent(new Event("pwa:prompt-ready"));
+      });
+      window.addEventListener("appinstalled", function () {
+        window.__pwaInstallState.installed = true;
+        window.__pwaInstallState.prompt = null;
+        window.dispatchEvent(new Event("pwa:appinstalled"));
+      });
+    </script>
     <link rel="stylesheet" href="/styles/app.css">
     <title>Info Links — CNAM Liban matériaux cours (ISAE CNAM, génie informatique)</title>
     <meta name="description"

@@ -7,11 +7,16 @@ import { openModal, closeModal } from "./modals.js";
 
 const SITE_NAME = "Info Links";
 const DISMISS_KEY = "infolinks_pwa_install_dismissed";
-const UNSUPPORTED_WAIT_MS = 1500;
+// Chromium on Android fires beforeinstallprompt only after the service worker
+// is active and engagement checks pass — that can take several seconds (or a
+// second visit). Keep listening indefinitely; this timeout only relabels the
+// still-pending button as a menu-install fallback, it never stops listening.
+const UNSUPPORTED_WAIT_MS = 6000;
 
 let deferredPrompt = null;
 let buttonVisibleLogged = false;
-let mode = "hidden"; // "native" | "ios-safari" | "ios-other" | "unsupported" | "hidden"
+let listenersAttached = false;
+let mode = "hidden"; // "pending" | "native" | "ios-safari" | "ios-other" | "unsupported" | "hidden"
 
 function trackPwaEvent(name, detail = {}) {
   console.log(`[pwa] ${name}`, detail);
@@ -19,6 +24,8 @@ function trackPwaEvent(name, detail = {}) {
 
 function recordPwaInstall() {
   trackPwaEvent("pwa_installed");
+  // trackPwaInstall dedupes in-flight/per-user, so duplicate appinstalled
+  // signals (native + early stub) still record only once.
   window.trackPwaInstall?.();
 }
 
@@ -92,10 +99,14 @@ function showInstallUi(nextMode) {
   }
 }
 
+function isAndroidDevice() {
+  return /android/i.test(navigator.userAgent || "");
+}
+
 function updateBannerCopy(banner) {
   const hint = banner.querySelector(".pwa-install-banner-hint");
   if (!hint) return;
-  if (mode === "native") {
+  if (mode === "native" || mode === "pending") {
     hint.textContent = `Use ${SITE_NAME} like a normal app, without opening the browser.`;
   } else if (mode === "ios-safari" || mode === "ios-other") {
     hint.textContent = `Add ${SITE_NAME} to your Home Screen for quick access.`;
@@ -131,6 +142,18 @@ function iosOtherBrowserInstructionsHtml() {
 }
 
 function unsupportedInstructionsHtml() {
+  if (isAndroidDevice()) {
+    return `<h2>Install ${SITE_NAME}</h2>
+    <p class="pwa-install-lead">This browser installs apps from its menu:</p>
+    <ol class="pwa-install-steps">
+      <li>Tap the <strong>⋮ menu</strong> button in your browser.</li>
+      <li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+      <li>Tap <strong>Install</strong> / <strong>Add</strong> to confirm.</li>
+    </ol>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" data-action="pwaInstallClose">Got it</button>
+    </div>`;
+  }
   return `<h2>Install ${SITE_NAME}</h2>
     <p class="pwa-install-lead">Open your browser menu and choose “Install” or “Add to Home Screen”.</p>
     <div class="modal-actions">
@@ -166,7 +189,9 @@ function handleInstallClick() {
     hideInstallUi();
     return;
   }
-  if (mode === "native" && deferredPrompt) {
+  // A stored prompt wins in any mode: it may have arrived after the fallback
+  // label was shown (late beforeinstallprompt on Android Chromium).
+  if (deferredPrompt) {
     promptNativeInstall();
     return;
   }
@@ -179,15 +204,25 @@ function handleInstallClick() {
     openModal(iosOtherBrowserInstructionsHtml());
     return;
   }
-  if (mode === "unsupported") {
-    openModal(unsupportedInstructionsHtml());
-  }
+  // "pending" (prompt may still arrive) and "unsupported" (e.g. Firefox,
+  // Vivaldi, Quetta — no beforeinstallprompt at all) both use the menu steps.
+  openModal(unsupportedInstructionsHtml());
 }
 
 function onBeforeInstallPrompt(e) {
   e.preventDefault();
   deferredPrompt = e;
   showInstallUi("native");
+}
+
+function adoptEarlyPrompt() {
+  const early = window.__pwaInstallState?.prompt;
+  if (early && !deferredPrompt) {
+    deferredPrompt = early;
+    showInstallUi("native");
+    return true;
+  }
+  return !!deferredPrompt;
 }
 
 function onAppInstalled() {
@@ -201,7 +236,8 @@ function resolveFallbackMode() {
     showInstallUi(isIosSafari() ? "ios-safari" : "ios-other");
     return;
   }
-  // No beforeinstallprompt (e.g. Firefox) — show menu instructions, not a native prompt button
+  // No beforeinstallprompt yet (e.g. Firefox, Vivaldi, Quetta) — menu steps.
+  // Keep listening: a late prompt still upgrades this via onBeforeInstallPrompt.
   showInstallUi("unsupported");
 }
 
@@ -270,6 +306,22 @@ function initPwaInstall() {
   ensureNavButton();
   ensureBannerMount();
 
+  if (!listenersAttached) {
+    listenersAttached = true;
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+    // Events captured by the <head> stub before this bundle loaded.
+    window.addEventListener("pwa:prompt-ready", adoptEarlyPrompt);
+    window.addEventListener("pwa:appinstalled", onAppInstalled);
+  }
+
+  // Install happened before listeners/session were ready (early stub flag).
+  if (window.__pwaInstallState?.installed) {
+    recordPwaInstall();
+    hideInstallUi();
+    return;
+  }
+
   // Chromium fires appinstalled; iOS/Home Screen is detected on first standalone open.
   if (isStandalone()) {
     recordPwaInstall();
@@ -277,8 +329,8 @@ function initPwaInstall() {
     return;
   }
 
-  window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
-  window.addEventListener("appinstalled", onAppInstalled);
+  // Prompt fired before this module loaded — use the stored event.
+  if (adoptEarlyPrompt()) return;
 
   // iOS never fires beforeinstallprompt — show instructions UI right away
   if (isIosDevice()) {
@@ -286,8 +338,13 @@ function initPwaInstall() {
     return;
   }
 
-  // Give Chromium a moment to fire beforeinstallprompt before showing menu fallback
-  window.setTimeout(resolveFallbackMode, UNSUPPORTED_WAIT_MS);
+  // Show the button immediately as "pending": if beforeinstallprompt arrives
+  // while the user browses (common on Android), clicks switch to the native
+  // dialog automatically. Only after the wait do we label it menu-fallback.
+  if (mode === "hidden") {
+    showInstallUi("pending");
+    window.setTimeout(resolveFallbackMode, UNSUPPORTED_WAIT_MS);
+  }
 }
 
 window.pwaInstallClick = handleInstallClick;

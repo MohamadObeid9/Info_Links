@@ -277,6 +277,8 @@ function _pwaInstallTrackedKey(uid) {
   return `infolinks_pwa_install_tracked:${uid == null ? "anon" : uid}`;
 }
 
+let _pwaInstallInflight = null;
+
 function trackPwaInstall() {
   if (AppState.adminLoggedIn || !AppState.studentToken) return;
   const uid = AppState.studentUser?.id;
@@ -284,7 +286,8 @@ function trackPwaInstall() {
   try {
     if (localStorage.getItem(key) === "1") return;
   } catch (e) { /* private mode */ }
-  apiRequest(`/api/pwa_install_events`, {
+  if (_pwaInstallInflight) return _pwaInstallInflight;
+  _pwaInstallInflight = apiRequest(`/api/pwa_install_events`, {
     method: "POST",
     body: {},
   }).then(() => {
@@ -293,7 +296,10 @@ function trackPwaInstall() {
     } catch (e) { /* private mode */ }
   }).catch((e) => {
     if (e?.status === 401) window.onStudentTokenRejected?.();
+  }).finally(() => {
+    _pwaInstallInflight = null;
   });
+  return _pwaInstallInflight;
 }
 
 // Global Bridge
