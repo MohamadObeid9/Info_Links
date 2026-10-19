@@ -32,6 +32,7 @@ const truncateTablesQuery = `
 TRUNCATE TABLE
 	browse_events,
 	search_events,
+	pwa_install_events,
 	service_clicks,
 	favorite_events,
 	link_clicks,

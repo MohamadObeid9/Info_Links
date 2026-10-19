@@ -48,6 +48,7 @@ type AnalyticsRepository interface {
 	GetSummary(ctx context.Context, params AnalyticsSummaryParams) (models.AnalyticsSummary, error)
 	ListActors(ctx context.Context, kind, key string, since time.Time) (models.AnalyticsActorsResult, error)
 	InsertSearch(ctx context.Context, userID int, query string) error
+	InsertPwaInstall(ctx context.Context, userID int, deviceType string) error
 }
 
 type SEORepository interface {

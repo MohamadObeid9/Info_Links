@@ -22,6 +22,10 @@ type fakeAnalyticsRepo struct {
 	searchQuery string
 	searchErr   error
 
+	pwaInstallCalls int
+	pwaInstallDev   string
+	pwaInstallErr   error
+
 	actorsCalls int
 	actorsKind  string
 	actorsID    string
@@ -43,6 +47,12 @@ func (f *fakeAnalyticsRepo) InsertSearch(ctx context.Context, userID int, query 
 	f.searchCalls++
 	f.searchQuery = query
 	return f.searchErr
+}
+
+func (f *fakeAnalyticsRepo) InsertPwaInstall(ctx context.Context, userID int, deviceType string) error {
+	f.pwaInstallCalls++
+	f.pwaInstallDev = deviceType
+	return f.pwaInstallErr
 }
 
 func (f *fakeAnalyticsRepo) ListActors(ctx context.Context, kind, key string, since time.Time) (models.AnalyticsActorsResult, error) {
@@ -170,6 +180,44 @@ func TestAnalyticsService_GetSummary(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Fatalf("got %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAnalyticsService_TrackPwaInstall(t *testing.T) {
+	tests := []struct {
+		name      string
+		device    string
+		repoErr   error
+		wantCalls int
+		wantDev   string
+		wantErr   error
+	}{
+		{name: "stores phone", device: "phone", wantCalls: 1, wantDev: "phone"},
+		{name: "stores laptop", device: "laptop", wantCalls: 1, wantDev: "laptop"},
+		{name: "clears unknown device", device: "tablet", wantCalls: 1, wantDev: ""},
+		{name: "wraps repo error", device: "phone", repoErr: errs.ErrDatabaseDown, wantCalls: 1, wantDev: "phone", wantErr: errs.ErrDatabaseDown},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &fakeAnalyticsRepo{pwaInstallErr: tt.repoErr}
+			svc := NewAnalyticsService(repo)
+			err := svc.TrackPwaInstall(context.Background(), 7, tt.device)
+			if repo.pwaInstallCalls != tt.wantCalls {
+				t.Fatalf("calls = %d, want %d", repo.pwaInstallCalls, tt.wantCalls)
+			}
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Fatalf("got %v, want %v", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("TrackPwaInstall: %v", err)
+			}
+			if repo.pwaInstallDev != tt.wantDev {
+				t.Fatalf("device = %q, want %q", repo.pwaInstallDev, tt.wantDev)
 			}
 		})
 	}

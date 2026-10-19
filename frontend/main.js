@@ -14,6 +14,7 @@ import "./js/views.js";
 import "./js/modals.js";
 import "./js/session.js";
 import "./js/services.js";
+import { initPwaInstall } from "./js/pwa-install.js";
 
 // --- EVENT ROUTER (Professional Event Delegation) ---
 document.addEventListener("click", (e) => {
@@ -168,6 +169,15 @@ document.addEventListener("click", (e) => {
       case "studentProfileInfo":
         window.showStudentProfileModal?.();
         break;
+      case "pwaInstall":
+        window.pwaInstallClick?.();
+        break;
+      case "pwaInstallDismiss":
+        window.pwaInstallDismiss?.();
+        break;
+      case "pwaInstallClose":
+        window.pwaInstallClose?.();
+        break;
     }
     return;
   }
@@ -218,6 +228,7 @@ document.addEventListener("mouseout", (e) => {
 async function init() {
   try {
     await window.initApp();
+    initPwaInstall();
   } catch (err) {
     console.error("Critical: App initialization failed:", err);
   }

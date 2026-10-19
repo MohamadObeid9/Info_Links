@@ -85,6 +85,17 @@ func (s *AnalyticsService) TrackSearch(ctx context.Context, userID int, query st
 	return nil
 }
 
+func (s *AnalyticsService) TrackPwaInstall(ctx context.Context, userID int, deviceType string) error {
+	dt := strings.TrimSpace(deviceType)
+	if dt != "phone" && dt != "laptop" {
+		dt = ""
+	}
+	if err := s.repo.InsertPwaInstall(ctx, userID, dt); err != nil {
+		return fmt.Errorf("track pwa install: %w", err)
+	}
+	return nil
+}
+
 func (s *AnalyticsService) ListActors(ctx context.Context, kind, idStr, rangeStr string) (models.AnalyticsActorsResult, error) {
 	kind = strings.TrimSpace(kind)
 	key := strings.TrimSpace(idStr)

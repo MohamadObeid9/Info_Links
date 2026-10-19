@@ -1508,6 +1508,7 @@ const TIMELINE_META = {
   link_click: { icon: "🔗", label: "Link opened" },
   service_click: { icon: "🤝", label: "Service opened" },
   search: { icon: "🔍", label: "Search" },
+  pwa_install: { icon: "📲", label: "App installed" },
   report: { icon: "🚨", label: "Report" },
   contribution: { icon: "➕", label: "Contribution" },
   feedback: { icon: "⭐", label: "Feedback" },

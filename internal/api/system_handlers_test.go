@@ -123,6 +123,7 @@ func TestHandleApiRoot(t *testing.T) {
 			map[string]any{"path": "/api/page_views", "method": "POST", "description": "Record a page view (analytics)."},
 			map[string]any{"path": "/api/link_clicks", "method": "POST", "description": "Record a link click (analytics)."},
 			map[string]any{"path": "/api/search_events", "method": "POST", "description": "Record a search query (analytics)."},
+			map[string]any{"path": "/api/pwa_install_events", "method": "POST", "description": "Record a PWA install (analytics)."},
 			map[string]any{"path": "/api/contributions", "method": "POST", "description": "Submit a user contribution."},
 		},
 	}

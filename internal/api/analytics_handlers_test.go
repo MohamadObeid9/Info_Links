@@ -29,6 +29,10 @@ type fakeAnalyticsService struct {
 	searchCalls int
 	searchQuery string
 	searchErr   error
+
+	pwaInstallCalls int
+	pwaInstallDev   string
+	pwaInstallErr   error
 }
 
 func (f *fakeAnalyticsService) GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error) {
@@ -56,6 +60,12 @@ func (f *fakeAnalyticsService) TrackSearch(ctx context.Context, userID int, quer
 	f.searchCalls++
 	f.searchQuery = query
 	return f.searchErr
+}
+
+func (f *fakeAnalyticsService) TrackPwaInstall(ctx context.Context, userID int, deviceType string) error {
+	f.pwaInstallCalls++
+	f.pwaInstallDev = deviceType
+	return f.pwaInstallErr
 }
 
 func TestHandleAdminGetAnalyticsSummary(t *testing.T) {
@@ -189,6 +199,21 @@ func TestHandlePostSearchEvent_missingUser(t *testing.T) {
 	h.handlePostSearchEvent(rr, req)
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401 body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandlePostPwaInstallEvent(t *testing.T) {
+	fake := &fakeAnalyticsService{}
+	h := testHandler(t, withAnalytics(fake))
+	req := studentRequest(http.MethodPost, "/api/pwa_install_events", `{}`)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)")
+	rr := httptest.NewRecorder()
+	h.handlePostPwaInstallEvent(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", rr.Code)
+	}
+	if fake.pwaInstallCalls != 1 || fake.pwaInstallDev != "phone" {
+		t.Fatalf("pwa install = %d %q", fake.pwaInstallCalls, fake.pwaInstallDev)
 	}
 }
 

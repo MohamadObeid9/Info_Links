@@ -34,9 +34,10 @@ const (
 	reassignContributionsQuery  = `UPDATE contributions SET user_id = $2 WHERE user_id = $1`
 	reassignFeedbackQuery       = `UPDATE feedback SET user_id = $2 WHERE user_id = $1`
 	reassignFavoriteEventsQuery = `UPDATE favorite_events SET user_id = $2 WHERE user_id = $1`
-	reassignSearchEventsQuery   = `UPDATE search_events SET user_id = $2 WHERE user_id = $1`
-	reassignBrowseEventsQuery   = `UPDATE browse_events SET user_id = $2 WHERE user_id = $1`
-	reassignServiceClicksQuery  = `UPDATE service_clicks SET user_id = $2 WHERE user_id = $1`
+	reassignSearchEventsQuery     = `UPDATE search_events SET user_id = $2 WHERE user_id = $1`
+	reassignBrowseEventsQuery     = `UPDATE browse_events SET user_id = $2 WHERE user_id = $1`
+	reassignServiceClicksQuery    = `UPDATE service_clicks SET user_id = $2 WHERE user_id = $1`
+	reassignPwaInstallEventsQuery = `UPDATE pwa_install_events SET user_id = $2 WHERE user_id = $1`
 	deleteGuestQuery            = `DELETE FROM users WHERE id = $1 AND is_guest = true`
 	// Cascades page_views / search / browse for those guests; registered rows are untouched.
 	deleteStaleGuestsQuery = `DELETE FROM users WHERE is_guest = true AND last_seen_at < $1`
@@ -147,6 +148,13 @@ const (
 			       'searched for "' || se.query || '"',
 			       se.id, ''
 			FROM search_events se WHERE se.user_id = $1
+			UNION ALL
+			SELECT 'pwa_install', pie.created_at,
+			       'installed Info Links as an app'
+			           || CASE WHEN pie.device_type IN ('phone', 'laptop')
+			                   THEN ' on ' || pie.device_type ELSE '' END,
+			       pie.id, COALESCE(pie.device_type, '')
+			FROM pwa_install_events pie WHERE pie.user_id = $1
 		) timeline
 		ORDER BY at DESC
 		LIMIT $2 OFFSET $3`
@@ -395,6 +403,9 @@ const (
 			SELECT se.id FROM search_events se
 			WHERE se.user_id = u.id AND se.created_at >= date_trunc('day', now())
 			UNION ALL
+			SELECT pie.id FROM pwa_install_events pie
+			WHERE pie.user_id = u.id AND pie.created_at >= date_trunc('day', now())
+			UNION ALL
 			SELECT pv.id FROM page_views pv
 			WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now())
 			  AND lower(COALESCE(pv.page, 'home')) <> 'home'
@@ -404,7 +415,7 @@ const (
 	// A visitor is anyone with a page view or meaningful activity today. Link opens are
 	// gated behind signup, so a click without a page_views row still means the
 	// person was on the site (e.g. visit POST failed or session was re-bootstrapped).
-	// Searches count too — a student who only searches still "visited" today.
+	// Searches and PWA installs count too — a student who only does those still "visited" today.
 	analyticsVisitorsTodayPresenceSQL = `
 		EXISTS (SELECT 1 FROM page_views pv WHERE pv.user_id = u.id AND pv.visited_at >= date_trunc('day', now()))
 		OR EXISTS (SELECT 1 FROM link_clicks lc WHERE lc.user_id = u.id AND lc.clicked_at >= date_trunc('day', now()))
@@ -413,7 +424,8 @@ const (
 		OR EXISTS (SELECT 1 FROM contributions c WHERE c.user_id = u.id AND c.created_at >= date_trunc('day', now()))
 		OR EXISTS (SELECT 1 FROM feedback f WHERE f.user_id = u.id AND f.created_at >= date_trunc('day', now()))
 		OR EXISTS (SELECT 1 FROM favorite_events fe WHERE fe.user_id = u.id AND fe.created_at >= date_trunc('day', now()))
-		OR EXISTS (SELECT 1 FROM search_events se WHERE se.user_id = u.id AND se.created_at >= date_trunc('day', now()))`
+		OR EXISTS (SELECT 1 FROM search_events se WHERE se.user_id = u.id AND se.created_at >= date_trunc('day', now()))
+		OR EXISTS (SELECT 1 FROM pwa_install_events pie WHERE pie.user_id = u.id AND pie.created_at >= date_trunc('day', now()))`
 
 	analyticsVisitorsTodayByClicksQuery = `
 		SELECT u.id, COALESCE(u.first_name, ''), COALESCE(u.last_name, ''), COALESCE(u.number, 0),
@@ -802,6 +814,11 @@ const (
 		INSERT INTO search_events (user_id, query)
 		SELECT $1, $2
 		WHERE NOT EXISTS (SELECT 1 FROM updated)`
+
+	insertPwaInstallEventQuery = `
+		WITH touch AS (UPDATE users SET last_seen_at = now() WHERE id = $1)
+		INSERT INTO pwa_install_events (user_id, device_type)
+		VALUES ($1, $2)`
 )
 
 // Page Views Queries
