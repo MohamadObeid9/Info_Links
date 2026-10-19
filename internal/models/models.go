@@ -45,7 +45,7 @@ type UserListItem struct {
 
 // UserActivityEvent is one entry of a student activity timeline.
 type UserActivityEvent struct {
-	Type       string `json:"type"` // visit, link_click, service_click, search, report, contribution, feedback, favorite_added, favorite_removed
+	Type       string `json:"type"` // visit, link_click, service_click, search, pwa_install, report, contribution, feedback, favorite_added, favorite_removed
 	At         string `json:"at"`
 	Summary    string `json:"summary"`
 	RefID      int    `json:"ref_id"`

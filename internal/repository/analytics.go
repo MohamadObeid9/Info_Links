@@ -191,6 +191,21 @@ func (r *postgresAnalyticsRepository) InsertSearch(ctx context.Context, userID i
 	return nil
 }
 
+func (r *postgresAnalyticsRepository) InsertPwaInstall(ctx context.Context, userID int, deviceType string) error {
+	var device any
+	if deviceType == "phone" || deviceType == "laptop" {
+		device = deviceType
+	}
+	if _, err := r.db.ExecContext(ctx, insertPwaInstallEventQuery, userID, device); err != nil {
+		err = asMissingUser(err)
+		if errors.Is(err, errs.ErrUserNotFound) {
+			return err
+		}
+		return fmt.Errorf("insert pwa install event: %w", err)
+	}
+	return nil
+}
+
 func (r *postgresAnalyticsRepository) ListActors(ctx context.Context, kind, key string, since time.Time) (models.AnalyticsActorsResult, error) {
 	query, args, err := analyticsActorsQuery(kind, key, since)
 	if err != nil {

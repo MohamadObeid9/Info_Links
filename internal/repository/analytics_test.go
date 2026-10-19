@@ -347,6 +347,16 @@ func TestAnalyticsRepository_InsertSearch_missingUser(t *testing.T) {
 	assertRepoErr(t, mock, err, errs.ErrUserNotFound)
 }
 
+func TestAnalyticsRepository_InsertPwaInstall(t *testing.T) {
+	repo, mock := newTestAnalyticsRepo(t)
+	mock.ExpectExec(insertPwaInstallEventQuery).WithArgs(7, "phone").WillReturnResult(sqlmock.NewResult(1, 1))
+
+	if err := repo.InsertPwaInstall(context.Background(), 7, "phone"); err != nil {
+		t.Fatalf("InsertPwaInstall: %v", err)
+	}
+	assertRepoErr(t, mock, nil, nil)
+}
+
 func TestAnalyticsRepository_ListActors(t *testing.T) {
 	since := time.Date(2026, 9, 18, 0, 0, 0, 0, time.Local)
 	repo, mock := newTestAnalyticsRepo(t)

@@ -79,6 +79,7 @@ type userService interface {
 type analyticsService interface {
 	GetSummary(ctx context.Context, rangeStr string, visitors service.AnalyticsVisitorsParams) (models.AnalyticsSummary, error)
 	TrackSearch(ctx context.Context, userID int, query string) error
+	TrackPwaInstall(ctx context.Context, userID int, deviceType string) error
 	ListActors(ctx context.Context, kind, idStr, rangeStr string) (models.AnalyticsActorsResult, error)
 }
 

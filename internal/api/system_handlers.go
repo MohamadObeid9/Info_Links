@@ -41,6 +41,7 @@ func (h *Handler) handleApiRoot(w http.ResponseWriter, r *http.Request) {
 			{"path": "/api/page_views", "method": "POST", "description": "Record a page view (analytics)."},
 			{"path": "/api/link_clicks", "method": "POST", "description": "Record a link click (analytics)."},
 			{"path": "/api/search_events", "method": "POST", "description": "Record a search query (analytics)."},
+			{"path": "/api/pwa_install_events", "method": "POST", "description": "Record a PWA install (analytics)."},
 			{"path": "/api/contributions", "method": "POST", "description": "Submit a user contribution."},
 		},
 	}

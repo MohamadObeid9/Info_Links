@@ -77,6 +77,7 @@ func (r *postgresUserRepository) AdoptGuest(ctx context.Context, guestID int, us
 		reassignSearchEventsQuery,
 		reassignBrowseEventsQuery,
 		reassignServiceClicksQuery,
+		reassignPwaInstallEventsQuery,
 	} {
 		if _, err := tx.ExecContext(ctx, q, guestID, userID); err != nil {
 			return fmt.Errorf("reassign guest activity: %w", err)

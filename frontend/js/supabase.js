@@ -62,7 +62,7 @@ function logApiError(err, context, status) {
 // Endpoints where the server derives the acting student from the token, so the
 // student session token wins over any admin token present in the same browser.
 const STUDENT_AUTH_PATHS =
-  /^\/api\/(page_views|link_clicks|service_clicks|search_events|reports|feedback|contributions|users)(\/|$|\?)/;
+  /^\/api\/(page_views|link_clicks|service_clicks|search_events|pwa_install_events|reports|feedback|contributions|users)(\/|$|\?)/;
 
 function _usesStudentToken(url) {
   return STUDENT_AUTH_PATHS.test(String(url).split("?")[0]);
@@ -273,6 +273,29 @@ function flushSearch(queryOverride) {
   });
 }
 
+function _pwaInstallTrackedKey(uid) {
+  return `infolinks_pwa_install_tracked:${uid == null ? "anon" : uid}`;
+}
+
+function trackPwaInstall() {
+  if (AppState.adminLoggedIn || !AppState.studentToken) return;
+  const uid = AppState.studentUser?.id;
+  const key = _pwaInstallTrackedKey(uid);
+  try {
+    if (localStorage.getItem(key) === "1") return;
+  } catch (e) { /* private mode */ }
+  apiRequest(`/api/pwa_install_events`, {
+    method: "POST",
+    body: {},
+  }).then(() => {
+    try {
+      localStorage.setItem(key, "1");
+    } catch (e) { /* private mode */ }
+  }).catch((e) => {
+    if (e?.status === 401) window.onStudentTokenRejected?.();
+  });
+}
+
 // Global Bridge
 window.sb = sb;
 window.sbAuth = sbAuth;
@@ -282,6 +305,7 @@ window.markVisitRecordedToday = markVisitRecordedToday;
 window.trackLinkClick = trackLinkClick;
 window.trackSearch = trackSearch;
 window.flushSearch = flushSearch;
+window.trackPwaInstall = trackPwaInstall;
 window.apiRequest = apiRequest;
 window.formatApiError = formatApiError;
 window.logApiError = logApiError;
@@ -301,6 +325,7 @@ export {
   trackLinkClick,
   trackSearch,
   flushSearch,
+  trackPwaInstall,
   apiRequest,
   formatApiError,
   logApiError,

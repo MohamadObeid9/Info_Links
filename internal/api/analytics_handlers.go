@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"infolinks-backend/internal/device"
 	"infolinks-backend/internal/errs"
 	"infolinks-backend/internal/service"
 )
@@ -46,6 +47,22 @@ func (h *Handler) handlePostSearchEvent(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.analyticsService.TrackSearch(r.Context(), userID, body.Query); err != nil {
+		if writeIfMissingUser(w, r, err) {
+			return
+		}
+		mapAnalyticsTrackErr(h, w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *Handler) handlePostPwaInstallEvent(w http.ResponseWriter, r *http.Request) {
+	userID, ok := requireUserID(w, r)
+	if !ok {
+		return
+	}
+	deviceType := device.ClassifyUserAgent(r.UserAgent())
+	if err := h.analyticsService.TrackPwaInstall(r.Context(), userID, deviceType); err != nil {
 		if writeIfMissingUser(w, r, err) {
 			return
 		}
