@@ -226,8 +226,13 @@ document.addEventListener("mouseout", (e) => {
 });
 
 async function init() {
+  // Attach PWA install listeners before any network-bound app init:
+  // beforeinstallprompt can fire early and never replays.
+  initPwaInstall();
   try {
     await window.initApp();
+    // Re-run once the session/token is ready so a standalone launch or an
+    // early appinstalled event can be recorded for the signed-in student.
     initPwaInstall();
   } catch (err) {
     console.error("Critical: App initialization failed:", err);
