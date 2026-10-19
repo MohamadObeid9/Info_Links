@@ -3,7 +3,7 @@
 Centralized course resource hub for CNAM Lebanon CS students — **50+ courses**, **300+ active users**, served by a **production Go API** .
 
 [![CI](https://github.com/MohamadObeid9/Info_Links/actions/workflows/ci.yml/badge.svg)](https://github.com/MohamadObeid9/Info_Links/actions/workflows/ci.yml)
-![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/MohamadObeid9/Info_Links)
 
@@ -30,7 +30,7 @@ Using the app? See the [user guide](docs/user-guide.md).
 | Layer | Technology |
 |-------|------------|
 | **Frontend** | HTML5, CSS3, Vanilla JavaScript, Vite |
-| **Backend** | Go 1.25 (`net/http`, no web framework) |
+| **Backend** | Go 1.26 (`net/http`, no web framework) |
 | **Database** | PostgreSQL via Supabase |
 | **Auth** | Supabase Auth at login → app-issued JWT for admin routes |
 | **Observability** | `slog`, Prometheus `/metrics`, Grafana, `/healthz`, `/readyz` |
@@ -111,7 +111,7 @@ info_links/
 ### Prerequisites
 
 - **Git**
-- **Go 1.25+** ([go.mod](go.mod))
+- **Go 1.26+** ([go.mod](go.mod))
 - **Node.js 20+** (frontend build and Vite dev server)
 - **Supabase project** with a Postgres connection string
 - **Docker & Docker Compose v2.22+** (optional, for containerized dev)

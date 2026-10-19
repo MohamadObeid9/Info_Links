@@ -237,7 +237,7 @@ func TestUserService_CreateGuest(t *testing.T) {
 				t.Fatalf("Get: %v", err)
 			}
 			if !reflect.DeepEqual(got, tt.wantResult) {
-				t.Fatalf("got %q, want %q", got, tt.wantResult)
+				t.Fatalf("got %+v, want %+v", got, tt.wantResult)
 			}
 		})
 	}

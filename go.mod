@@ -1,6 +1,6 @@
 module infolinks-backend
 
-go 1.25.13
+go 1.26.9
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -25,6 +25,6 @@ require (
 	github.com/prometheus/common v0.69.0 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )
